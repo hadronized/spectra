@@ -1,0 +1,22 @@
+[package]
+name = "ion"
+version = "0.1.0"
+authors = ["Dimitri Sabadie <dimitri.sabadie@gmail.com>"]
+
+[lib]
+name = "ion"
+path = "lib/lib.rs"
+doc = true
+
+[dependencies]
+luminance = "0.6.2"
+luminance-gl = "0.5.3"
+gl = "0.5.2"
+glfw = "0.3.0"
+image = "0.10.1"
+nalgebra = { git = "https://github.com/phaazon/nalgebra.git", rev = "1fdd8979afa464d1a13d0bfe926e0d9aaab0ee1a" }
+openal-rs = "0.1.4"
+vorbis = "0.0.14"
+
+[dev-dependencies]
+rand = "0.3.14" # for unit tests
