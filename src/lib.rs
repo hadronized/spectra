@@ -13,7 +13,6 @@ pub mod device;
 pub mod entity;
 pub mod objects;
 pub mod projection;
-pub mod pulse;
 #[macro_use]
 pub mod report;
 #[macro_use]

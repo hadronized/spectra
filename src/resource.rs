@@ -1,6 +1,4 @@
-use shader::ProgramManager;
 use std::collections::BTreeMap;
-use std::default::Default;
 
 pub use std::sync;
 
@@ -55,25 +53,5 @@ macro_rules! cache_fetch {
 macro_rules! default_unload_impl {
   ($manager:expr, $key:ident) => {
     let _ = $manager.remove($key);
-  }
-}
-
-// Outermost resource manager; i.e. gathers all resource managers.
-pub struct ResourceManager {
-  pub program_manager: ProgramManager
-}
-
-impl Default for ResourceManager {
-  fn default() -> Self {
-    ResourceManager {
-      program_manager: Default::default()
-    }
-  }
-}
-
-impl ResourceManager {
-  // Create a new resource manager.
-  pub fn new() -> Self {
-    ResourceManager::default()
   }
 }
