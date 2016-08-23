@@ -1,16 +1,17 @@
 use gl;
 use std::os::raw::c_void;
-use std::process::exit;
 use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
 
-pub use glfw::{self, Action, Context, CursorMode, Key, MouseButton};
+pub use glfw::{self, Action, Context, CursorMode, Key, MouseButton, Window};
 
 pub type Keyboard = mpsc::Receiver<(Key, Action)>;
 pub type Mouse = mpsc::Receiver<(MouseButton, Action)>;
 pub type MouseMove = mpsc::Receiver<[f64; 2]>;
 pub type Scroll = mpsc::Receiver<[f64; 2]>;
 
-pub fn with_window<Init: Fn(u32, u32, Keyboard, Mouse, MouseMove, Scroll) -> Result<Box<FnMut() -> bool>, String>>(dim: Option<(u32, u32)>, title: &'static str, init: Init) {
+pub fn bootstrap<App: FnMut(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Window)>(dim: Option<(u32, u32)>, title: &'static str, mut app: App) {
   let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
   // OpenGL hint
@@ -56,42 +57,30 @@ pub fn with_window<Init: Fn(u32, u32, Keyboard, Mouse, MouseMove, Scroll) -> Res
   let (mouse_move_snd, mouse_move_rcv) = mpsc::channel();
   let (scroll_snd, scroll_rcv) = mpsc::channel();
 
-  match init(w, h, kbd_rcv, mouse_rcv, mouse_move_rcv, scroll_rcv) {
-    Ok(mut run) => {
-      while !window.should_close() {
-        glfw.poll_events();
+  // start the event threads
+  let _ = thread::spawn(move || {
+    for (_, event) in glfw::flush_messages(&events) {
+      glfw.poll_events();
 
-        for (_, event) in glfw::flush_messages(&events) {
-          match event {
-              glfw::WindowEvent::Key(key, _, action, _) => {
-                let _ = kbd_snd.send((key, action));
-              },
-              glfw::WindowEvent::MouseButton(button, action, _) => {
-                let _ = mouse_snd.send((button, action));
-              },
-              glfw::WindowEvent::CursorPos(x, y) => {
-                let _ = mouse_move_snd.send([x, y]);
-              },
-              glfw::WindowEvent::Scroll(x, y) => {
-                let _ = scroll_snd.send([x, y]);
-              },
-              _ => {},
-          }
-        }
-  
-        let alive = run();
-        window.swap_buffers();
-
-        if !alive {
-          window.set_should_close(true);
-          break;
-        }
+      match event {
+          glfw::WindowEvent::Key(key, _, action, _) => {
+            let _ = kbd_snd.send((key, action));
+          },
+          glfw::WindowEvent::MouseButton(button, action, _) => {
+            let _ = mouse_snd.send((button, action));
+          },
+          glfw::WindowEvent::CursorPos(x, y) => {
+            let _ = mouse_move_snd.send([x, y]);
+          },
+          glfw::WindowEvent::Scroll(x, y) => {
+            let _ = scroll_snd.send([x, y]);
+          },
+          _ => {},
       }
-    },
-    Err(e) => {
-      err!("unable to initialize application");
-      err!("{}", e);
-      exit(1);
+
+      thread::sleep(Duration::from_millis(100));
     }
-  }
+  });
+
+  app(w, h, kbd_rcv, mouse_rcv, mouse_move_rcv, scroll_rcv, window);
 }
