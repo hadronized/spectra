@@ -85,26 +85,28 @@ pub fn bootstrap<App: FnOnce(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Windo
 
   // start the event threads
   let _ = thread::spawn(move || {
-    for (_, event) in glfw::flush_messages(&events) {
+    loop {
       glfw.poll_events();
 
-      match event {
-          glfw::WindowEvent::Key(key, _, action, _) => {
-            let _ = kbd_snd.send((key, action));
-          },
-          glfw::WindowEvent::MouseButton(button, action, _) => {
-            let _ = mouse_snd.send((button, action));
-          },
-          glfw::WindowEvent::CursorPos(x, y) => {
-            let _ = mouse_move_snd.send([x, y]);
-          },
-          glfw::WindowEvent::Scroll(x, y) => {
-            let _ = scroll_snd.send([x, y]);
-          },
-          _ => {},
-      }
+      for (_, event) in glfw::flush_messages(&events) {
+        match event {
+            glfw::WindowEvent::Key(key, _, action, _) => {
+              let _ = kbd_snd.send((key, action));
+            },
+            glfw::WindowEvent::MouseButton(button, action, _) => {
+              let _ = mouse_snd.send((button, action));
+            },
+            glfw::WindowEvent::CursorPos(x, y) => {
+              let _ = mouse_move_snd.send([x, y]);
+            },
+            glfw::WindowEvent::Scroll(x, y) => {
+              let _ = scroll_snd.send([x, y]);
+            },
+            _ => {},
+        }
 
-      thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(10));
+      }
     }
   });
 
