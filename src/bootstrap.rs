@@ -23,7 +23,7 @@ pub type Mouse = mpsc::Receiver<(MouseButton, Action)>;
 pub type MouseMove = mpsc::Receiver<[f64; 2]>;
 pub type Scroll = mpsc::Receiver<[f64; 2]>;
 
-pub fn bootstrap<App: FnMut(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Window)>(dim: WindowDim, title: &'static str, backend: LuminanceBackend, mut app: App) {
+pub fn bootstrap<App: FnOnce(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Window)>(dim: WindowDim, title: &'static str, backend: LuminanceBackend, app: App) {
   let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
   match backend {
