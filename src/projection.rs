@@ -1,4 +1,4 @@
-use luminance::M44;
+pub use luminance::M44;
 use nalgebra::Perspective3;
 
 pub fn perspective(ratio: f32, fovy: f32, znear: f32, zfar: f32) -> M44 {
