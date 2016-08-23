@@ -35,14 +35,15 @@ pub fn with_window<Init: Fn(u32, u32, Keyboard, Mouse, MouseMove, Scroll) -> Res
   };
 
   window.make_current();
+
   if cfg!(feature = "release") {
     window.set_cursor_mode(CursorMode::Disabled);
-    window.set_key_polling(true);
-  } else {
-    window.set_cursor_pos_polling(true);
-    window.set_mouse_button_polling(true);
-    window.set_scroll_polling(true);
   }
+
+  window.set_key_polling(true);
+  window.set_cursor_pos_polling(true);
+  window.set_mouse_button_polling(true);
+  window.set_scroll_polling(true);
 
   // init OpenGL
   gl::load_with(|s| window.get_proc_address(s) as *const c_void);
