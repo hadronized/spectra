@@ -6,33 +6,59 @@ use std::time::Duration;
 
 pub use glfw::{self, Action, Context, CursorMode, Key, MouseButton, Window};
 
+#[derive(Clone, Copy, Debug)]
+pub enum LuminanceBackend {
+  GL33
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum WindowDim {
+  Windowed(u32, u32),
+  FullScreen,
+  FullScreenRestricted(u32, u32)
+}
+
 pub type Keyboard = mpsc::Receiver<(Key, Action)>;
 pub type Mouse = mpsc::Receiver<(MouseButton, Action)>;
 pub type MouseMove = mpsc::Receiver<[f64; 2]>;
 pub type Scroll = mpsc::Receiver<[f64; 2]>;
 
-pub fn bootstrap<App: FnMut(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Window)>(dim: Option<(u32, u32)>, title: &'static str, mut app: App) {
+pub fn bootstrap<App: FnMut(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Window)>(dim: WindowDim, title: &'static str, backend: LuminanceBackend, mut app: App) {
   let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
-  // OpenGL hint
-  glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
-  glfw.window_hint(glfw::WindowHint::ContextVersionMajor(3));
-  glfw.window_hint(glfw::WindowHint::ContextVersionMinor(3));
+  match backend {
+    LuminanceBackend::GL33 => {
+      // OpenGL hints; implements luminance-gl’s core contexts creation
+      glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
+      glfw.window_hint(glfw::WindowHint::ContextVersionMajor(3));
+      glfw.window_hint(glfw::WindowHint::ContextVersionMinor(3));
+    }
+  }
 
-  let (mut window, events, w, h) = if let Some((w, h)) = dim {
-    let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::Windowed)
-      .expect("Failed to create GLFW window.");
-
-    (window, events, w, h)
-  } else {
-    glfw.with_primary_monitor(|glfw, monitor| {
-      let monitor = monitor.unwrap();
-      let vmode = monitor.get_video_mode().expect("primary monitor’s video mode");
-      let (w, h) = (vmode.width, vmode.height);
-      let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::FullScreen(monitor)).expect("Failed to create GLFW window.");
-
+  // open a window in windowed or fullscreen mode
+  let (mut window, events, w, h) = match dim {
+    WindowDim::Windowed(w, h) => {
+      let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::Windowed).expect("Failed to create GLFW window.");
       (window, events, w, h)
-    })
+    },
+    WindowDim::FullScreen => {
+      glfw.with_primary_monitor(|glfw, monitor| {
+        let monitor = monitor.unwrap();
+        let vmode = monitor.get_video_mode().expect("primary monitor’s video mode");
+        let (w, h) = (vmode.width, vmode.height);
+
+        let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::FullScreen(monitor)).expect("Failed to create GLFW window.");
+        (window, events, w, h)
+      })
+    },
+    WindowDim::FullScreenRestricted(w, h) => {
+      glfw.with_primary_monitor(|glfw, monitor| {
+        let monitor = monitor.unwrap();
+
+        let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::FullScreen(monitor)).expect("Failed to create GLFW window.");
+        (window, events, w, h)
+      })
+    }
   };
 
   window.make_current();
