@@ -1,7 +1,6 @@
-use std::ops::Deref;
-pub use transform::*;
+pub use transform::Transform;
 
-/// An entity is anything that has spatial property.
+/// An entity is anything that has spatial properties (i.e. a `Transform`).
 #[derive(Debug)]
 pub struct Entity<T> {
   pub object: T,
@@ -14,13 +13,5 @@ impl<T> Entity<T> {
       object: object,
       transform: transform
     }
-  }
-}
-
-impl<T> Deref for Entity<T> {
-  type Target = Transform;
-
-  fn deref(&self) -> &Self::Target {
-    &self.transform
   }
 }
