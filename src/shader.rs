@@ -90,7 +90,7 @@ pub fn read_stage<T, P>(path: P) -> Result<Stage<T>, StageError> where T: Shader
 ///
 /// That wrapper is used to enable hot-reloading of shader programs.
 pub struct WrappedProgram<'a, T> {
-  receiver: mpsc::Receiver<PathBuf>,
+  rx: mpsc::Receiver<PathBuf>,
   program: Program<T>,
   get_uni: Box<Fn(ProgramProxy) -> Result<T, ProgramError> + 'a>,
   vs_path: PathBuf,
@@ -171,7 +171,7 @@ impl<'a, T> WrappedProgram<'a, T> {
     monitor_shader(&tess_path, &vs_path, &gs_path, &fs_path, sx);
 
     let wrapped = WrappedProgram {
-      receiver: rx,
+      rx: rx,
       program: program,
       get_uni: Box::new(get_uni),
       vs_path: vs_path.as_ref().to_path_buf(),
@@ -181,5 +181,20 @@ impl<'a, T> WrappedProgram<'a, T> {
     };
 
     Ok(wrapped)
+  }
+
+  /// Sync the embedded `Program`.
+  pub fn sync(&mut self) {
+    if let Ok(path) = self.rx.try_recv() {
+      if path == self.vs_path {
+        let vs = read_stage(path);
+      } else if path == self.fs_path {
+      } else if let Some((ref tcs, ref tes)) = self.tess_path {
+        if path == *tcs {
+        } else if path == *tes {
+        }
+      } else if Some(path) == self.gs_path {
+      }
+    }
   }
 }
