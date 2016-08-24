@@ -2,10 +2,9 @@ use luminance::{FragmentShader, GeometryShader, StageError, ShaderTypeable,
                 TessellationControlShader, TessellationEvaluationShader, VertexShader};
 use luminance_gl::gl33::{ProgramProxy, Stage};
 use notify::{self, RecommendedWatcher, Watcher};
-use std::collections::BTreeMap;
 use std::fs;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::mpsc;
 use std::thread;
 
@@ -66,26 +65,26 @@ pub fn new_program<GetUni, T>(tess_src: Option<(&str, &str)>, vs_src: &str, gs_s
   }
 }
 
-pub fn new_program_from_disk<GetUni, T>(tess_path: Option<(&Path, &Path)>, vs_path: &Path, gs_path: Option<&Path>, fs_path: &Path, get_uni: GetUni) -> Result<Program<T>, ProgramError>
+pub fn new_program_from_disk<GetUni, T>(tess_path: Option<(PathBuf, PathBuf)>, vs_path: PathBuf, gs_path: Option<PathBuf>, fs_path: PathBuf, get_uni: GetUni) -> Result<Program<T>, ProgramError>
       where GetUni: Fn(ProgramProxy) -> Result<T, ProgramError> + Clone {
   // load vertex and fragment shaders first
-  let vs = try!(read_stage(vs_path.as_ref()).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
-  let fs = try!(read_stage(fs_path.as_ref()).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
+  let vs = try!(read_stage(vs_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
+  let fs = try!(read_stage(fs_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
 
-  match (&tess_path, &gs_path) {
-    (&None, &None) => { // no tessellation nor geometry
+  match (tess_path, gs_path) {
+    (None, None) => { // no tessellation nor geometry
       Program::new(None, &vs, None, &fs, get_uni.clone())
     },
-    (&Some((ref tcs_path, ref tes_path)), &None) => { // tessellation without geometry
+    (Some((tcs_path, tes_path)), None) => { // tessellation without geometry
       let tcs = try!(read_stage(tcs_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
       let tes = try!(read_stage(tes_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
       Program::new(Some((&tcs, &tes)), &vs, None, &fs, get_uni.clone())
     },
-    (&None, &Some(ref gs_path)) => { // geometry without tessellation
+    (None, Some(gs_path)) => { // geometry without tessellation
       let gs = try!(read_stage(gs_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
       Program::new(None, &vs, Some(&gs), &fs, get_uni.clone())
     },
-    (&Some((ref tcs_path, ref tes_path)), &Some(ref gs_path)) => { // tessellation and geometry
+    (Some((tcs_path, tes_path)), Some(gs_path)) => { // tessellation and geometry
       let tcs = try!(read_stage(tcs_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
       let tes = try!(read_stage(tes_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
       let gs = try!(read_stage(gs_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
@@ -94,7 +93,7 @@ pub fn new_program_from_disk<GetUni, T>(tess_path: Option<(&Path, &Path)>, vs_pa
   }
 }
 
-pub fn read_stage<T>(path: &Path) -> Result<Stage<T>, StageError> where T: ShaderTypeable {
+pub fn read_stage<T>(path: PathBuf) -> Result<Stage<T>, StageError> where T: ShaderTypeable {
   info!("\tloading {:?} stage: \x1b[35m{:?}", T::shader_type(), path);
 
   let fh = fs::File::open(path);
@@ -114,7 +113,7 @@ pub fn read_stage<T>(path: &Path) -> Result<Stage<T>, StageError> where T: Shade
 
 /// Add surveillance of a given `Program` by providing the path to all its shaders. When a change
 /// occurs, the `Program` gets notified of the change via its `Receiver` channel part.
-pub fn monitor_shader(tess: Option<(&Path, &Path)>, vs: &Path, gs: Option<&Path>, fs: &Path, sx: mpsc::Sender<()>) {
+pub fn monitor_shader(tess: Option<(PathBuf, PathBuf)>, vs: PathBuf, gs: Option<PathBuf>, fs: PathBuf, sx: mpsc::Sender<()>) {
   let (wsx, wrx) = mpsc::channel();
   let mut watcher: RecommendedWatcher = Watcher::new(wsx).unwrap();
 
@@ -162,28 +161,28 @@ pub struct WrappedProgram<'a, T> {
 }
 
 impl<'a, T> WrappedProgram<'a, T> {
-  pub fn new<GetUni>(tess_path: Option<(&Path, &Path)>, vs_path: &Path, gs_path: Option<&Path>, fs_path: &Path, get_uni: GetUni) -> Result<Self, ProgramError>
+  pub fn new<GetUni>(tess_path: Option<(PathBuf, PathBuf)>, vs_path: PathBuf, gs_path: Option<PathBuf>, fs_path: PathBuf, get_uni: GetUni) -> Result<Self, ProgramError>
       where GetUni: 'a + Fn(ProgramProxy) -> Result<T, ProgramError> + Clone {
-    let program = try!(new_program_from_disk(tess_path, vs_path, gs_path, fs_path, get_uni.clone()));
+    let program = try!(new_program_from_disk(tess_path.clone(), vs_path.clone(), gs_path.clone(), fs_path.clone(), get_uni.clone()));
     let (sx, rx) = mpsc::channel();
 
-    monitor_shader(tess_path, vs_path, gs_path, fs_path, sx);
+    monitor_shader(tess_path.clone(), vs_path.clone(), gs_path.clone(), fs_path.clone(), sx);
 
     let wrapped = WrappedProgram {
       rx: rx,
       program: program,
       get_uni: Box::new(get_uni),
-      vs_path: vs_path.to_path_buf(),
-      fs_path: fs_path.to_path_buf(),
-      tess_path: tess_path.map(|(tcs, tes)| (tcs.to_path_buf(), tes.to_path_buf())),
-      gs_path: gs_path.map(|gs| gs.to_path_buf())
+      vs_path: vs_path,
+      fs_path: fs_path,
+      tess_path: tess_path,
+      gs_path: gs_path,
     };
 
     Ok(wrapped)
   }
 
   //fn reload(&self mut) {
-  //  let program = 
+  //  let program = new_program_from_disk(self.tess_path, 
   //}
 
   /// Sync the embedded `Program`.
