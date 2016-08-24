@@ -24,7 +24,7 @@ nalgebra = { git = "https://github.com/phaazon/nalgebra.git", rev = "1fdd8979afa
 openal-rs = "0.1.4"
 vorbis = "0.0.14"
 
-# optional dependencies (used in conjuction with features)
+# optional dependencies (used in conjunction with features)
 notify = { version = "2.6.3", optional = true }
 
 [dev-dependencies]

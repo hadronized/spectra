@@ -86,10 +86,18 @@ pub fn read_stage<T, P>(path: P) -> Result<Stage<T>, StageError> where T: Shader
 /// A `Program` wrapped by **ion**.
 ///
 /// That wrapper is used to enable hot-reloading of shader programs.
+#[cfg(feature = "hot-shader")]
 pub struct WrappedProgram<'a, T> {
   receiver: mpsc::Receiver<(PathBuf, stage::Type)>,
   program: Program<T>,
   get_uni: Box<Fn(ProgramProxy) -> Result<T, ProgramError> + 'a>
+}
+#[cfg(not(feature = "hot-shader"))]
+pub type WrappedProgram<'a, T> = Program<'a, T>;
+
+/// A `WrappedProgram` manager.
+pub struct WrappedProgramBuilder {
+
 }
 
 impl<'a, T> WrappedProgram<'a, T> {
