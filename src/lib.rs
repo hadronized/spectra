@@ -4,6 +4,8 @@ extern crate image;
 extern crate luminance;
 extern crate luminance_gl;
 extern crate nalgebra;
+// FIXME: use cfg(feature = "hot-reload")
+extern crate notify;
 extern crate openal;
 extern crate vorbis;
 

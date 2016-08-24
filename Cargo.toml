@@ -12,7 +12,7 @@ documentation = "http://phaazon.github.io/ion"
 
 [features]
 default = []
-hot-shader = ["notify"]
+#hot-shader = ["notify"]
 
 [dependencies]
 luminance = "0.6.2"
@@ -25,7 +25,7 @@ openal-rs = "0.1.4"
 vorbis = "0.0.14"
 
 # optional dependencies (used in conjunction with features)
-notify = { version = "2.6.3", optional = true }
+notify = { version = "2.6.3", optional = false }
 
 [dev-dependencies]
 rand = "0.3.14" # for unit tests
