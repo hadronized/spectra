@@ -140,7 +140,13 @@ pub fn monitor_shader(tess: Option<(PathBuf, PathBuf)>, vs: PathBuf, gs: Option<
 
   // start a new monitoring thread
   let _ = thread::spawn(move || {
+    deb!("loop started");
+
     loop {
+      deb!("plop");
+      let event = wrx.recv();
+      deb!("{:?}", event);
+
       if let Ok(notify::Event { path: Some(path), op: Ok(notify::op::WRITE) }) = wrx.recv() {
         deb!("{:?}’s content has changed!", path);
         sx.send(());
