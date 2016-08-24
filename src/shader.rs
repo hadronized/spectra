@@ -4,6 +4,7 @@ use luminance_gl::gl33::{ProgramProxy, Stage};
 use notify::{self, RecommendedWatcher, Watcher};
 use std::fs;
 use std::io::Read;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::mpsc;
@@ -200,5 +201,13 @@ impl<'a, T> WrappedProgram<'a, T> {
     if self.rx.try_recv().is_ok() {
       self.reload();
     }
+  }
+}
+
+impl<'a, T> Deref for WrappedProgram<'a, T> {
+  type Target = Program<T>;
+
+  fn deref(&self) -> &Self::Target {
+    &self.program
   }
 }

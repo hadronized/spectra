@@ -2,7 +2,7 @@ extern crate gl;
 pub extern crate glfw;
 extern crate image;
 extern crate luminance;
-extern crate luminance_gl;
+pub extern crate luminance_gl;
 extern crate nalgebra;
 // FIXME: use cfg(feature = "hot-reload")
 extern crate notify;
