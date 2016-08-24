@@ -3,9 +3,18 @@ use luminance::{FragmentShader, GeometryShader, StageError, ShaderTypeable,
 use luminance_gl::gl33::{ProgramProxy, Stage};
 use std::fs;
 use std::io::Read;
+use std::path::{Path, PathBuf};
+use std::sync::mpsc;
 
 pub use luminance::{ProgramError, UniformUpdate};
+use luminance::shader::stage;
 pub use luminance_gl::gl33::{Program, Uniform};
+
+#[derive(Debug)]
+pub enum ShaderError {
+  StageError(StageError),
+  ProgramError(ProgramError)
+}
 
 fn compile_stages(tess_src: Option<(&str, &str)>, vs_src: &str, gs_src: Option<&str>, fs_src: &str) -> Result<(Option<(Stage<TessellationControlShader>, Stage<TessellationEvaluationShader>)>, Stage<VertexShader>, Option<Stage<GeometryShader>>, Stage<FragmentShader>), StageError> {
   let tess = match tess_src {
@@ -54,7 +63,9 @@ pub fn new_program<GetUni, T>(tess_src: Option<(&str, &str)>, vs_src: &str, gs_s
   }
 }
 
-pub fn read_stage<T>(path: &str) -> Result<Stage<T>, StageError> where T: ShaderTypeable {
+pub fn read_stage<T, P>(path: P) -> Result<Stage<T>, StageError> where T: ShaderTypeable, P: AsRef<Path> {
+  let path = path.as_ref().to_str().unwrap();
+
   info!("\tloading {:?} stage: \x1b[35m{}", T::shader_type(), path);
 
   let fh = fs::File::open(path);
@@ -72,8 +83,56 @@ pub fn read_stage<T>(path: &str) -> Result<Stage<T>, StageError> where T: Shader
   }
 }
 
-#[derive(Debug)]
-pub enum ShaderError {
-  StageError(StageError),
-  ProgramError(ProgramError)
+/// A `Program` wrapped by **ion**.
+///
+/// That wrapper is used to enable hot-reloading of shader programs.
+pub struct WrappedProgram<'a, T> {
+  receiver: mpsc::Receiver<(PathBuf, stage::Type)>,
+  program: Program<T>,
+  get_uni: Box<Fn(ProgramProxy) -> Result<T, ProgramError> + 'a>
+}
+
+impl<'a, T> WrappedProgram<'a, T> {
+  pub fn new<GetUni, P>(tess_path: Option<(P, P)>, vs_path: P, gs_path: Option<P>, fs_path: P, get_uni: GetUni) -> Result<Self, ProgramError>
+      where GetUni: 'a + Fn(ProgramProxy) -> Result<T, ProgramError> + Clone,
+            P: AsRef<Path> {
+
+    // load vertex and fragment shaders first
+    let vs = try!(read_stage(vs_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
+    let fs = try!(read_stage(fs_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
+
+    let program = try!(match (tess_path, gs_path) {
+      (None, None) => { // no tessellation nor geometry
+        Program::new(None, &vs, None, &fs, get_uni.clone())
+      },
+      (Some((tcs_path, tes_path)), None) => { // tessellation without geometry
+        let tcs = try!(read_stage(tcs_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
+        let tes = try!(read_stage(tes_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
+        Program::new(Some((&tcs, &tes)), &vs, None, &fs, get_uni.clone())
+      },
+      (None, Some(gs_path)) => { // geometry without tessellation
+        let gs = try!(read_stage(gs_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
+        Program::new(None, &vs, Some(&gs), &fs, get_uni.clone())
+      },
+      (Some((tcs_path, tes_path)), Some(gs_path)) => { // tessellation and geometry
+        let tcs = try!(read_stage(tcs_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
+        let tes = try!(read_stage(tes_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
+        let gs = try!(read_stage(gs_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
+        Program::new(Some((&tcs, &tes)), &vs, Some(&gs), &fs, get_uni.clone())
+      }
+    });
+
+    let (sx, rx) = mpsc::channel();
+
+    // TODO
+    // start the watcher job
+
+    let wrapped = WrappedProgram {
+      receiver: rx,
+      program: program,
+      get_uni: Box::new(get_uni)
+    };
+
+    Ok(wrapped)
+  }
 }

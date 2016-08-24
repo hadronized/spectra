@@ -10,6 +10,10 @@ homepage = "https://github.com/phaazon/ion"
 repository = "https://github.com/phaazon/ion"
 documentation = "http://phaazon.github.io/ion"
 
+[features]
+default = []
+hot-shader = ["notify"]
+
 [dependencies]
 luminance = "0.6.2"
 luminance-gl = "0.5.3"
@@ -19,6 +23,9 @@ image = "0.10.1"
 nalgebra = { git = "https://github.com/phaazon/nalgebra.git", rev = "1fdd8979afa464d1a13d0bfe926e0d9aaab0ee1a" }
 openal-rs = "0.1.4"
 vorbis = "0.0.14"
+
+# optional dependencies (used in conjuction with features)
+notify = { version = "2.6.3", optional = true }
 
 [dev-dependencies]
 rand = "0.3.14" # for unit tests
