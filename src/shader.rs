@@ -198,6 +198,7 @@ impl<'a, T> WrappedProgram<'a, T> {
   /// Sync the embedded `Program`.
   pub fn sync(&mut self) {
     if self.rx.try_recv().is_ok() {
+      self.reload();
     }
   }
 }
