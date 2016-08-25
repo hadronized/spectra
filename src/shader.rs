@@ -103,7 +103,7 @@ pub fn new_program_from_disk<GetUni, T>(tess_path: Option<(PathBuf, PathBuf)>, v
 }
 
 pub fn read_stage<T>(path: PathBuf) -> Result<Stage<T>, StageError> where T: ShaderTypeable {
-  info!("\tloading {:?} stage: \x1b[35m{:?}", T::shader_type(), path);
+  info!("loading {:?} stage: \x1b[35m{:?}", T::shader_type(), path);
 
   let fh = fs::File::open(path);
 
