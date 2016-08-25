@@ -4,7 +4,7 @@ extern crate image;
 extern crate luminance;
 pub extern crate luminance_gl;
 extern crate nalgebra;
-// FIXME: use cfg(feature = "hot-reload")
+#[cfg(feature = "hot-shader")]
 extern crate notify;
 extern crate openal;
 extern crate vorbis;

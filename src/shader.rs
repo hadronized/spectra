@@ -1,14 +1,21 @@
 use luminance::{FragmentShader, GeometryShader, StageError, ShaderTypeable,
                 TessellationControlShader, TessellationEvaluationShader, VertexShader};
 use luminance_gl::gl33::{ProgramProxy, Stage};
+#[cfg(feature = "hot-shader")]
 use notify::{self, RecommendedWatcher, Watcher};
+#[cfg(feature = "hot-shader")]
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::Read;
+#[cfg(not(feature = "hot-shader"))]
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::path::PathBuf;
+#[cfg(feature = "hot-shader")]
 use std::sync::{Arc, Mutex};
+#[cfg(feature = "hot-shader")]
 use std::sync::mpsc;
+#[cfg(feature = "hot-shader")]
 use std::thread;
 
 pub use luminance::{ProgramError, UniformUpdate};
@@ -114,11 +121,15 @@ pub fn read_stage<T>(path: PathBuf) -> Result<Stage<T>, StageError> where T: Sha
 }
 
 /// Shader builder.
+#[cfg(feature = "hot-shader")]
 pub struct ProgramBuilder {
   watcher: RecommendedWatcher,
   receivers: Arc<Mutex<BTreeMap<PathBuf, mpsc::Sender<()>>>>
 }
+#[cfg(not(feature = "hot-shader"))]
+pub struct ProgramBuilder {}
 
+#[cfg(feature = "hot-shader")]
 impl ProgramBuilder {
   pub fn new(shader_root: PathBuf) -> Self {
     let (wsx, wrx) = mpsc::channel();
@@ -154,7 +165,7 @@ impl ProgramBuilder {
 
     self.monitor_shader(tess_path.clone(), vs_path.clone(), gs_path.clone(), fs_path.clone(), sx);
 
-    let wrapped = WrappedProgram {
+    Ok(WrappedProgram {
       rx: rx,
       program: program,
       get_uni: Box::new(get_uni),
@@ -162,14 +173,12 @@ impl ProgramBuilder {
       fs_path: fs_path,
       tess_path: tess_path,
       gs_path: gs_path,
-    };
-
-    Ok(wrapped)
+    })
   }
 
   /// Add surveillance of a given `Program` by providing the path to all its shaders. When a change
   /// occurs, the `Program` gets notified of the change via its `Receiver` channel part.
-  pub fn monitor_shader(&mut self, tess: Option<(PathBuf, PathBuf)>, vs: PathBuf, gs: Option<PathBuf>, fs: PathBuf, sx: mpsc::Sender<()>) {
+  fn monitor_shader(&mut self, tess: Option<(PathBuf, PathBuf)>, vs: PathBuf, gs: Option<PathBuf>, fs: PathBuf, sx: mpsc::Sender<()>) {
     let mut receivers = self.receivers.lock().unwrap();
 
     // vertex shader
@@ -192,10 +201,27 @@ impl ProgramBuilder {
     }
   }
 }
+#[cfg(not(feature = "hot-shader"))]
+impl ProgramBuilder {
+  pub fn new(_: PathBuf) -> Self {
+    ProgramBuilder {}
+  }
+
+  pub fn retrieve<'a, T, GetUni>(&mut self, tess_path: Option<(PathBuf, PathBuf)>, vs_path: PathBuf, gs_path: Option<PathBuf>, fs_path: PathBuf, get_uni: GetUni) -> Result<WrappedProgram<'a, T>, ProgramError>
+      where GetUni: 'a + Fn(ProgramProxy) -> Result<T, ProgramError> {
+    let program = try!(new_program_from_disk(tess_path, vs_path, gs_path, fs_path, &get_uni));
+
+    Ok(WrappedProgram {
+      program: program,
+      _a: PhantomData
+    })
+  }
+}
 
 /// A `Program` wrapped by **ion**.
 ///
 /// That wrapper is used to enable hot-reloading of shader programs.
+#[cfg(feature = "hot-shader")]
 pub struct WrappedProgram<'a, T> {
   rx: mpsc::Receiver<()>,
   program: Program<T>,
@@ -205,8 +231,14 @@ pub struct WrappedProgram<'a, T> {
   tess_path: Option<(PathBuf, PathBuf)>,
   gs_path: Option<PathBuf>
 }
+#[cfg(not(feature = "hot-shader"))]
+pub struct WrappedProgram<'a, T> {
+  program: Program<T>,
+  _a: PhantomData<&'a ()>
+}
 
 impl<'a, T> WrappedProgram<'a, T> {
+  #[cfg(feature = "hot-shader")]
   fn reload(&mut self) {
     let program = new_program_from_disk(self.tess_path.clone(), self.vs_path.clone(), self.gs_path.clone(), self.fs_path.clone(), &self.get_uni.as_ref());
 
@@ -221,11 +253,14 @@ impl<'a, T> WrappedProgram<'a, T> {
   }
 
   /// Sync the embedded `Program`.
+  #[cfg(feature = "hot-shader")]
   pub fn sync(&mut self) {
     if self.rx.try_recv().is_ok() {
       self.reload();
     }
   }
+  #[cfg(not(feature = "hot-shader"))]
+  pub fn sync(&mut self) {}
 }
 
 impl<'a, T> Deref for WrappedProgram<'a, T> {
