@@ -116,41 +116,37 @@ pub fn read_stage<T>(path: PathBuf) -> Result<Stage<T>, StageError> where T: Sha
 /// Add surveillance of a given `Program` by providing the path to all its shaders. When a change
 /// occurs, the `Program` gets notified of the change via its `Receiver` channel part.
 pub fn monitor_shader(tess: Option<(PathBuf, PathBuf)>, vs: PathBuf, gs: Option<PathBuf>, fs: PathBuf, sx: mpsc::Sender<()>) {
-  let (wsx, wrx) = mpsc::channel();
-  let mut watcher: RecommendedWatcher = Watcher::new(wsx).unwrap();
-
-  // vertex shader
-  watcher.watch(vs);
-
-  // fragment shader
-  watcher.watch(fs);
-
-  // tessellation, if needed
-  if let Some((tcs, tes)) = tess {
-    // tessellation control shader
-    watcher.watch(tcs);
-    // tessellation evaluation shader
-    watcher.watch(tes);
-  }
-
-  // geometry shader, if needed
-  if let Some(gs) = gs {
-    watcher.watch(gs);
-  }
-
   // start a new monitoring thread
   let _ = thread::spawn(move || {
-    deb!("loop started");
+    let (wsx, wrx) = mpsc::channel();
+    let mut watcher: RecommendedWatcher = Watcher::new(wsx).unwrap();
 
-    loop {
-      deb!("plop");
-      let event = wrx.recv();
+    // vertex shader
+    watcher.watch(vs);
+
+    // fragment shader
+    watcher.watch(fs);
+
+    // tessellation, if needed
+    if let Some((tcs, tes)) = tess {
+      // tessellation control shader
+      watcher.watch(tcs);
+      // tessellation evaluation shader
+      watcher.watch(tes);
+    }
+
+    // geometry shader, if needed
+    if let Some(gs) = gs {
+      watcher.watch(gs);
+    }
+
+    for event in wrx.iter() {
       deb!("{:?}", event);
 
-      if let Ok(notify::Event { path: Some(path), op: Ok(notify::op::WRITE) }) = wrx.recv() {
-        deb!("{:?}’s content has changed!", path);
-        sx.send(());
-      }
+      //if let Ok(notify::Event { path: Some(path), op: Ok(notify::op::WRITE) }) = wrx.recv() {
+      //  deb!("{:?}’s content has changed!", path);
+      //  sx.send(()).unwrap();
+      //}
     }
   });
 }
