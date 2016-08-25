@@ -1,4 +1,5 @@
 use gl;
+use std::default::Default;
 use std::os::raw::c_void;
 use std::sync::mpsc;
 use std::thread;
@@ -9,6 +10,12 @@ pub use glfw::{self, Action, Context, CursorMode, Key, MouseButton, Window};
 #[derive(Clone, Copy, Debug)]
 pub enum LuminanceBackend {
   GL33
+}
+
+impl Default for LuminanceBackend {
+  fn default() -> Self {
+    LuminanceBackend::GL33
+  }
 }
 
 #[derive(Clone, Copy, Debug)]

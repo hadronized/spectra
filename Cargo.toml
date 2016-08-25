@@ -16,8 +16,8 @@ debug = ["hot-shader"]
 hot-shader = ["notify"]
 
 [dependencies]
-luminance = "0.6.2"
-luminance-gl = "0.5.3"
+luminance = "0.6.4"
+luminance-gl = "0.5.6"
 gl = "0.5.2"
 glfw = { version = "0.9.1", default-features = false }
 image = "0.10.1"
@@ -30,3 +30,7 @@ notify = { version = "2.6.3", optional = true }
 
 [dev-dependencies]
 rand = "0.3.14" # for unit tests
+
+[replace]
+"luminance:0.6.4" = { path = "../../luminance-rs" }
+"luminance-gl:0.5.6" = { path = "../../luminance-gl-rs" }
