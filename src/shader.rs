@@ -2,16 +2,16 @@ use luminance::{FragmentShader, GeometryShader, StageError, ShaderTypeable,
                 TessellationControlShader, TessellationEvaluationShader, VertexShader};
 use luminance_gl::gl33::{ProgramProxy, Stage};
 use notify::{self, RecommendedWatcher, Watcher};
+use std::collections::BTreeMap;
 use std::fs;
 use std::io::Read;
 use std::ops::Deref;
 use std::path::PathBuf;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use std::sync::mpsc;
 use std::thread;
 
 pub use luminance::{ProgramError, UniformUpdate};
-use luminance::shader::stage;
 pub use luminance_gl::gl33::{Program, Uniform};
 
 #[derive(Debug)]
@@ -113,42 +113,84 @@ pub fn read_stage<T>(path: PathBuf) -> Result<Stage<T>, StageError> where T: Sha
   }
 }
 
-/// Add surveillance of a given `Program` by providing the path to all its shaders. When a change
-/// occurs, the `Program` gets notified of the change via its `Receiver` channel part.
-pub fn monitor_shader(tess: Option<(PathBuf, PathBuf)>, vs: PathBuf, gs: Option<PathBuf>, fs: PathBuf, sx: mpsc::Sender<()>) {
-  // start a new monitoring thread
-  let _ = thread::spawn(move || {
+/// Shader builder.
+pub struct ProgramBuilder {
+  watcher: RecommendedWatcher,
+  receivers: Arc<Mutex<BTreeMap<PathBuf, mpsc::Sender<()>>>>
+}
+
+impl ProgramBuilder {
+  pub fn new(shader_root: PathBuf) -> Self {
     let (wsx, wrx) = mpsc::channel();
     let mut watcher: RecommendedWatcher = Watcher::new(wsx).unwrap();
+    let receivers: Arc<Mutex<BTreeMap<PathBuf, mpsc::Sender<()>>>> = Arc::new(Mutex::new(BTreeMap::new()));
+
+    let _ = watcher.watch(shader_root);
+
+    let receivers_ = receivers.clone();
+    let _ = thread::spawn(move || {
+      for event in wrx.iter() {
+        match event {
+          notify::Event { path: Some(path), op: Ok(notify::op::WRITE) } => {
+            if let Some(sx) = receivers_.lock().unwrap().get(&path) {
+              sx.send(()).unwrap();
+            }
+          },
+          _ => {}
+        }
+      }
+    });
+
+    ProgramBuilder {
+      watcher: watcher,
+      receivers: receivers
+    }
+  }
+
+  pub fn retrieve<'a, T, GetUni>(&mut self, tess_path: Option<(PathBuf, PathBuf)>, vs_path: PathBuf, gs_path: Option<PathBuf>, fs_path: PathBuf, get_uni: GetUni) -> Result<WrappedProgram<'a, T>, ProgramError>
+      where GetUni: 'a + Fn(ProgramProxy) -> Result<T, ProgramError> {
+    let program = try!(new_program_from_disk(tess_path.clone(), vs_path.clone(), gs_path.clone(), fs_path.clone(), &get_uni));
+    let (sx, rx) = mpsc::channel();
+
+    self.monitor_shader(tess_path.clone(), vs_path.clone(), gs_path.clone(), fs_path.clone(), sx);
+
+    let wrapped = WrappedProgram {
+      rx: rx,
+      program: program,
+      get_uni: Box::new(get_uni),
+      vs_path: vs_path,
+      fs_path: fs_path,
+      tess_path: tess_path,
+      gs_path: gs_path,
+    };
+
+    Ok(wrapped)
+  }
+
+  /// Add surveillance of a given `Program` by providing the path to all its shaders. When a change
+  /// occurs, the `Program` gets notified of the change via its `Receiver` channel part.
+  pub fn monitor_shader(&mut self, tess: Option<(PathBuf, PathBuf)>, vs: PathBuf, gs: Option<PathBuf>, fs: PathBuf, sx: mpsc::Sender<()>) {
+    let mut receivers = self.receivers.lock().unwrap();
 
     // vertex shader
-    watcher.watch(vs);
+    receivers.insert(vs, sx.clone());
 
     // fragment shader
-    watcher.watch(fs);
+    receivers.insert(fs, sx.clone());
 
     // tessellation, if needed
     if let Some((tcs, tes)) = tess {
       // tessellation control shader
-      watcher.watch(tcs);
+      receivers.insert(tcs, sx.clone());
       // tessellation evaluation shader
-      watcher.watch(tes);
+      receivers.insert(tes, sx.clone());
     }
 
     // geometry shader, if needed
     if let Some(gs) = gs {
-      watcher.watch(gs);
+      receivers.insert(gs, sx.clone());
     }
-
-    for event in wrx.iter() {
-      deb!("{:?}", event);
-
-      //if let Ok(notify::Event { path: Some(path), op: Ok(notify::op::WRITE) }) = wrx.recv() {
-      //  deb!("{:?}’s content has changed!", path);
-      //  sx.send(()).unwrap();
-      //}
-    }
-  });
+  }
 }
 
 /// A `Program` wrapped by **ion**.
@@ -165,26 +207,6 @@ pub struct WrappedProgram<'a, T> {
 }
 
 impl<'a, T> WrappedProgram<'a, T> {
-  pub fn new<GetUni>(tess_path: Option<(PathBuf, PathBuf)>, vs_path: PathBuf, gs_path: Option<PathBuf>, fs_path: PathBuf, get_uni: GetUni) -> Result<Self, ProgramError>
-      where GetUni: 'a + Fn(ProgramProxy) -> Result<T, ProgramError> {
-    let program = try!(new_program_from_disk(tess_path.clone(), vs_path.clone(), gs_path.clone(), fs_path.clone(), &get_uni));
-    let (sx, rx) = mpsc::channel();
-
-    monitor_shader(tess_path.clone(), vs_path.clone(), gs_path.clone(), fs_path.clone(), sx);
-
-    let wrapped = WrappedProgram {
-      rx: rx,
-      program: program,
-      get_uni: Box::new(get_uni),
-      vs_path: vs_path,
-      fs_path: fs_path,
-      tess_path: tess_path,
-      gs_path: gs_path,
-    };
-
-    Ok(wrapped)
-  }
-
   fn reload(&mut self) {
     let program = new_program_from_disk(self.tess_path.clone(), self.vs_path.clone(), self.gs_path.clone(), self.fs_path.clone(), &self.get_uni.as_ref());
 
