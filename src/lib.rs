@@ -1,7 +1,7 @@
 extern crate gl;
 pub extern crate glfw;
 extern crate image;
-extern crate luminance;
+pub extern crate luminance;
 pub extern crate luminance_gl;
 extern crate nalgebra;
 #[cfg(feature = "hot-shader")]

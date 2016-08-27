@@ -247,7 +247,7 @@ impl<'a, T> WrappedProgram<'a, T> {
         self.program = program;
       },
       Err(err) => {
-        warn!("reloading program has failed: {:?}", err);
+        err!("reloading program has failed: {:?}", err);
       }
     }
   }
