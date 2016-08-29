@@ -12,8 +12,9 @@ documentation = "http://phaazon.github.io/ion"
 
 [features]
 default = []
-debug = ["hot-shader"]
+debug = ["hot-shader", "hot-texture"]
 hot-shader = ["notify"]
+hot-texture = ["notify"]
 
 [dependencies]
 luminance = "0.7.0"

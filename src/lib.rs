@@ -4,7 +4,7 @@ extern crate image;
 pub extern crate luminance;
 pub extern crate luminance_gl;
 extern crate nalgebra;
-#[cfg(feature = "hot-shader")]
+#[cfg(any(feature = "hot-shader", feature = "hot-texture"))]
 extern crate notify;
 extern crate openal;
 extern crate vorbis;
