@@ -22,7 +22,7 @@ luminance-gl = "0.6.1"
 gl = "0.5.2"
 glfw = { version = "0.9.1", default-features = false }
 image = "0.10.1"
-nalgebra = { git = "https://github.com/phaazon/nalgebra.git", rev = "1fdd8979afa464d1a13d0bfe926e0d9aaab0ee1a" }
+nalgebra = "0.9.0"
 openal-rs = "0.1.4"
 vorbis = "0.0.14"
 

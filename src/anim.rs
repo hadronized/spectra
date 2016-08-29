@@ -134,7 +134,7 @@ impl Interpolate for Vector4<f32> {
 
 impl Interpolate for UnitQuaternion<f32> {
   fn lerp(a: Self, b: Self, t: Time) -> Self {
-    a * UnitQuaternion::new_with_quaternion((UnitQuaternion::new_with_quaternion(a.quaternion().conjugate()) * b).quaternion().powf(t))
+    a * UnitQuaternion::new(&(UnitQuaternion::new(&a.quaternion().conjugate()) * b).quaternion().powf(t))
   }
 }
 
