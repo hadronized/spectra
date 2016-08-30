@@ -1,7 +1,10 @@
 extern crate ion;
+extern crate nalgebra;
 extern crate rand;
 
 use ion::anim::*;
+use ion::transform::*;
+use nalgebra::{UnitQuaternion, Quaternion};
 use rand::{Rng, thread_rng};
 
 #[test]
@@ -56,5 +59,47 @@ fn keys_sorted() {
   for key in anim_param.into_iter() {
     assert!(t <= key.t, "t: {}, key.t: {}", t, key.t);
     t = key.t;
+  }
+}
+
+#[test]
+fn transform_repos() {
+  let mut rng = thread_rng();
+  let t = Transform::default();
+
+  for _ in 0..10000 {
+    let v = rng.gen();
+
+    assert_eq!(t.repos(v).translation, v);
+  }
+}
+
+#[test]
+fn transform_translate() {
+  let mut rng = thread_rng();
+
+  for _ in 0..1000 {
+    let p = rng.gen();
+    let t = Transform::default().repos(p);
+
+    for _ in 0..1000 {
+      let d = rng.gen();
+      let displaced = t.translate(d);
+
+      assert_eq!(displaced.translation, p + d);
+    }
+  }
+}
+
+#[test]
+fn transform_reorient() {
+  let mut rng = thread_rng();
+  let t = Transform::default();
+
+  for _ in 0..10000 {
+    let axis = rng.gen();
+    let phi = rng.gen();
+
+    assert_eq!(t.reorient(axis, phi).orientation, UnitQuaternion::new(&Quaternion::from_parts(phi, axis)));
   }
 }

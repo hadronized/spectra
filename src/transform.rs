@@ -6,7 +6,7 @@ use std::default::Default;
 
 pub use nalgebra::{Matrix4, Vector3};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Transform {
   pub translation: Translation,
   pub orientation: Orientation,
@@ -95,7 +95,7 @@ pub const Y_AXIS: Axis = Axis { x: 0., y: 1., z: 0. };
 pub const Z_AXIS: Axis = Axis { x: 0., y: 0., z: 1. };
 
 /// Arbritrary scale.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Scale {
   pub x: f32,
   pub y: f32,
