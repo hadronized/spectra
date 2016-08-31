@@ -22,7 +22,7 @@ luminance-gl = "0.6.1"
 gl = "0.5.2"
 glfw = { version = "0.9.1", default-features = false }
 image = "0.10.1"
-nalgebra = "0.9.0"
+nalgebra = "0.10.0"
 openal-rs = "0.1.4"
 vorbis = "0.0.14"
 
