@@ -1,7 +1,7 @@
 use luminance::linear::M44;
 use luminance::shader::uniform::UniformUpdate;
 use luminance_gl::gl33::Uniform;
-use nalgebra::{ToHomogeneous, UnitQuaternion, Quaternion};
+use nalgebra::{ToHomogeneous, Unit, UnitQuaternion, Quaternion};
 use std::default::Default;
 
 pub use nalgebra::{Matrix4, Vector3};
@@ -31,11 +31,11 @@ impl Transform {
   }
 
   pub fn reorient(self, axis: Axis, phi: f32) -> Self {
-    Transform { orientation: UnitQuaternion::new(&Quaternion::from_parts(phi, axis)), .. self }
+    Transform { orientation: UnitQuaternion::from_axisangle(Unit::new(&axis), phi), .. self }
   }
 
   pub fn orient(self, axis: Axis, phi: f32) -> Self {
-    Transform { orientation: UnitQuaternion::new(&Quaternion::from_parts(phi, axis)) * self.orientation, .. self }
+    Transform { orientation: UnitQuaternion::from_axisangle(Unit::new(&axis), phi) * self.orientation, .. self }
   }
 
   pub fn set_uniform_scale(self, scale: f32) -> Self {
