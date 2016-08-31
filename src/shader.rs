@@ -18,10 +18,10 @@ use std::sync::mpsc;
 #[cfg(feature = "hot-shader")]
 use std::thread;
 
-pub use luminance::{ProgramError, UniformUpdate};
+pub use luminance::{ProgramError, Uniformable, UniformUpdate};
 pub use luminance::shader::program::UniformWarning;
-pub use luminance_gl::gl33::Program;
-pub use luminance_gl::gl33::shader::uniform::{Uniform, Uniformable};
+pub use luminance_gl::gl33::{Program, Uniform};
+pub use luminance_gl::gl33::token::*;
 
 #[derive(Debug)]
 pub enum ShaderError {
@@ -274,7 +274,7 @@ impl<'a, T> Deref for WrappedProgram<'a, T> {
 }
 
 /// A helper function used to make uniforms optionable. If there’s a warning, it’s printed out.
-pub fn opt_uni<T>(uni: (Uniform<T>, Option<UniformWarning>)) -> Uniform<T> where T: Uniformable {
+pub fn opt_uni<T>(uni: (Uniform<T>, Option<UniformWarning>)) -> Uniform<T> where T: Uniformable<GL33> {
   if let Some(warning) = uni.1 {
     warn!("{:?}", warning);
   }
