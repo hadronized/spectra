@@ -31,3 +31,7 @@ notify = { version = "2.6.3", optional = true }
 
 [dev-dependencies]
 rand = "0.3.14" # for unit tests
+
+[replace]
+"luminance:0.7.0" = { git = "https://github.com/phaazon/luminance-rs.git" }
+"luminance-gl:0.6.1" = { git = "https://github.com/phaazon/luminance-gl-rs.git" }

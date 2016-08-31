@@ -19,7 +19,9 @@ use std::sync::mpsc;
 use std::thread;
 
 pub use luminance::{ProgramError, UniformUpdate};
-pub use luminance_gl::gl33::{Program, Uniform};
+pub use luminance::shader::program::UniformWarning;
+pub use luminance_gl::gl33::Program;
+pub use luminance_gl::gl33::shader::uniform::{Uniform, Uniformable};
 
 #[derive(Debug)]
 pub enum ShaderError {
@@ -269,4 +271,8 @@ impl<'a, T> Deref for WrappedProgram<'a, T> {
   fn deref(&self) -> &Self::Target {
     &self.program
   }
+}
+
+/// A helper function used to make uniforms optionable. If there’s a warning, it’s printed out.
+fn opt_uni<T>(uni: (Uniform<T>, Option<UniformWarning>)) where T: Uniformable {
 }
