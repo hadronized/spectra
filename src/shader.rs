@@ -274,7 +274,7 @@ impl<'a, T> Deref for WrappedProgram<'a, T> {
 }
 
 /// A helper function used to make uniforms optionable. If there’s a warning, it’s printed out.
-fn opt_uni<T>(uni: (Uniform<T>, Option<UniformWarning>)) -> Uniform<T> where T: Uniformable {
+pub fn opt_uni<T>(uni: (Uniform<T>, Option<UniformWarning>)) -> Uniform<T> where T: Uniformable {
   if let Some(warning) = uni.1 {
     warn!("{:?}", warning);
   }
