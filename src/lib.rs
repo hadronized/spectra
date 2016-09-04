@@ -9,6 +9,7 @@ extern crate notify;
 extern crate openal;
 extern crate vorbis;
 
+pub mod behavior;
 #[macro_use]
 pub mod report;
 #[macro_use]
