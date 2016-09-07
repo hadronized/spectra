@@ -120,44 +120,8 @@ pub fn read_stage<T>(path: PathBuf) -> Result<Stage<T>, StageError> where T: Sha
   }
 }
 
-/// Shader builder.
-#[cfg(feature = "hot-shader")]
-pub struct ProgramBuilder {
-  watcher: RecommendedWatcher,
-  receivers: Arc<Mutex<BTreeMap<PathBuf, mpsc::Sender<()>>>>
-}
-#[cfg(not(feature = "hot-shader"))]
-pub struct ProgramBuilder {}
-
 #[cfg(feature = "hot-shader")]
 impl ProgramBuilder {
-  pub fn new(shader_root: PathBuf) -> Self {
-    let (wsx, wrx) = mpsc::channel();
-    let mut watcher: RecommendedWatcher = Watcher::new(wsx).unwrap();
-    let receivers: Arc<Mutex<BTreeMap<PathBuf, mpsc::Sender<()>>>> = Arc::new(Mutex::new(BTreeMap::new()));
-
-    let _ = watcher.watch(shader_root);
-
-    let receivers_ = receivers.clone();
-    let _ = thread::spawn(move || {
-      for event in wrx.iter() {
-        match event {
-          notify::Event { path: Some(path), op: Ok(notify::op::WRITE) } => {
-            if let Some(sx) = receivers_.lock().unwrap().get(&path) {
-              sx.send(()).unwrap();
-            }
-          },
-          _ => {}
-        }
-      }
-    });
-
-    ProgramBuilder {
-      watcher: watcher,
-      receivers: receivers
-    }
-  }
-
   pub fn retrieve<'a, T, GetUni>(&mut self, tess_path: Option<(PathBuf, PathBuf)>, vs_path: PathBuf, gs_path: Option<PathBuf>, fs_path: PathBuf, get_uni: GetUni) -> Result<WrappedProgram<'a, T>, ProgramError>
       where GetUni: 'a + Fn(ProgramProxy) -> Result<T, ProgramError> {
     let program = try!(new_program_from_disk(tess_path.clone(), vs_path.clone(), gs_path.clone(), fs_path.clone(), &get_uni));
