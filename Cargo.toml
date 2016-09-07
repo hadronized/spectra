@@ -11,8 +11,9 @@ repository = "https://github.com/phaazon/ion"
 documentation = "http://phaazon.github.io/ion"
 
 [features]
-default = []
-debug = ["hot-shader", "hot-texture"]
+default = ["debug"]
+debug = ["hot-resource", "hot-shader", "hot-texture"]
+hot-resource = ["notify"]
 hot-shader = ["notify"]
 hot-texture = ["notify"]
 

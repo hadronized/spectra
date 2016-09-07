@@ -4,7 +4,7 @@ extern crate image;
 pub extern crate luminance;
 pub extern crate luminance_gl;
 extern crate nalgebra;
-#[cfg(any(feature = "hot-shader", feature = "hot-texture"))]
+#[cfg(feature = "hot-resource")]
 extern crate notify;
 extern crate openal;
 extern crate vorbis;
@@ -12,8 +12,6 @@ extern crate vorbis;
 pub mod behavior;
 #[macro_use]
 pub mod report;
-#[macro_use]
-pub mod resource;
 
 pub mod anim;
 pub mod bootstrap;
@@ -22,6 +20,7 @@ pub mod device;
 pub mod entity;
 pub mod objects;
 pub mod projection;
+pub mod resource;
 pub mod shader;
 pub mod texture;
 pub mod transform;

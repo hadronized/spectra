@@ -1,57 +1,46 @@
+use notify::{self, RecommendedWatcher, Watcher};
 use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc;
+use std::thread;
 
-pub use std::sync;
-
-/// A `Managed<T>` represents a resource which type is `T`. That resource is handled by an external
-/// handler.
-pub type Managed<T> = sync::Weak<T>;
-
-pub type ManagerMap<T> = BTreeMap<String, sync::Arc<T>>;
-
-/// A resource is a value that is handled by external stimuli – commonly, filesystem changes. It
-/// must have a *unique ID*, used to identify that object in a unique way.
-pub trait Resource: Sized {
-  /// A type that can handle resource.
-  type Manager;
-  /// Type of error that can be raised during resource acquisition.
-  type Error;
-
-  /// Load a resource via its name. The `force` parameter forces the resource to be cleaned out of
-  /// any caching system and reloaded afterwards.
-  ///
-  /// # Failures
-  ///
-  /// On a load failure, this function returns an error with a value of type `ResourceError`.
-  fn load(manager: &mut Self::Manager, name: &str, force: bool) -> Result<Managed<Self>, Self::Error>;
-  /// Unload a resource. That function will force the unloading of the resource if it’s not released
-  /// yet. It’s also called when all `Managed` objects are dropped.
-  fn unload(manager: &mut Self::Manager, name: &str);
-  /// Reload a resource. That function is called when external stimuli create changes.
-  ///
-  /// # Failures
-  ///
-  /// If reloading the resource failed, `resource` is left untouched
-  fn reload(manager: &mut Self::Manager, name: &str) -> Result<(), Self::Error>;
+pub struct ResourceManager {
+  watcher: RecommendedWatcher,
+  receivers: Arc<Mutex<BTreeMap<PathBuf, mpsc::Sender<()>>>>
 }
 
-/// Check the presence of a key in a resource manager, and short-circuit the caller to return that
-/// resource if force is false.
-#[macro_export]
-macro_rules! cache_fetch {
-  ($manager:expr, $key:ident, $force:ident) => {
-    if !$force {
-      if let Some(x) = $manager.get($key) {
-        return Ok(sync::Arc::downgrade(x));
+impl ResourceManager {
+  pub fn new<P>(root: P) -> Self where P: AsRef<Path> {
+    let (wsx, wrx) = mpsc::channel();
+    let mut watcher: RecommendedWatcher = Watcher::new(wsx).unwrap();
+    let receivers: Arc<Mutex<BTreeMap<PathBuf, mpsc::Sender<()>>>> = Arc::new(Mutex::new(BTreeMap::new()));
+
+    let _ = watcher.watch(root);
+
+    let receivers_ = receivers.clone();
+    let _ = thread::spawn(move || {
+      for event in wrx.iter() {
+        match event {
+          notify::Event { path: Some(path), op: Ok(notify::op::WRITE) } => {
+            if let Some(sx) = receivers_.lock().unwrap().get(&path) {
+              sx.send(()).unwrap();
+            }
+          },
+          _ => {}
+        }
       }
+    });
+
+    ResourceManager {
+      watcher: watcher,
+      receivers: receivers
     }
   }
-}
 
-/// Default implementation to unload resources. It just removes the resource from its associated
-/// manager, hence dropping it.
-#[macro_export]
-macro_rules! default_unload_impl {
-  ($manager:expr, $key:ident) => {
-    let _ = $manager.remove($key);
+  pub fn monitor<P>(&mut self, path: P, sx: mpsc::Sender<()>) where P: AsRef<Path> {
+    let mut receivers = self.receivers.lock().unwrap();
+
+    receivers.insert(path.as_ref().to_path_buf(), sx);
   }
 }
