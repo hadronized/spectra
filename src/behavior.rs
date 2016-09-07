@@ -21,4 +21,8 @@ impl<'a, A> Behavior<'a, A> {
       _ => ((self.closure)(t), self)
     }
   }
+
+  pub fn switch(&mut self, t: Time, sw: &'a Self) {
+    self.next = Some((t, sw))
+  }
 }
