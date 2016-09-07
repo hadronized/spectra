@@ -1,30 +1,40 @@
 pub type Time = f32;
 
 pub struct Behavior<'a, A> where A: 'a {
-  closure: Box<for <'b> Fn(Time, &'b Behavior<'a, A>) -> (A, &'b Behavior<'a, A>) + 'a>,
+  closure: Box<Fn(Time) -> A + 'a>,
 }
 
 impl<'a, A> Behavior<'a, A> {
   pub fn new<F>(act: F) -> Self where F: Fn(Time) -> A + 'a {
     Behavior {
-      closure: Box::new(move |t, b| {
-        (act(t), b)
-      })
+      closure: Box::new(act),
     }
   }
 
-  pub fn run(&self, t: Time) -> (A, &Self) {
-    (self.closure)(t, self)
+  pub fn run(&self, t: Time) -> A {
+    (self.closure)(t)
+  }
+}
+
+pub struct Node<'a, A> where A: 'a {
+  behavior: &'a Behavior<'a, A>,
+  next: Option<(Time, &'a Node<'a, A>)>
+}
+
+impl<'a, A> Node<'a, A> {
+  pub fn new(behavior: &'a Behavior<'a, A>, next: Option<(Time, &'a Self)>) -> Self {
+    Node {
+      behavior: behavior,
+      next: next
+    }
   }
 
-  //pub fn switch<F>(self, sw: F) -> Self where F: for <'b> Fn(Time, &'b Self) -> Option<&'a Self> + 'a {
-  //  Behavior {
-  //    closure: Box::new(move |t, b| {
-  //      match sw(t, b) {
-  //        Some(sw_b) => sw_b.run(t),
-  //        None => self.run(t)
-  //      }
-  //    })
-  //  }
-  //}
+  pub fn run(&'a self, t: Time) -> (A, &'a Self) {
+    let next = self.next;
+
+    match next {
+      Some((t_node, node)) if t >= t_node => node.run(t),
+      _ => (self.behavior.run(t), self)
+    }
+  }
 }
