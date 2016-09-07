@@ -41,7 +41,7 @@ pub fn new_cube() -> Tessellation {
     2, 3, 6, 6, 3, 7, // right face
     1, 5, 3, 3, 5, 7, // top face
     4, 0, 6, 6, 0, 2  // bottom face
-  ];//
+  ];
 
   Tessellation::new(Mode::Triangle, &vertices, Some(&indices))
 }
