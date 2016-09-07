@@ -62,12 +62,10 @@ pub fn new_program<GetUni, T>(tess_src: Option<(&str, &str)>, vs_src: &str, gs_s
         } else {
           Program::new(Some((&tcs, &tes)), &vs, None, &fs, get_uni)
         }
+      } else if let Some(gs) = gs {
+        Program::new(None, &vs, Some(&gs), &fs, get_uni)
       } else {
-        if let Some(gs) = gs {
-          Program::new(None, &vs, Some(&gs), &fs, get_uni)
-        } else {
-          Program::new(None, &vs, None, &fs, get_uni)
-        }
+        Program::new(None, &vs, None, &fs, get_uni)
       }
     },
     Err(stage_error) => {

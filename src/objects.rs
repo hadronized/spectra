@@ -59,7 +59,7 @@ pub fn new_curve_2d(gap: f32, interpolation: Interpolation, points: &[(f32, f32)
   // sample the curve
   while let Some(y) = sampler.sample(t, &param, true) {
     vertices.push([t, y]);
-    t = t + gap;
+    t += gap;
   }
 
   Tessellation::new(Mode::LineStrip, &vertices, None)

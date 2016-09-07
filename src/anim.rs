@@ -162,6 +162,7 @@ fn cubic_hermite<T>(x: (T, Time), a: (T, Time), b: (T, Time), y: (T, Time), t: T
 
 /// Samplers can sample `AnimParam` by providing a time. They should be mutable so that they can
 /// maintain an internal state for optimization purposes.
+#[derive(Default)]
 pub struct Sampler {
   /// Playback cursor – gives the lower control point index of the current portion of the curve
   /// we’re sampling at.
@@ -239,7 +240,7 @@ fn normalize_time<T>(t: Time, cp: &Key<T>, cp1: &Key<T>) -> Time {
 }
 
 // Find the lower control point corresponding to a given time. Random version.
-fn binary_search_lower_cp<T>(cps: &Vec<Key<T>>, t: Time) -> Option<usize> {
+fn binary_search_lower_cp<T>(cps: &[Key<T>], t: Time) -> Option<usize> {
   let len = cps.len() as i32;
   if len < 2 {
     return None;
@@ -274,7 +275,7 @@ fn binary_search_lower_cp<T>(cps: &Vec<Key<T>>, t: Time) -> Option<usize> {
 
 // Find the lower control point corresponding to a given time. Continuous version. `i` is the last
 // known found index.
-fn around_search_lower_cp<T>(cps: &Vec<Key<T>>, mut i: usize, t: Time) -> Option<usize> {
+fn around_search_lower_cp<T>(cps: &[Key<T>], mut i: usize, t: Time) -> Option<usize> {
   let len = cps.len();
 
   if len < 2 {
@@ -291,17 +292,15 @@ fn around_search_lower_cp<T>(cps: &Vec<Key<T>>, mut i: usize, t: Time) -> Option
       }
 
       i += 1;
-    } else {
-      if t < cp.t {
-        if i == 0 {
-          return None;
-        }
-
-        i -= 1;
-      } else {
-        break; // found
+    } else if t < cp.t {
+      if i == 0 {
+        return None;
       }
-		}
+
+      i -= 1;
+    } else {
+      break; // found
+    }
   }
 
   Some(i)
