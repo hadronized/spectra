@@ -8,7 +8,6 @@ mod hot {
   use std::thread;
 
   pub struct ResourceManager {
-    watcher: RecommendedWatcher,
     receivers: Arc<Mutex<BTreeMap<PathBuf, mpsc::Sender<()>>>>
   }
 
@@ -17,11 +16,12 @@ mod hot {
       let (wsx, wrx) = mpsc::channel();
       let mut watcher: RecommendedWatcher = Watcher::new(wsx).unwrap();
       let receivers: Arc<Mutex<BTreeMap<PathBuf, mpsc::Sender<()>>>> = Arc::new(Mutex::new(BTreeMap::new()));
-
-      let _ = watcher.watch(root);
-
       let receivers_ = receivers.clone();
+      let root = root.as_ref().to_path_buf();
+
       let _ = thread::spawn(move || {
+        let _ = watcher.watch(root);
+
         for event in wrx.iter() {
           match event {
             notify::Event { path: Some(path), op: Ok(notify::op::WRITE) } => {
@@ -35,7 +35,6 @@ mod hot {
       });
 
       ResourceManager {
-        watcher: watcher,
         receivers: receivers
       }
     }
