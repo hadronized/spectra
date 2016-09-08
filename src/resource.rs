@@ -1,7 +1,3 @@
-pub trait Resource {
-  fn load(&mut ResourceManager);
-}
-
 #[cfg(feature = "hot-resource")]
 mod hot {
   use notify::{self, RecommendedWatcher, Watcher};

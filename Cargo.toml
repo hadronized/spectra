@@ -12,10 +12,8 @@ documentation = "http://phaazon.github.io/ion"
 
 [features]
 default = ["debug"]
-debug = ["hot-resource", "hot-shader", "hot-texture"]
+debug = ["hot-resource"]
 hot-resource = ["notify"]
-hot-shader = ["notify"]
-hot-texture = ["notify"]
 
 [dependencies]
 luminance = { git = "https://github.com/phaazon/luminance-rs" }
