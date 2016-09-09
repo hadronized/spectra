@@ -7,6 +7,8 @@ pub use luminance::RGBA32F;
 
 /// Load an RGBA texture from an image at a path.
 pub fn load_rgba_texture<P>(path: P, sampler: &Sampler, linear: bool) -> ImageResult<Texture<Flat, Dim2, RGBA32F>> where P: AsRef<Path> {
+  info!("loading texture image: \x1b[35m{:?}", path.as_ref());
+
   let image = try!(image::open(path)).to_rgba();
   let dim = image.dimensions();
   let raw: Vec<f32> = image.into_raw().into_iter().map(|x| {
@@ -27,6 +29,8 @@ pub fn load_rgba_texture<P>(path: P, sampler: &Sampler, linear: bool) -> ImageRe
 
 /// Save an RGBA image on disk.
 pub fn save_rgba_texture<P>(texture: &Texture<Flat, Dim2, RGBA32F>, path: P) where P: AsRef<Path> {
+  info!("saving texture image to: \x1b[35m{:?}", path.as_ref());
+
   let texels = texture.get_raw_texels();
   let (w, h) = texture.size;
   let mut output = Vec::with_capacity((w * h) as usize);
