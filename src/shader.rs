@@ -131,7 +131,7 @@ mod hot {
   }
 
   impl<T> Program<T> {
-    pub fn load<GetUni, P>(manager: &mut ResourceManager, tess_path: Option<(P, P)>, vs_path: P, gs_path: Option<P>, fs_path: P, get_uni: GetUni) -> Result<Program<T>, ProgramError>
+    pub fn load<GetUni, P>(manager: &mut ResourceManager, tess_path: Option<(P, P)>, vs_path: P, gs_path: Option<P>, fs_path: P, get_uni: GetUni) -> Result<Self, ProgramError>
         where GetUni: Fn(ProgramProxy) -> Result<T, ProgramError> + 'static,
               P: AsRef<Path> {
       let vs_path = vs_path.as_ref();
@@ -176,9 +176,10 @@ mod hot {
       match program {
         Ok(program) => {
           self.program = program;
+          info!("reloaded shader program");
         },
-        Err(err) => {
-          err!("reloading program has failed: {:?}", err);
+        Err(e) => {
+          err!("reloading program has failed: {:?}", e);
         }
       }
     }
