@@ -1,25 +1,12 @@
 use luminance::{Dim2, Flat, Sampler};
 use luminance_gl::gl33::Texture;
 use image::{self, ImageResult};
-#[cfg(feature = "hot-texture")]
-use notify::RecommendedWatcher;
-#[cfg(feature = "hot-texture")]
-use std::collections::BTreeMap;
-use std::ops::Deref;
 use std::path::Path;
-#[cfg(feature = "hot-texture")]
-use std::path::PathBuf;
-#[cfg(feature = "hot-texture")]
-use std::sync::mpsc;
-#[cfg(feature = "hot-texture")]
-use std::sync::{Arc, Mutex};
 
 pub use luminance::RGBA32F;
 
-pub type TextureImage<F> = Texture<Flat, Dim2, F>;
-
 /// Load an RGBA texture from an image at a path.
-pub fn load_rgba_texture<P>(path: P, sampler: &Sampler, linear: bool) -> ImageResult<TextureImage<RGBA32F>> where P: AsRef<Path> {
+pub fn load_rgba_texture<P>(path: P, sampler: &Sampler, linear: bool) -> ImageResult<Texture<Flat, Dim2, RGBA32F>> where P: AsRef<Path> {
   let image = try!(image::open(path)).to_rgba();
   let dim = image.dimensions();
   let raw: Vec<f32> = image.into_raw().into_iter().map(|x| {
@@ -39,7 +26,7 @@ pub fn load_rgba_texture<P>(path: P, sampler: &Sampler, linear: bool) -> ImageRe
 }
 
 /// Save an RGBA image on disk.
-pub fn save_rgba_texture<P>(texture: &TextureImage<RGBA32F>, path: P) where P: AsRef<Path> {
+pub fn save_rgba_texture<P>(texture: &Texture<Flat, Dim2, RGBA32F>, path: P) where P: AsRef<Path> {
   let texels = texture.get_raw_texels();
   let (w, h) = texture.size;
   let mut output = Vec::with_capacity((w * h) as usize);
@@ -51,56 +38,119 @@ pub fn save_rgba_texture<P>(texture: &TextureImage<RGBA32F>, path: P) where P: A
   let _ = image::save_buffer(path, &output, w, h, image::ColorType::RGBA(8));
 }
 
-#[cfg(feature = "hot-texture")]
-pub struct TextureImageBuilder {
-  watcher: RecommendedWatcher,
-  receivers: Arc<Mutex<BTreeMap<PathBuf, mpsc::Sender<()>>>>
-}
-#[cfg(not(feature = "hot-texture"))]
-pub struct TextureImageBuilder {}
-
-#[cfg(feature = "hot-texture")]
-pub struct WrappedTextureImage {
-  rx: mpsc::Receiver<()>,
-  texture: TextureImage<RGBA32F>,
-  sampler: Sampler,
-  linear: bool,
-  path: PathBuf
-}
-#[cfg(not(feature = "hot-texture"))]
-pub struct WrappedTextureImage {
-  texture: TextureImage<RGBA32F>
+#[derive(Clone, Debug)]
+pub enum TextureError {
+  LoadingFailed(String)
 }
 
-impl WrappedTextureImage {
-  #[cfg(feature = "hot-texture")]
-  fn reload(&mut self) {
-    let texture = load_rgba_texture(self.path.as_path(), &self.sampler, self.linear);
+#[cfg(feature = "hot-resource")]
+mod hot {
+  use super::*;
 
-    match texture {
-      Ok(texture) => {
-        self.texture = texture;
-      },
-      Err(err) => {
-        err!("reloading texture has failed: {:?}", err);
+  use luminance::{Dim2, Flat, Sampler};
+  use luminance_gl::gl33::Texture;
+  use resource::ResourceManager;
+  use std::ops::Deref;
+  use std::path::{Path, PathBuf};
+  use std::sync::mpsc;
+
+  pub struct TextureImage {
+    rx: mpsc::Receiver<()>,
+    texture: Texture<Flat, Dim2, RGBA32F>,
+    sampler: Sampler,
+    linear: bool,
+    path: PathBuf
+  }
+
+  impl TextureImage {
+    pub fn load<P>(manager: &mut ResourceManager, path: P, sampler: &Sampler, linear: bool) -> Result<Self, TextureError> where P: AsRef<Path> {
+      let path = path.as_ref();
+
+      let tex = load_rgba_texture(path, sampler, linear);
+
+      match tex {
+        Ok(tex) => {
+          // monitor that texture
+          let (sx, rx) = mpsc::channel();
+
+          manager.monitor(path, sx);
+
+          Ok(TextureImage {
+            rx: rx,
+            texture: tex,
+            sampler: *sampler,
+            linear: linear,
+            path: path.to_path_buf()
+          })
+        },
+        Err(e) => {
+          Err(TextureError::LoadingFailed(format!("{:?}", e)))
+        }
+      }
+    }
+
+    fn reload(&mut self) {
+      let path = self.path.as_path();
+      let tex = load_rgba_texture(path, &self.sampler, self.linear);
+
+      match tex {
+        Ok(tex) => {
+          self.texture = tex;
+          info!("reloaded texture {:?}", path);
+        },
+        Err(e) => {
+          err!("reloading texture {:?} has failed: {:?}", path, e);
+        }
+      }
+    }
+
+    pub fn sync(&mut self) {
+      if self.rx.try_recv().is_ok() {
+        self.reload()
       }
     }
   }
 
-  #[cfg(feature = "hot-texture")]
-  pub fn sync(&mut self) {
-    if self.rx.try_recv().is_ok() {
-      self.reload();
+  impl Deref for TextureImage {
+    type Target = Texture<Flat, Dim2, RGBA32F>;
+
+    fn deref(&self) -> &Self::Target {
+      &self.texture
     }
   }
-  #[cfg(not(feature = "hot-texture"))]
-  pub fn sync(&mut self) {}
 }
 
-impl Deref for WrappedTextureImage {
-  type Target = TextureImage<RGBA32F>;
+#[cfg(not(feature = "hot-resource"))]
+mod cold {
+  pub struct TextureImage(Texture<Flat, Dim2, RGBA32F>);
 
-  fn deref(&self) -> &Self::Target {
-    &self.texture
+  impl TextureImage {
+    pub fn load<P>(manager: &mut ResourceManager, path: P, sampler: &Sampler, linear: bool) -> Result<Self, TextureError> where P: AsRef<Path> {
+      let tex = load_rgba_texture(path, sampler, linear);
+
+      match tex {
+        Ok(tex) => {
+          Ok(TextureImage(tex))
+        },
+        Err(e) => {
+          Err(TextureError::LoadingFailed(format!("{:?}", e)))
+        }
+      }
+    }
+
+    pub fn sync(&mut self) {}
+  }
+
+  impl Deref for TextureImage {
+    type Target = Texture<Flat, Dim2, RGBA32F>;
+
+    fn deref(&self) -> &Self::Target {
+      &self.0
+    }
   }
 }
+
+#[cfg(feature = "hot-resource")]
+pub use self::hot::*;
+#[cfg(not(feature = "hot-resource"))]
+pub use self::cold::*;
