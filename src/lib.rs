@@ -8,6 +8,7 @@ extern crate nalgebra;
 extern crate notify;
 extern crate openal;
 extern crate vorbis;
+extern crate wavefront_obj;
 
 pub mod behavior;
 #[macro_use]
