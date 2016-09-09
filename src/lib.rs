@@ -22,5 +22,6 @@ pub mod objects;
 pub mod projection;
 pub mod resource;
 pub mod shader;
+pub mod tessellation;
 pub mod texture;
 pub mod transform;
