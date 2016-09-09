@@ -224,6 +224,8 @@ mod cold {
 
       Ok(Program(program))
     }
+
+    pub fn sync(&mut self) {}
   }
 
   impl<'a, T> Deref for Program<T> {
