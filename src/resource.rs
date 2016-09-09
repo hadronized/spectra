@@ -67,3 +67,10 @@ mod cold {
 pub use self::hot::*;
 #[cfg(not(feature = "hot-resource"))]
 pub use self::cold::*;
+
+#[macro_export]
+macro_rules! sync {
+  ($( $r:ident ),*) => {
+    $( $r.sync(); )*
+  }
+}

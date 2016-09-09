@@ -20,6 +20,7 @@ pub mod device;
 pub mod entity;
 pub mod objects;
 pub mod projection;
+#[macro_use]
 pub mod resource;
 pub mod shader;
 pub mod texture;
