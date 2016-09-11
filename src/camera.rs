@@ -61,8 +61,8 @@ impl Entity<Freefly> {
   pub fn look_around(&mut self, dir: Translation) {
     let cam = &self.object;
 
-    self.transform = self.transform.orient(Y_AXIS, cam.yaw_sens);
-    self.transform = self.transform.orient(X_AXIS, cam.pitch_sens);
-    self.transform = self.transform.orient(Z_AXIS, cam.roll_sens);
+    self.transform = self.transform.orient(Y_AXIS * dir.y, cam.yaw_sens);
+    self.transform = self.transform.orient(X_AXIS * dir.x, cam.pitch_sens);
+    self.transform = self.transform.orient(Z_AXIS * dir.z, cam.roll_sens);
   }
 }
