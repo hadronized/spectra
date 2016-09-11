@@ -16,6 +16,7 @@ pub mod report;
 
 pub mod anim;
 pub mod bootstrap;
+pub mod camera;
 pub mod color;
 pub mod device;
 pub mod entity;
