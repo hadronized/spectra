@@ -24,7 +24,7 @@ image = "0.10.1"
 nalgebra = "0.10.0"
 openal-rs = "0.1.4"
 vorbis = "0.0.14"
-wavefront_obj = "4.0.0"
+wavefront_obj = { git = "https://github.com/phaazon/wavefront_obj.git", branch = "shape-fields", version = "4.0.0" }
 
 # optional dependencies (used in conjunction with features)
 notify = { version = "2.6.3", optional = true }
