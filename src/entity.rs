@@ -1,3 +1,5 @@
+use std::default::Default;
+
 pub use transform::Transform;
 
 /// An entity is anything that has spatial properties (i.e. a `Transform`).
@@ -13,5 +15,11 @@ impl<T> Entity<T> {
       object: object,
       transform: transform
     }
+  }
+}
+
+impl<T> Default for Entity<T> where T: Default {
+  fn default() -> Self {
+    Self::new(T::default(), Transform::default())
   }
 }
