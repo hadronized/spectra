@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use wavefront_obj::{self, obj};
 
 // FIXME: implement materials
-type Material = ();
+pub type Material = ();
 
 pub type Vertex = (VertexPos, VertexNor, VertexTexCoord);
 pub type VertexPos = [f32; 3];
