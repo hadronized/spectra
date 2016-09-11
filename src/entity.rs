@@ -1,4 +1,4 @@
-pub use transform::Transform;
+pub use transform::*;
 
 /// An entity is anything that has spatial properties (i.e. a `Transform`).
 #[derive(Debug)]
