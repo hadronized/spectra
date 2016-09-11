@@ -1,3 +1,4 @@
+use luminance::tessellation;
 use luminance_gl::gl33::Tessellation;
 use std::collections::BTreeMap;
 //use std::fs::File;
@@ -51,7 +52,7 @@ impl<'a> Part<'a> {
 ////pub fn load<P>(path: P, mode: tessellation::Mode) -> Result<gl33::Tessellation, TessellationError> where P: AsRef<Path> {
 ////  let path = path.as_ref();
 ////
-////  info!("loading tessellation: \x1b[35m{:?}", path);
+////  info!("loading model: \x1b[35m{:?}", path);
 ////
 ////  let mut input = String::new();
 ////
@@ -67,29 +68,35 @@ impl<'a> Part<'a> {
 ////  convert_obj(obj_set, mode)
 ////}
 ////
-////// Turn a loaded wavefront obj object into a `Model`
-////fn convert_obj(obj_set: obj::ObjSet, mode: tessellation::Mode) -> Result<gl33::Tessellation, TessellationError> {
-////  if obj_set.objects.len() != 1 {
-////    return Err(TessellationError::MultiObjects);
-////  }
-////
-////  let obj = &obj_set.objects[0];
-////  info!("  found object \x1b[35m{}", obj.name);
-////
-////  // interleave the vertices
-////  let interleaved_vertices = interleave_vertices(&obj.vertices, &obj.normals, &obj.tex_vertices);
-////
-////  Err(TessellationError::Error)
-////}
+// Turn a loaded wavefront obj object into a `Model`
+//fn convert_obj(obj_set: obj::ObjSet) -> Result<Model, ModelError> {
+//  if obj_set.objects.len() != 1 {
+//    return Err(ModelError::MultiObjects);
+//  }
+//
+//  let obj = &obj_set.objects[0];
+//  info!("  converting object \x1b[35m{}", obj.name);
+//
+//  // convert all the geometries
+//  let parts = Vec::with_capacity(obj.geometries.len());
+//
+//  Err(TessellationError::Error)
+//}
 
 // Convert wavefront_obj’s Geometry into a pair of vertices and indices.
 //
 // This function will regenerate the indices on the fly based on which are used in the shapes in the
 // geometry. It’s used to create independent tessellation.
-fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[obj::Normal], tvertices: &[obj::TVertex]) -> Result<(Vec<Vertex>, Vec<u32>), ModelError> {
+fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[obj::Normal], tvertices: &[obj::TVertex]) -> Result<(Vec<Vertex>, Vec<u32>, tessellation::Mode), ModelError> {
   let mut vertices = Vec::new(); // FIXME: better allocation scheme?
   let mut indices = Vec::new();
   let mut index_map = BTreeMap::new();
+
+  info!("    converting geometry");
+
+  // TODO: error if no shapes?
+
+  let mode = guess_mode(geo.shapes[0].primitive);
 
   for prim in geo.shapes.iter().map(|s| s.primitive) {
     let keys = try!(create_keys_from_primitive(prim));
@@ -114,7 +121,7 @@ fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[o
     }
   }
 
-  Ok((vertices, indices))
+  Ok((vertices, indices, mode))
 }
 
 // Create triplet keys from wavefront_obj primitives. If any primitive doesn’t have all the triplet
@@ -161,6 +168,14 @@ fn convert_nor(n: &obj::Normal) -> VertexNor {
 
 fn convert_tvertex(t: &obj::TVertex) -> VertexTexCoord {
   [t.x as f32, t.y as f32]
+}
+
+fn guess_mode(prim: obj::Primitive) -> tessellation::Mode {
+  match prim {
+    obj::Primitive::Point(_) => tessellation::Mode::Point,
+    obj::Primitive::Line(_, _) => tessellation::Mode::Line,
+    obj::Primitive::Triangle(_, _, _) => tessellation::Mode::Triangle
+  }
 }
 
 ////mod hot {
