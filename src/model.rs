@@ -1,9 +1,11 @@
 use luminance::tessellation;
 use luminance_gl::gl33::Tessellation;
 use std::collections::BTreeMap;
-//use std::fs::File;
-//use std::io::Read;
+use std::fs::File;
+use std::io::Read;
+use std::iter::IntoIterator;
 use std::path::{Path, PathBuf};
+use std::vec;
 use wavefront_obj::{self, obj};
 
 // FIXME: implement materials
@@ -23,6 +25,15 @@ impl<'a> Model<'a> {
     Model {
       parts: parts
     }
+  }
+}
+
+impl<'a> IntoIterator for Model<'a> {
+  type Item = Part<'a>;
+  type IntoIter = vec::IntoIter<Part<'a>>;
+
+  fn into_iter(self) -> Self::IntoIter {
+    self.parts.into_iter()
   }
 }
 
@@ -48,53 +59,60 @@ impl<'a> Part<'a> {
   }
 }
 
-// FIXME: review all the code bellow
-////pub fn load<P>(path: P, mode: tessellation::Mode) -> Result<gl33::Tessellation, TessellationError> where P: AsRef<Path> {
-////  let path = path.as_ref();
-////
-////  info!("loading model: \x1b[35m{:?}", path);
-////
-////  let mut input = String::new();
-////
-////  // load the data directly into memory; no buffering nor streaming
-////  {
-////    let mut file = try!(File::open(path).map_err(|e| TessellationError::FileNotFound(path.to_path_buf(), format!("{:?}", e))));
-////    let _ = file.read_to_string(&mut input);
-////  }
-////
-////  // parse the obj file and convert it
-////  let obj_set = try!(obj::parse(input).map_err(TessellationError::ParseFailed));
-////
-////  convert_obj(obj_set, mode)
-////}
-////
-// Turn a loaded wavefront obj object into a `Model`
-//fn convert_obj(obj_set: obj::ObjSet) -> Result<Model, ModelError> {
-//  if obj_set.objects.len() != 1 {
-//    return Err(ModelError::MultiObjects);
-//  }
-//
-//  let obj = &obj_set.objects[0];
-//  info!("  converting object \x1b[35m{}", obj.name);
-//
-//  // convert all the geometries
-//  let parts = Vec::with_capacity(obj.geometries.len());
-//
-//  Err(TessellationError::Error)
-//}
+pub fn load<'a, P>(path: P) -> Result<Model<'a>, ModelError> where P: AsRef<Path> {
+  let path = path.as_ref();
+
+  info!("loading model: \x1b[35m{:?}", path);
+
+  let mut input = String::new();
+
+  // load the data directly into memory; no buffering nor streaming
+  {
+    let mut file = try!(File::open(path).map_err(|e| ModelError::FileNotFound(path.to_path_buf(), format!("{:?}", e))));
+    let _ = file.read_to_string(&mut input);
+  }
+
+  // parse the obj file and convert it
+  let obj_set = try!(obj::parse(input).map_err(ModelError::ParseFailed));
+
+  convert_obj(obj_set)
+}
+
+// Turn a wavefront obj object into a `Model`
+fn convert_obj<'a>(obj_set: obj::ObjSet) -> Result<Model<'a>, ModelError> {
+  if obj_set.objects.len() != 1 {
+    return Err(ModelError::MultiObjects);
+  }
+
+  let obj = &obj_set.objects[0];
+  info!("  converting object \x1b[35m{}", obj.name);
+
+  // convert all the geometries
+  let mut parts = Vec::with_capacity(obj.geometry.len());
+
+  for geometry in &obj.geometry {
+    let (vertices, indices, mode) = try!(convert_geometry(geometry, &obj.vertices, &obj.normals, &obj.tex_vertices));
+    let part = Part::new(Tessellation::new(mode, &vertices, Some(&indices)), None); // FIXME: material
+    parts.push(part);
+  }
+
+  Ok(Model::from_parts(parts))
+}
 
 // Convert wavefront_obj’s Geometry into a pair of vertices and indices.
 //
 // This function will regenerate the indices on the fly based on which are used in the shapes in the
 // geometry. It’s used to create independent tessellation.
 fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[obj::Normal], tvertices: &[obj::TVertex]) -> Result<(Vec<Vertex>, Vec<u32>, tessellation::Mode), ModelError> {
+  if geo.shapes.is_empty() {
+    return Err(ModelError::NoShape);
+  }
+
   let mut vertices = Vec::new(); // FIXME: better allocation scheme?
   let mut indices = Vec::new();
   let mut index_map = BTreeMap::new();
 
   info!("    converting geometry");
-
-  // TODO: error if no shapes?
 
   let mode = guess_mode(geo.shapes[0].primitive);
 
@@ -212,5 +230,6 @@ pub enum ModelError {
   FileNotFound(PathBuf, String),
   ParseFailed(wavefront_obj::ParseError),
   MultiObjects,
-  UnsupportedVertex
+  UnsupportedVertex,
+  NoShape
 }
