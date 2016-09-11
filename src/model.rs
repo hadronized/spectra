@@ -17,7 +17,7 @@ pub type VertexNor = [f32; 3];
 pub type VertexTexCoord = [f32; 2];
 
 pub struct Model<'a> {
-  parts: Vec<Part<'a>>
+  pub parts: Vec<Part<'a>>
 }
 
 impl<'a> Model<'a> {
@@ -38,8 +38,8 @@ impl<'a> IntoIterator for Model<'a> {
 }
 
 pub struct Part<'a> {
-  tess: Tessellation,
-  mat: Option<&'a Material>
+  pub tess: Tessellation,
+  pub mat: Option<&'a Material>
 }
 
 impl<'a> Part<'a> {
@@ -48,14 +48,6 @@ impl<'a> Part<'a> {
       tess: tess,
       mat: mat
     }
-  }
-
-  pub fn tessellation(&self) -> &Tessellation {
-    &self.tess
-  }
-
-  pub fn material(&self) -> Option<&Material> {
-    self.mat.clone()
   }
 }
 
