@@ -95,7 +95,7 @@ fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[o
     let keys = try!(create_keys_from_primitive(prim));
 
     for key in keys {
-      match index_map.get(&key).map(|i: &u32| *i) {
+      match index_map.get(&key).map(|&i| i) {
         Some(index) => {
           // that triplet already exists; just append the index in the indices buffer
           indices.push(index);
