@@ -225,7 +225,8 @@ fn guess_mode(prim: obj::Primitive) -> tessellation::Mode {
 ////    }
 ////  }
 ////}
-////
+
+#[derive(Debug)]
 pub enum ModelError {
   FileNotFound(PathBuf, String),
   ParseFailed(wavefront_obj::ParseError),
