@@ -16,19 +16,19 @@ pub type VertexPos = [f32; 3];
 pub type VertexNor = [f32; 3];
 pub type VertexTexCoord = [f32; 2];
 
-pub struct Model<'a> {
+pub struct ModelBase<'a> {
   pub parts: Vec<Part<'a>>
 }
 
-impl<'a> Model<'a> {
+impl<'a> ModelBase<'a> {
   pub fn from_parts(parts: Vec<Part<'a>>) -> Self {
-    Model {
+    ModelBase {
       parts: parts
     }
   }
 }
 
-impl<'a> IntoIterator for Model<'a> {
+impl<'a> IntoIterator for ModelBase<'a> {
   type Item = Part<'a>;
   type IntoIter = vec::IntoIter<Part<'a>>;
 
@@ -51,7 +51,7 @@ impl<'a> Part<'a> {
   }
 }
 
-pub fn load<'a, P>(path: P) -> Result<Model<'a>, ModelError> where P: AsRef<Path> {
+pub fn load<'a, P>(path: P) -> Result<ModelBase<'a>, ModelError> where P: AsRef<Path> {
   let path = path.as_ref();
 
   info!("loading model: \x1b[35m{:?}", path);
@@ -71,7 +71,7 @@ pub fn load<'a, P>(path: P) -> Result<Model<'a>, ModelError> where P: AsRef<Path
 }
 
 // Turn a wavefront obj object into a `Model`
-fn convert_obj<'a>(obj_set: obj::ObjSet) -> Result<Model<'a>, ModelError> {
+fn convert_obj<'a>(obj_set: obj::ObjSet) -> Result<ModelBase<'a>, ModelError> {
   if obj_set.objects.len() != 1 {
     return Err(ModelError::MultiObjects);
   }
@@ -88,7 +88,7 @@ fn convert_obj<'a>(obj_set: obj::ObjSet) -> Result<Model<'a>, ModelError> {
     parts.push(part);
   }
 
-  Ok(Model::from_parts(parts))
+  Ok(ModelBase::from_parts(parts))
 }
 
 // Convert wavefront_obj’s Geometry into a pair of vertices and indices.
@@ -188,36 +188,6 @@ fn guess_mode(prim: obj::Primitive) -> tessellation::Mode {
   }
 }
 
-////mod hot {
-////  use super::{TessellationError, Vertex};
-////
-////  use luminance::tessellation;
-////  use luminance_gl::gl33;
-////  use resource::ResourceManager;
-////  use std::ops::Deref;
-////  use std::path::{Path, PathBuf};
-////
-////  pub struct Tessellation {
-////    path: PathBuf,
-////    mode: tessellation::Mode,
-////    tess: gl33::Tessellation
-////  }
-////
-////  impl Tessellation {
-////    fn load<P>(manager: &mut ResourceManager, path: P, mode: tessellation::Mode) -> Result<Self, TessellationError> where P: AsRef<Path> {
-////      Err(TessellationError::Error)
-////    }
-////  }
-////  
-////  impl Deref for Tessellation {
-////    type Target = gl33::Tessellation;
-////
-////    fn deref(&self) -> &Self::Target {
-////      &self.tess
-////    }
-////  }
-////}
-
 #[derive(Debug)]
 pub enum ModelError {
   FileNotFound(PathBuf, String),
@@ -226,3 +196,96 @@ pub enum ModelError {
   UnsupportedVertex,
   NoShape
 }
+
+#[cfg(feature = "hot-resource")]
+mod hot {
+  use std::ops::Deref;
+  use std::path::{Path, PathBuf};
+  use std::sync::mpsc;
+
+  use super::{ModelBase, ModelError};
+
+  use resource::ResourceManager;
+
+  pub struct Model<'a> {
+    rx: mpsc::Receiver<()>,
+    model: ModelBase<'a>,
+    path: PathBuf
+  }
+
+  impl<'a> Model<'a> {
+    pub fn load<P>(manager: &mut ResourceManager, path: P) -> Result<Self, ModelError> where P: AsRef<Path> {
+      let path = path.as_ref();
+      let model = try!(super::load(path));
+
+      let (sx, rx) = mpsc::channel();
+      manager.monitor(path, sx);
+
+      Ok(Model {
+        rx: rx,
+        model: model,
+        path: path.to_owned()
+      })
+    }
+
+    pub fn sync(&mut self) {
+      if self.rx.try_recv().is_ok() {
+        self.reload();
+      }
+    }
+
+    fn reload(&mut self) {
+      match super::load(self.path.as_path()) {
+        Ok(model) => {
+          self.model = model;
+          info!("reloaded model");
+        },
+        Err(e) => {
+          err!("reloading model has failed: {:?}", e);
+        }
+      }
+    }
+  }
+
+  impl<'a> Deref for Model<'a> {
+    type Target = ModelBase<'a>;
+
+    fn deref(&self) -> &Self::Target {
+      &self.model
+    }
+  }
+}
+
+#[cfg(not(feature = "hot-resource"))]
+mod cold {
+  use std::ops::Deref;
+  use std::path::Path;
+
+  use super::{ModelBase, ModelError};
+
+  use resource::ResourceManager;
+
+  pub struct Model<'a>(ModelBase<'a>);
+
+  impl<'a> Model<'a> {
+    pub fn load<P>(_: &mut ResourceManager, path: P) -> Result<Self, ModelError> where P: AsRef<Path> {
+      super::load(path).map(|m| Model(m))
+    }
+
+    pub fn sync(&mut self) {
+    }
+  }
+
+  impl<'a> Deref for Model<'a> {
+    type Target = ModelBase<'a>;
+
+    fn deref(&self) -> &Self::Target {
+      &self.0
+    }
+  }
+}
+
+#[cfg(feature = "hot-resource")]
+pub use self::hot::*;
+#[cfg(not(feature = "hot-resource"))]
+pub use self::cold::*;
