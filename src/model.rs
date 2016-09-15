@@ -51,7 +51,7 @@ impl<'a> Part<'a> {
   }
 }
 
-pub fn load<'a, P>(path: P) -> Result<ModelBase<'a>, ModelError> where P: AsRef<Path> {
+fn load<'a, P>(path: P) -> Result<ModelBase<'a>, ModelError> where P: AsRef<Path> {
   let path = path.as_ref();
 
   info!("loading model: \x1b[35m{:?}", path);
