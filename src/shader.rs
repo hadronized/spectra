@@ -122,6 +122,7 @@ mod hot {
 
   pub struct Program<T> {
     rx: mpsc::Receiver<()>,
+    last_update_time: Option<f64>,
     program: gl33::Program<T>,
     get_uni: Box<Fn(ProgramProxy) -> Result<T, ProgramError>>,
     vs_path: PathBuf,
@@ -156,6 +157,7 @@ mod hot {
 
       Ok(Program {
         rx: rx,
+        last_update_time: None,
         program: program,
         get_uni: Box::new(get_uni),
         vs_path: vs_path.to_path_buf(),
@@ -184,11 +186,7 @@ mod hot {
       }
     }
 
-    pub fn sync(&mut self) {
-      if self.rx.try_recv().is_ok() {
-        self.reload();
-      }
-    }
+    decl_sync_hot!();
   }
 
   impl<'a, T> Deref for Program<T> {
