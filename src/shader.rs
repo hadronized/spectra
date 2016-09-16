@@ -112,13 +112,14 @@ pub fn read_stage<P, T>(path: P) -> Result<Stage<T>, StageError> where P: AsRef<
 
 #[cfg(feature = "hot-resource")]
 mod hot {
-  use super::*;
-
   use luminance_gl::gl33::ProgramProxy;
-  use resource::ResourceManager;
   use std::ops::Deref;
   use std::path::{Path, PathBuf};
   use std::sync::mpsc;
+
+  use resource::ResourceManager;
+
+  use super::*;
 
   pub struct Program<T> {
     rx: mpsc::Receiver<()>,
