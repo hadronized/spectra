@@ -54,13 +54,10 @@ mod hot {
   use std::ops::Deref;
   use std::path::{Path, PathBuf};
   use std::sync::mpsc;
-  use time::precise_time_s;
 
   use resource::ResourceManager;
 
   use super::*;
-
-  const UPDATE_AWAIT_TIME: f64 = 0.1; // 100ms
 
   pub struct TextureImage {
     rx: mpsc::Receiver<()>,

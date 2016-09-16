@@ -7,6 +7,9 @@ mod hot {
   use std::sync::mpsc;
   use std::thread;
 
+  /// Time to await after a resource update to establish that it should be reloaded.
+  pub const UPDATE_AWAIT_TIME: f64 = 0.1; // 100ms
+
   pub struct ResourceManager {
     receivers: Arc<Mutex<BTreeMap<PathBuf, mpsc::Sender<()>>>>
   }
@@ -76,7 +79,6 @@ macro_rules! sync {
   }
 }
 
-
 /// A helper macro to declare a `sync` public method for a resource. The resource must
 /// have a `last_update_time: f64` and a `reload(&mut self)` function.
 #[cfg(feature = "hot-resource")]
@@ -85,11 +87,11 @@ macro_rules! decl_sync_hot {
   () => {
     pub fn sync(&mut self) {
       if self.rx.try_recv().is_ok() {
-        self.last_update_time = Some(precise_time_s());
+        self.last_update_time = Some(::time::precise_time_s());
       }
 
       match self.last_update_time {
-        Some(last_update_time) if precise_time_s() - last_update_time >= UPDATE_AWAIT_TIME => {
+        Some(last_update_time) if ::time::precise_time_s() - last_update_time >= ::resource::UPDATE_AWAIT_TIME => {
           self.reload();
           self.last_update_time = None;
         },
