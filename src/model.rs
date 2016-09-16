@@ -209,6 +209,7 @@ mod hot {
 
   pub struct Model<'a> {
     rx: mpsc::Receiver<()>,
+    last_update_time: Option<f64>,
     model: ModelBase<'a>,
     path: PathBuf
   }
@@ -223,15 +224,10 @@ mod hot {
 
       Ok(Model {
         rx: rx,
+        last_update_time: None,
         model: model,
         path: path.to_owned()
       })
-    }
-
-    pub fn sync(&mut self) {
-      if self.rx.try_recv().is_ok() {
-        self.reload();
-      }
     }
 
     fn reload(&mut self) {
@@ -245,6 +241,8 @@ mod hot {
         }
       }
     }
+
+    decl_sync_hot!();
   }
 
   impl<'a> Deref for Model<'a> {

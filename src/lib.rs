@@ -12,11 +12,14 @@ extern crate time;
 extern crate vorbis;
 extern crate wavefront_obj;
 
-pub mod behavior;
 #[macro_use]
 pub mod report;
 
+#[macro_use]
+pub mod resource;
+
 pub mod anim;
+pub mod behavior;
 pub mod bootstrap;
 pub mod camera;
 pub mod color;
@@ -25,8 +28,6 @@ pub mod entity;
 pub mod model;
 pub mod objects;
 pub mod projection;
-#[macro_use]
-pub mod resource;
 pub mod shader;
 pub mod texture;
 pub mod transform;
