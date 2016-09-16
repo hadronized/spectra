@@ -68,9 +68,33 @@ pub use self::hot::*;
 #[cfg(not(feature = "hot-resource"))]
 pub use self::cold::*;
 
+/// Sync all the resources passed in as arguments.
 #[macro_export]
 macro_rules! sync {
   ($( $r:ident ),*) => {
     $( $r.sync(); )*
+  }
+}
+
+
+/// A helper macro to declare a `sync` public method for a resource. The resource must
+/// have a `last_update_time: f64` and a `reload(&mut self)` function.
+#[cfg(feature = "hot-resource")]
+#[macro_export]
+macro_rules! decl_sync_hot {
+  () => {
+    pub fn sync(&mut self) {
+      if self.rx.try_recv().is_ok() {
+        self.last_update_time = Some(precise_time_s());
+      }
+
+      match self.last_update_time {
+        Some(last_update_time) if precise_time_s() - last_update_time >= UPDATE_AWAIT_TIME => {
+          self.reload();
+          self.last_update_time = None;
+        },
+        _ => {}
+      }
+    }
   }
 }

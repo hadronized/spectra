@@ -114,19 +114,7 @@ mod hot {
       }
     }
 
-    pub fn sync(&mut self) {
-      if self.rx.try_recv().is_ok() {
-        self.last_update_time = Some(precise_time_s());
-      }
-
-      match self.last_update_time {
-        Some(last_update_time) if precise_time_s() - last_update_time >= UPDATE_AWAIT_TIME => {
-          self.reload();
-          self.last_update_time = None;
-        },
-        _ => {}
-      }
-    }
+    decl_sync_hot!();
   }
 
   impl Deref for TextureImage {
@@ -140,10 +128,19 @@ mod hot {
 
 #[cfg(not(feature = "hot-resource"))]
 mod cold {
+  use luminance::{Dim2, Flat, Sampler};
+  use luminance_gl::gl33::Texture;
+  use std::ops::Deref;
+  use std::path::Path;
+
+  use resource::ResourceManager;
+
+  use super::*;
+
   pub struct TextureImage(Texture<Flat, Dim2, RGBA32F>);
 
   impl TextureImage {
-    pub fn load<P>(manager: &mut ResourceManager, path: P, sampler: &Sampler, linear: bool) -> Result<Self, TextureError> where P: AsRef<Path> {
+    pub fn load<P>(_: &mut ResourceManager, path: P, sampler: &Sampler, linear: bool) -> Result<Self, TextureError> where P: AsRef<Path> {
       let tex = load_rgba_texture(path, sampler, linear);
 
       match tex {
