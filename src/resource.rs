@@ -80,7 +80,7 @@ macro_rules! sync {
 }
 
 /// A helper macro to declare a `sync` public method for a resource. The resource must
-/// have a `last_update_time: f64` and a `reload(&mut self)` function.
+/// have a `last_update_time: Option<f64>` and a `reload(&mut self)` function.
 #[cfg(feature = "hot-resource")]
 #[macro_export]
 macro_rules! decl_sync_hot {
