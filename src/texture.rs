@@ -49,17 +49,22 @@ pub enum TextureError {
 
 #[cfg(feature = "hot-resource")]
 mod hot {
-  use super::*;
-
   use luminance::{Dim2, Flat, Sampler};
   use luminance_gl::gl33::Texture;
-  use resource::ResourceManager;
   use std::ops::Deref;
   use std::path::{Path, PathBuf};
   use std::sync::mpsc;
+  use time::precise_time_s;
+
+  use resource::ResourceManager;
+
+  use super::*;
+
+  const UPDATE_AWAIT_TIME: f64 = 0.1; // 100ms
 
   pub struct TextureImage {
     rx: mpsc::Receiver<()>,
+    last_update_time: Option<f64>,
     texture: Texture<Flat, Dim2, RGBA32F>,
     sampler: Sampler,
     linear: bool,
@@ -81,6 +86,7 @@ mod hot {
 
           Ok(TextureImage {
             rx: rx,
+            last_update_time: None,
             texture: tex,
             sampler: *sampler,
             linear: linear,
@@ -110,7 +116,15 @@ mod hot {
 
     pub fn sync(&mut self) {
       if self.rx.try_recv().is_ok() {
-        self.reload()
+        self.last_update_time = Some(precise_time_s());
+      }
+
+      match self.last_update_time {
+        Some(last_update_time) if precise_time_s() - last_update_time >= UPDATE_AWAIT_TIME => {
+          self.reload();
+          self.last_update_time = None;
+        },
+        _ => {}
       }
     }
   }

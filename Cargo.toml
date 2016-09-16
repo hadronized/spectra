@@ -13,7 +13,7 @@ documentation = "http://phaazon.github.io/ion"
 [features]
 default = ["debug"]
 debug = ["hot-resource"]
-hot-resource = ["notify"]
+hot-resource = ["notify", "time"]
 
 [dependencies]
 luminance = { git = "https://github.com/phaazon/luminance-rs" }
@@ -28,6 +28,7 @@ wavefront_obj = "4.0.2"
 
 # optional dependencies (used in conjunction with features)
 notify = { version = "2.6.3", optional = true }
+time = { version = "0.1.35", optional = true }
 
 [dev-dependencies]
 rand = "0.3.14" # for unit tests

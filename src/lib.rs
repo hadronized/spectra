@@ -7,6 +7,8 @@ extern crate nalgebra;
 #[cfg(feature = "hot-resource")]
 extern crate notify;
 extern crate openal;
+#[cfg(feature = "hot-resource")]
+extern crate time;
 extern crate vorbis;
 extern crate wavefront_obj;
 
