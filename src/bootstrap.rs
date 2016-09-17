@@ -3,7 +3,6 @@ use std::default::Default;
 use std::os::raw::c_void;
 use std::sync::mpsc;
 use std::thread;
-use std::time::Duration;
 
 pub use glfw::{self, Action, Context, CursorMode, Key, MouseButton, Window};
 
@@ -93,7 +92,7 @@ pub fn bootstrap<App: FnOnce(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Windo
   // start the event threads
   let _ = thread::spawn(move || {
     loop {
-      glfw.poll_events();
+      glfw.wait_events();
 
       for (_, event) in glfw::flush_messages(&events) {
         match event {
@@ -111,8 +110,6 @@ pub fn bootstrap<App: FnOnce(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Windo
             },
             _ => {},
         }
-
-        thread::sleep(Duration::from_millis(10));
       }
     }
   });
