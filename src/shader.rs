@@ -38,7 +38,7 @@ fn compile_stages(tess_src: Option<(&str, &str)>, vs_src: &str, gs_src: Option<&
   Ok((tess, vs, gs, fs))
 }
 
-pub fn new_program<GetUni, T>(tess_src: Option<(&str, &str)>, vs_src: &str, gs_src: Option<&str>, fs_src: &str, get_uni: &GetUni) -> Result<gl33::Program<T>, ProgramError> where GetUni: Fn(ProgramProxy) -> Result<T, ProgramError> {
+pub fn new_program<GetUni, T>(tess_src: Option<(&str, &str)>, vs_src: &str, gs_src: Option<&str>, fs_src: &str, get_uni: &GetUni) -> Result<gl33::Program<T>, ProgramError> where GetUni: Fn(ProgramProxy) -> Result<T, UniformWarning> {
   let stages = compile_stages(tess_src, vs_src, gs_src, fs_src);
 
   match stages {
@@ -63,7 +63,7 @@ pub fn new_program<GetUni, T>(tess_src: Option<(&str, &str)>, vs_src: &str, gs_s
 
 pub fn new_program_from_disk<P, GetUni, T>(tess_path: Option<(P, P)>, vs_path: P, gs_path: Option<P>, fs_path: P, get_uni: &GetUni) -> Result<gl33::Program<T>, ProgramError>
       where P: AsRef<Path>,
-            GetUni: Fn(ProgramProxy) -> Result<T, ProgramError> {
+            GetUni: Fn(ProgramProxy) -> Result<T, UniformWarning> {
   // load vertex and fragment shaders first
   let vs = try!(read_stage(vs_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
   let fs = try!(read_stage(fs_path).map_err(|e| ProgramError::LinkFailed(format!("{:?}", e))));
@@ -125,7 +125,7 @@ mod hot {
     rx: mpsc::Receiver<()>,
     last_update_time: Option<f64>,
     program: gl33::Program<T>,
-    get_uni: Box<Fn(ProgramProxy) -> Result<T, ProgramError>>,
+    get_uni: Box<Fn(ProgramProxy) -> Result<T, UniformWarning>>,
     vs_path: PathBuf,
     fs_path: PathBuf,
     tess_path: Option<(PathBuf, PathBuf)>,
@@ -134,7 +134,7 @@ mod hot {
 
   impl<T> Program<T> {
     pub fn load<GetUni, P>(manager: &mut ResourceManager, tess_path: Option<(P, P)>, vs_path: P, gs_path: Option<P>, fs_path: P, get_uni: GetUni) -> Result<Self, ProgramError>
-        where GetUni: Fn(ProgramProxy) -> Result<T, ProgramError> + 'static,
+        where GetUni: Fn(ProgramProxy) -> Result<T, UniformWarning> + 'static,
               P: AsRef<Path> {
       let vs_path = vs_path.as_ref();
       let fs_path = fs_path.as_ref();
@@ -212,7 +212,7 @@ mod cold {
 
   impl<T> Program<T> {
     pub fn load<GetUni, P>(_: &mut ResourceManager, tess_path: Option<(P, P)>, vs_path: P, gs_path: Option<P>, fs_path: P, get_uni: GetUni) -> Result<Program<T>, ProgramError>
-        where GetUni: Fn(ProgramProxy) -> Result<T, ProgramError> + 'static,
+        where GetUni: Fn(ProgramProxy) -> Result<T, UniformWarning> + 'static,
               P: AsRef<Path> {
       let vs_path = vs_path.as_ref();
       let fs_path = fs_path.as_ref();
