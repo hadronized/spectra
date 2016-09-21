@@ -1,5 +1,5 @@
 use luminance::linear::M44;
-use luminance::shader::uniform::UniformUpdate;
+use luminance::shader::program::UniformUpdate;
 use luminance_gl::gl33::Uniform;
 use nalgebra::{ToHomogeneous, Unit, UnitQuaternion, Quaternion};
 use std::default::Default;
