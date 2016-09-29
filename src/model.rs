@@ -72,20 +72,19 @@ pub fn load<'a, P>(path: P) -> Result<ModelBase<'a>, ModelError> where P: AsRef<
 
 // Turn a wavefront obj object into a `Model`
 fn convert_obj<'a>(obj_set: obj::ObjSet) -> Result<ModelBase<'a>, ModelError> {
-  if obj_set.objects.len() != 1 {
-    return Err(ModelError::MultiObjects);
-  }
+  let mut parts = Vec::new();
 
-  let obj = &obj_set.objects[0];
-  info!("  converting object \x1b[35m{}", obj.name);
+  info!("{} objects to convert…", obj_set.objects.len());
+  for obj in &obj_set.objects {
+    info!("  converting {} geometries in object \x1b[35m{}", obj.geometry.len(), obj.name);
 
-  // convert all the geometries
-  let mut parts = Vec::with_capacity(obj.geometry.len());
-
-  for geometry in &obj.geometry {
-    let (vertices, indices, mode) = try!(convert_geometry(geometry, &obj.vertices, &obj.normals, &obj.tex_vertices));
-    let part = Part::new(Tessellation::new(mode, &vertices, Some(&indices)), None); // FIXME: material
-    parts.push(part);
+    // convert all the geometries
+    for geometry in &obj.geometry {
+      info!("    {} vertices, {} normals, {} tex vertices", obj.vertices.len(), obj.normals.len(), obj.tex_vertices.len());
+      let (vertices, indices, mode) = try!(convert_geometry(geometry, &obj.vertices, &obj.normals, &obj.tex_vertices));
+      let part = Part::new(Tessellation::new(mode, &vertices, Some(&indices)), None); // FIXME: material
+      parts.push(part);
+    }
   }
 
   Ok(ModelBase::from_parts(parts))
