@@ -177,7 +177,7 @@ fn convert_nor(n: &obj::Normal) -> VertexNor {
 }
 
 fn convert_tvertex(t: &obj::TVertex) -> VertexTexCoord {
-  [t.x as f32, t.y as f32]
+  [t.u as f32, t.v as f32]
 }
 
 fn guess_mode(prim: obj::Primitive) -> tessellation::Mode {
