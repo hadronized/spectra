@@ -74,7 +74,7 @@ pub use self::cold::*;
 /// Sync all the resources passed in as arguments.
 #[macro_export]
 macro_rules! sync {
-  ($( $r:ident ),*) => {
+  ($( $r:expr ),*) => {
     $( $r.sync(); )*
   }
 }
