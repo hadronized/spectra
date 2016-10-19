@@ -19,6 +19,7 @@ pub mod report;
 pub mod resource;
 
 pub mod anim;
+pub mod app;
 pub mod behavior;
 pub mod bootstrap;
 pub mod camera;
