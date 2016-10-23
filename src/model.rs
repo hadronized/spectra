@@ -119,7 +119,7 @@ fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[o
         None => {
           // this is a new, not yet discovered triplet; create the corresponding vertex and add it
           // to the vertices buffer, and map the triplet to the index in the indices buffer
-          let vertex = interleave_vertex(&positions[key.0], &normals[key.1], &tvertices[key.2]);
+          let vertex = interleave_vertex(&positions[key.0], &normals[key.1], key.2.map(|ki| &tvertices[ki]));
           let index = vertices.len() as u32;
 
           vertices.push(vertex);
@@ -135,7 +135,7 @@ fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[o
 
 // Create triplet keys from wavefront_obj primitives. If any primitive doesn’t have all the triplet
 // information (position, normal, tex), a ModelError::UnsupportedVertex error is returned instead.
-fn create_keys_from_primitive(prim: obj::Primitive) -> Result<Vec<(usize, usize, usize)>, ModelError> {
+fn create_keys_from_primitive(prim: obj::Primitive) -> Result<Vec<(usize, usize, Option<usize>)>, ModelError> {
   match prim {
     obj::Primitive::Point(i) => {
       let a = try!(vtnindex_to_key(i));
@@ -156,15 +156,15 @@ fn create_keys_from_primitive(prim: obj::Primitive) -> Result<Vec<(usize, usize,
 }
 
 // Convert from a wavefront_obj VTNIndex into our triplet, raising error if not possible.
-fn vtnindex_to_key(i: obj::VTNIndex) -> Result<(usize, usize, usize), ModelError> {
+fn vtnindex_to_key(i: obj::VTNIndex) -> Result<(usize, usize, Option<usize>), ModelError> {
   match i {
-    (pi, Some(ti), Some(ni)) => Ok((pi, ni, ti)),
+    (pi, ti, Some(ni)) => Ok((pi, ni, ti)),
     _ => Err(ModelError::UnsupportedVertex)
   }
 }
 
-fn interleave_vertex(p: &obj::Vertex, n: &obj::Normal, t: &obj::TVertex) -> Vertex {
-  (convert_vertex(p), convert_nor(n), convert_tvertex(t))
+fn interleave_vertex(p: &obj::Vertex, n: &obj::Normal, t: Option<&obj::TVertex>) -> Vertex {
+  (convert_vertex(p), convert_nor(n), t.map_or([0., 0.], convert_tvertex))
 }
 
 fn convert_vertex(v: &obj::Vertex) -> VertexPos {
