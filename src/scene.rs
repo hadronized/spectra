@@ -15,6 +15,12 @@ pub struct Scene<'a> {
   model_instances: Vec<Id>
 }
 
+impl<'a> Scene<'a> {
+  pub fn get_id<T>(&mut self, inst_name: String) -> Option<Id> where T: GetId {
+    T::get_id(self, inst_name)
+  }
+}
+
 pub type Id = u32;
 
 pub trait GetId {
