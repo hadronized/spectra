@@ -30,5 +30,6 @@ pub mod model;
 pub mod objects;
 pub mod projection;
 pub mod shader;
+pub mod scene;
 pub mod texture;
 pub mod transform;
