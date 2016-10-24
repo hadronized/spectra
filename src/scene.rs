@@ -16,6 +16,15 @@ pub struct Scene<'a> {
 }
 
 impl<'a> Scene<'a> {
+  pub fn new<P>(root: P) -> Self where P: AsRef<Path>{
+    Scene {
+      res_manager: ResourceManager::new(root),
+      models: Vec::new(),
+      model_cache: HashMap::new(),
+      model_instances: Vec::new()
+    }
+  }
+
   pub fn get_id<T>(&mut self, inst_name: String) -> Option<Id> where T: GetId {
     T::get_id(self, inst_name)
   }
