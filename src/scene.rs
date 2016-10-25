@@ -30,9 +30,11 @@ impl<'a> Scene<'a> {
     }
   }
 
-  pub fn get_id<T>(&mut self, inst_name: &str) -> Option<Id> where T: GetId {
-    T::get_id(self, inst_name)
+  pub fn get_id<T>(&mut self, name: &str) -> Option<Id> where T: GetId {
+    T::get_id(self, name)
   }
+
+  pub fn get_model(&mut self, id
 
   pub fn resource_manager(&mut self) -> &mut ResourceManager {
     &mut self.res_manager
@@ -40,16 +42,16 @@ impl<'a> Scene<'a> {
 }
 
 pub trait GetId {
-  fn get_id<'a>(scene: &mut Scene<'a>, inst_name: &str) -> Option<Id>;
+  fn get_id<'a>(scene: &mut Scene<'a>, name: &str) -> Option<Id>;
 }
 
 impl<'b> GetId for Model<'b> {
-  fn get_id<'a>(scene: &mut Scene<'a>, inst_name: &str) -> Option<Id> {
-    match scene.model_cache.get(inst_name).cloned() {
+  fn get_id<'a>(scene: &mut Scene<'a>, name: &str) -> Option<Id> {
+    match scene.model_cache.get(name).cloned() {
       id@Some(..) => id,
       None => {
         // cache miss; load then
-        let path_str = format!("data/models/{}.obj", inst_name);
+        let path_str = format!("data/models/{}.obj", name);
         let path = Path::new(&path_str);
 
         if path.exists() {
@@ -60,17 +62,17 @@ impl<'b> GetId for Model<'b> {
               // add the model to the list of loaded models
               scene.models.push(model);
               // add the model to the cache
-              scene.model_cache.insert(inst_name.to_owned(), model_id);
+              scene.model_cache.insert(name.to_owned(), model_id);
 
               Some(model_id)
             },
             Err(e) => {
-              err!("unable to load model '{}': '{:?}'", inst_name, e);
+              err!("unable to load model '{}': '{:?}'", name, e);
               None
             }
           }
         } else { // TODO: add a manifest override to look in somewhere else
-          err!("model '{}' cannot be found", inst_name);
+          err!("model '{}' cannot be found", name);
           None
         }
       }
