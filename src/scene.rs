@@ -2,23 +2,23 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use model::Model;
+use entity::Entity;
 use resource::ResourceManager;
 use transform::Transform;
 
 pub type Id = u32;
 
+/// The scene type.
+///
+/// This type gathers all the required objects a scene needs to correctly handle and render all
+/// visual effects.
 pub struct Scene<'a> {
-  /// Resource manager.
+  /// Resource manager; used to handle scarce resources.
   res_manager: ResourceManager,
   /// List of all models used in the scene.
   models: Vec<Model<'a>>,
   /// Model cache used to resolve Id based on instance name.
   model_cache: HashMap<String, Id>,
-}
-
-pub struct Object {
-  model_id: Id,
-  transform: Transform
 }
 
 impl<'a> Scene<'a> {
