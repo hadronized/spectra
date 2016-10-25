@@ -2,9 +2,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use model::Model;
-use entity::Entity;
 use resource::ResourceManager;
-use transform::Transform;
 
 pub type Id = u32;
 
@@ -34,7 +32,9 @@ impl<'a> Scene<'a> {
     T::get_id(self, name)
   }
 
-  pub fn get_model(&mut self, id
+  pub fn get_model(&self, id: Id) -> Option<&Model<'a>> {
+    self.models.get(id as usize)
+  }
 
   pub fn resource_manager(&mut self) -> &mut ResourceManager {
     &mut self.res_manager
