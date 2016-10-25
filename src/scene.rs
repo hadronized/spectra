@@ -3,6 +3,9 @@ use std::path::Path;
 
 use model::Model;
 use resource::ResourceManager;
+use transform::Transform;
+
+pub type Id = u32;
 
 pub struct Scene<'a> {
   /// Resource manager.
@@ -11,8 +14,11 @@ pub struct Scene<'a> {
   models: Vec<Model<'a>>,
   /// Model cache used to resolve Id based on instance name.
   model_cache: HashMap<String, Id>,
-  /// Scene model instances.
-  model_instances: Vec<Id>
+}
+
+pub struct Object {
+  model_id: Id,
+  transform: Transform
 }
 
 impl<'a> Scene<'a> {
@@ -21,7 +27,6 @@ impl<'a> Scene<'a> {
       res_manager: ResourceManager::new(root),
       models: Vec::new(),
       model_cache: HashMap::new(),
-      model_instances: Vec::new()
     }
   }
 
@@ -33,8 +38,6 @@ impl<'a> Scene<'a> {
     &mut self.res_manager
   }
 }
-
-pub type Id = u32;
 
 pub trait GetId {
   fn get_id<'a>(scene: &mut Scene<'a>, inst_name: &str) -> Option<Id>;
