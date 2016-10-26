@@ -47,7 +47,7 @@ impl App {
     (precise_time_ns() - self.start_time) as f32 * 1e-9
   }
 
-  pub fn handle_events(&mut self, freefly: &mut Entity<Freefly>) -> bool {
+  pub fn handle_events<'a>(&mut self, freefly: &mut Entity<&'a Freefly>) -> bool {
     let mut freefly_tr = Translation::new(0., 0., 0.);
     let mut freefly_or = Translation::new(0., 0., 0.);
 

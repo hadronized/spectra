@@ -49,9 +49,9 @@ impl Default for Freefly {
   }
 }
 
-impl Entity<Freefly> {
+impl<'a> Entity<&'a Freefly> {
   pub fn mv(&mut self, dir: Translation) {
-    let cam = &self.object;
+    let cam = self.object;
     let axis = dir * Axis::new(cam.strafe_sens, cam.upward_sens, cam.forward_sens);
     let v = self.transform.orientation.inverse_rotate(&axis);
 
@@ -59,7 +59,7 @@ impl Entity<Freefly> {
   }
 
   pub fn look_around(&mut self, dir: Translation) {
-    let cam = &self.object;
+    let cam = self.object;
 
     self.transform = self.transform.orient(Y_AXIS, cam.yaw_sens * dir.y);
     self.transform = self.transform.orient(X_AXIS, cam.pitch_sens * dir.x);
