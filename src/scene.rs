@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use std::ops::Deref;
 use std::path::Path;
 
 use model::Model;
@@ -24,6 +25,14 @@ impl<T> Id<T> {
 impl<T> Clone for Id<T> {
   fn clone(&self) -> Self {
     self.id.into()
+  }
+}
+
+impl<T> Deref for Id<T> {
+  type Target = u32;
+
+  fn deref(&self) -> &Self::Target {
+    &self.id
   }
 }
 
@@ -59,6 +68,10 @@ impl Scene {
     T::get_id(self, name)
   }
 
+  pub fn get<T>(&self, id: Id<T>) -> Option<&T> where T: Get {
+    T::get(self, id)
+  }
+
   pub fn resource_manager(&mut self) -> &mut ResourceManager {
     &mut self.res_manager
   }
@@ -66,6 +79,7 @@ impl Scene {
 
 pub trait Get: Sized {
   fn get_id(scene: &mut Scene, name: &str) -> Option<Id<Self>>;
+  fn get(scene: &Scene, id: Id<Self>) -> Option<&Self>;
 }
 
 impl Get for Model {
@@ -100,5 +114,9 @@ impl Get for Model {
         }
       }
     }
+  }
+
+  fn get(scene: &Scene, id: Id<Self>) -> Option<&Self> {
+    scene.models.get(*id as usize)
   }
 }
