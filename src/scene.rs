@@ -1,25 +1,52 @@
 use std::collections::HashMap;
+use std::marker::PhantomData;
 use std::path::Path;
 
 use model::Model;
 use resource::ResourceManager;
 
-pub type Id = u32;
+/// A typed identifier.
+#[derive(Debug)]
+pub struct Id<T> {
+  pub id: u32,
+  _t: PhantomData<*const T>
+}
+
+impl<T> Id<T> {
+  pub fn new(id: u32) -> Self {
+    Id {
+      id: id,
+      _t: PhantomData
+    }
+  }
+}
+
+impl<T> Clone for Id<T> {
+  fn clone(&self) -> Self {
+    self.id.into()
+  }
+}
+
+impl<T> From<u32> for Id<T> {
+  fn from(id: u32) -> Self {
+    Id::new(id)
+  }
+}
 
 /// The scene type.
 ///
 /// This type gathers all the required objects a scene needs to correctly handle and render all
 /// visual effects.
-pub struct Scene<'a> {
+pub struct Scene {
   /// Resource manager; used to handle scarce resources.
   res_manager: ResourceManager,
   /// List of all models used in the scene.
-  models: Vec<Model<'a>>,
+  models: Vec<Model>,
   /// Model cache used to resolve Id based on instance name.
-  model_cache: HashMap<String, Id>,
+  model_cache: HashMap<String, Id<Model>>,
 }
 
-impl<'a> Scene<'a> {
+impl Scene {
   pub fn new<P>(root: P) -> Self where P: AsRef<Path>{
     Scene {
       res_manager: ResourceManager::new(root),
@@ -28,12 +55,8 @@ impl<'a> Scene<'a> {
     }
   }
 
-  pub fn get_id<T>(&mut self, name: &str) -> Option<Id> where T: GetId {
+  pub fn get_id<T>(&mut self, name: &str) -> Option<Id<T>> where T: Get {
     T::get_id(self, name)
-  }
-
-  pub fn get_model(&self, id: Id) -> Option<&Model<'a>> {
-    self.models.get(id as usize)
   }
 
   pub fn resource_manager(&mut self) -> &mut ResourceManager {
@@ -41,12 +64,12 @@ impl<'a> Scene<'a> {
   }
 }
 
-pub trait GetId {
-  fn get_id<'a>(scene: &mut Scene<'a>, name: &str) -> Option<Id>;
+pub trait Get: Sized {
+  fn get_id(scene: &mut Scene, name: &str) -> Option<Id<Self>>;
 }
 
-impl<'b> GetId for Model<'b> {
-  fn get_id<'a>(scene: &mut Scene<'a>, name: &str) -> Option<Id> {
+impl Get for Model {
+  fn get_id(scene: &mut Scene, name: &str) -> Option<Id<Self>> {
     match scene.model_cache.get(name).cloned() {
       id@Some(..) => id,
       None => {
@@ -57,12 +80,12 @@ impl<'b> GetId for Model<'b> {
         if path.exists() {
           match Model::load(&mut scene.res_manager, path) {
             Ok(model) => {
-              let model_id = scene.models.len() as u32;
+              let model_id: Id<Model> = (scene.models.len() as u32).into();
 
               // add the model to the list of loaded models
               scene.models.push(model);
               // add the model to the cache
-              scene.model_cache.insert(name.to_owned(), model_id);
+              scene.model_cache.insert(name.to_owned(), model_id.clone());
 
               Some(model_id)
             },

@@ -8,50 +8,46 @@ use std::path::{Path, PathBuf};
 use std::vec;
 use wavefront_obj::{self, obj};
 
-// FIXME: implement materials
-pub type Material = ();
-
 pub type Vertex = (VertexPos, VertexNor, VertexTexCoord);
 pub type VertexPos = [f32; 3];
 pub type VertexNor = [f32; 3];
 pub type VertexTexCoord = [f32; 2];
 
-pub struct ModelBase<'a> {
-  pub parts: Vec<Part<'a>>
+pub struct ModelBase {
+  pub parts: Vec<Part>
 }
 
-impl<'a> ModelBase<'a> {
-  pub fn from_parts(parts: Vec<Part<'a>>) -> Self {
+impl ModelBase {
+  pub fn from_parts(parts: Vec<Part>) -> Self {
     ModelBase {
       parts: parts
     }
   }
 }
 
-impl<'a> IntoIterator for ModelBase<'a> {
-  type Item = Part<'a>;
-  type IntoIter = vec::IntoIter<Part<'a>>;
+impl IntoIterator for ModelBase {
+  type Item = Part;
+  type IntoIter = vec::IntoIter<Part>;
 
   fn into_iter(self) -> Self::IntoIter {
     self.parts.into_iter()
   }
 }
 
-pub struct Part<'a> {
+pub struct Part {
   pub tess: Tessellation,
-  pub mat: Option<&'a Material>
+  // TODO: add material index
 }
 
-impl<'a> Part<'a> {
-  pub fn new(tess: Tessellation, mat: Option<&'a Material>) -> Self {
+impl Part {
+  pub fn new(tess: Tessellation) -> Self {
     Part {
       tess: tess,
-      mat: mat
     }
   }
 }
 
-pub fn load<'a, P>(path: P) -> Result<ModelBase<'a>, ModelError> where P: AsRef<Path> {
+pub fn load<P>(path: P) -> Result<ModelBase, ModelError> where P: AsRef<Path> {
   let path = path.as_ref();
 
   info!("loading model: \x1b[35m{:?}", path);
@@ -71,7 +67,7 @@ pub fn load<'a, P>(path: P) -> Result<ModelBase<'a>, ModelError> where P: AsRef<
 }
 
 // Turn a wavefront obj object into a `Model`
-fn convert_obj<'a>(obj_set: obj::ObjSet) -> Result<ModelBase<'a>, ModelError> {
+fn convert_obj(obj_set: obj::ObjSet) -> Result<ModelBase, ModelError> {
   let mut parts = Vec::new();
 
   info!("{} objects to convert…", obj_set.objects.len());
@@ -82,7 +78,7 @@ fn convert_obj<'a>(obj_set: obj::ObjSet) -> Result<ModelBase<'a>, ModelError> {
     for geometry in &obj.geometry {
       info!("    {} vertices, {} normals, {} tex vertices", obj.vertices.len(), obj.normals.len(), obj.tex_vertices.len());
       let (vertices, indices, mode) = try!(convert_geometry(geometry, &obj.vertices, &obj.normals, &obj.tex_vertices));
-      let part = Part::new(Tessellation::new(mode, &vertices, Some(&indices)), None); // FIXME: material
+      let part = Part::new(Tessellation::new(mode, &vertices, Some(&indices))); // FIXME: material
       parts.push(part);
     }
   }
@@ -206,14 +202,14 @@ mod hot {
 
   use resource::ResourceManager;
 
-  pub struct Model<'a> {
+  pub struct Model {
     rx: mpsc::Receiver<()>,
     last_update_time: Option<f64>,
-    model: ModelBase<'a>,
+    model: ModelBase,
     path: PathBuf
   }
 
-  impl<'a> Model<'a> {
+  impl Model {
     pub fn load<P>(manager: &mut ResourceManager, path: P) -> Result<Self, ModelError> where P: AsRef<Path> {
       let path = path.as_ref();
       let model = try!(super::load(path));
@@ -244,8 +240,8 @@ mod hot {
     decl_sync_hot!();
   }
 
-  impl<'a> Deref for Model<'a> {
-    type Target = ModelBase<'a>;
+  impl Deref for Model {
+    type Target = ModelBase;
 
     fn deref(&self) -> &Self::Target {
       &self.model
@@ -264,7 +260,7 @@ mod cold {
 
   pub struct Model<'a>(ModelBase<'a>);
 
-  impl<'a> Model<'a> {
+  impl Model {
     pub fn load<P>(_: &mut ResourceManager, path: P) -> Result<Self, ModelError> where P: AsRef<Path> {
       super::load(path).map(|m| Model(m))
     }
@@ -273,8 +269,8 @@ mod cold {
     }
   }
 
-  impl<'a> Deref for Model<'a> {
-    type Target = ModelBase<'a>;
+  impl Deref for Model {
+    type Target = ModelBase;
 
     fn deref(&self) -> &Self::Target {
       &self.0
