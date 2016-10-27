@@ -85,11 +85,16 @@ pub trait Get: Sized {
 impl Get for Model {
   fn get_id(scene: &mut Scene, name: &str) -> Option<Id<Self>> {
     match scene.model_cache.get(name).cloned() {
-      id@Some(..) => id,
+      id@Some(..) => {
+        deb!("cache hit for model \"{}\"", name);
+        id
+      },
       None => {
         // cache miss; load then
         let path_str = format!("data/models/{}.obj", name);
         let path = Path::new(&path_str);
+
+        deb!("cache miss for model \"{}\"", name);
 
         if path.exists() {
           match Model::load(&mut scene.res_manager, path) {
