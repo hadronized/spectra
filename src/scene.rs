@@ -69,14 +69,6 @@ impl Scene {
     }
   }
 
-  pub fn get_id<T>(&mut self, name: &str) -> Option<Id<T>> where T: Get {
-    T::get_id(self, name)
-  }
-
-  pub fn get<T>(&self, id: Id<T>) -> Option<&T> where T: Get {
-    T::get(self, id)
-  }
-
   pub fn resource_manager(&mut self) -> &mut ResourceManager {
     &mut self.res_manager
   }
@@ -87,14 +79,14 @@ pub enum SceneModelEntity {
   Dynamic(Cont<'static, Entity<Id<Model>>>)
 }
 
-pub trait Get: Sized {
-  fn get_id(scene: &mut Scene, name: &str) -> Option<Id<Self>>;
-  fn get(scene: &Scene, id: Id<Self>) -> Option<&Self>;
+pub trait Get<T>: Sized {
+  fn get_id(&mut self, name: &str) -> Option<Id<T>>;
+  fn get(&self, id: Id<Self>) -> Option<&T>;
 }
 
-impl Get for Model {
-  fn get_id(scene: &mut Scene, name: &str) -> Option<Id<Self>> {
-    match scene.model_cache.get(name).cloned() {
+impl Get<Model> for Scene {
+  fn get_id(&mut self, name: &str) -> Option<Id<Model>> {
+    match self.model_cache.get(name).cloned() {
       id@Some(..) => {
         deb!("cache hit for model \"{}\"", name);
         id
@@ -107,14 +99,14 @@ impl Get for Model {
         deb!("cache miss for model \"{}\"", name);
 
         if path.exists() {
-          match Model::load(&mut scene.res_manager, path) {
+          match Model::load(&mut self.res_manager, path) {
             Ok(model) => {
-              let model_id: Id<Model> = (scene.models.len() as u32).into();
+              let model_id: Id<Model> = (self.models.len() as u32).into();
 
               // add the model to the list of loaded models
-              scene.models.push(model);
+              self.models.push(model);
               // add the model to the cache
-              scene.model_cache.insert(name.to_owned(), model_id.clone());
+              self.model_cache.insert(name.to_owned(), model_id.clone());
 
               Some(model_id)
             },
@@ -131,7 +123,7 @@ impl Get for Model {
     }
   }
 
-  fn get(scene: &Scene, id: Id<Self>) -> Option<&Self> {
-    scene.models.get(*id as usize)
+  fn get(&self, id: Id<Self>) -> Option<&Model> {
+    self.models.get(*id as usize)
   }
 }
