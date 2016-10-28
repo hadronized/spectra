@@ -48,7 +48,7 @@ impl<T> From<u32> for Id<T> {
 ///
 /// This type gathers all the required objects a scene needs to correctly handle and render all
 /// visual effects.
-pub struct Scene {
+pub struct Scene<'a> {
   /// Resource manager; used to handle scarce resources.
   res_manager: ResourceManager,
   /// All models used in the scene.
@@ -56,10 +56,10 @@ pub struct Scene {
   /// Model cache used to resolve Id based on instance name.
   model_cache: HashMap<String, Id<Model>>,
   /// Model entities used in the scene, containing `Id` to the models of the scene.
-  model_entities: HashMap<String, SceneModelEntity>
+  model_entities: HashMap<String, SceneModelEntity<'a>>
 }
 
-impl Scene {
+impl<'a> Scene<'a> {
   pub fn new<P>(root: P) -> Self where P: AsRef<Path>{
     Scene {
       res_manager: ResourceManager::new(root),
@@ -74,9 +74,14 @@ impl Scene {
   }
 }
 
-pub enum SceneModelEntity {
+/// An model entity living in a scene.
+///
+/// It can either be a static model entity, in which case it just holds a transform object or it can
+/// be a dynamic model entity, which holds a continuous model entity you can sample in time to
+/// retrieve the varying transform.
+pub enum SceneModelEntity<'a> {
   Static(Entity<Id<Model>>),
-  Dynamic(Cont<'static, Entity<Id<Model>>>)
+  Dynamic(Cont<'a, Entity<Id<Model>>>)
 }
 
 pub trait Get<T>: Sized {
@@ -84,7 +89,7 @@ pub trait Get<T>: Sized {
   fn get(&self, id: Id<Self>) -> Option<&T>;
 }
 
-impl Get<Model> for Scene {
+impl<'a> Get<Model> for Scene<'a> {
   fn get_id(&mut self, name: &str) -> Option<Id<Model>> {
     match self.model_cache.get(name).cloned() {
       id@Some(..) => {
