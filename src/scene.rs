@@ -3,6 +3,8 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::path::Path;
 
+use anim::Cont;
+use entity::Entity;
 use model::Model;
 use resource::ResourceManager;
 
@@ -49,10 +51,12 @@ impl<T> From<u32> for Id<T> {
 pub struct Scene {
   /// Resource manager; used to handle scarce resources.
   res_manager: ResourceManager,
-  /// List of all models used in the scene.
+  /// All models used in the scene.
   models: Vec<Model>,
   /// Model cache used to resolve Id based on instance name.
   model_cache: HashMap<String, Id<Model>>,
+  /// Model entities used in the scene, containing `Id` to the models of the scene.
+  model_entities: HashMap<String, SceneModelEntity>
 }
 
 impl Scene {
@@ -61,6 +65,7 @@ impl Scene {
       res_manager: ResourceManager::new(root),
       models: Vec::new(),
       model_cache: HashMap::new(),
+      model_entities: HashMap::new()
     }
   }
 
@@ -75,6 +80,11 @@ impl Scene {
   pub fn resource_manager(&mut self) -> &mut ResourceManager {
     &mut self.res_manager
   }
+}
+
+pub enum SceneModelEntity {
+  Static(Entity<Id<Model>>),
+  Dynamic(Cont<'static, Entity<Id<Model>>>)
 }
 
 pub trait Get: Sized {
