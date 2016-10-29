@@ -85,12 +85,19 @@ pub enum SceneModelEntity<'a> {
 }
 
 pub trait Get<T>: Sized {
-  fn get_id(&mut self, name: &str) -> Option<Id<T>>;
-  fn get(&self, id: Id<Self>) -> Option<&T>;
+  type Id;
+
+  fn get_id(&mut self, name: &str) -> Option<Self::Id>;
+  fn get_by_id(&self, id: Self::Id) -> Option<&T>;
+  fn get(&mut self, name: &str) -> Option<&T> {
+    self.get_id(name).and_then(move |i| self.get_by_id(i))
+  }
 }
 
 impl<'a> Get<Model> for Scene<'a> {
-  fn get_id(&mut self, name: &str) -> Option<Id<Model>> {
+  type Id = Id<'a, Model>;
+
+  fn get_id(&mut self, name: &str) -> Option<Self::Id> {
     match self.model_cache.get(name).cloned() {
       id@Some(..) => {
         deb!("cache hit for model \"{}\"", name);
@@ -128,7 +135,7 @@ impl<'a> Get<Model> for Scene<'a> {
     }
   }
 
-  fn get(&self, id: Id<Self>) -> Option<&Model> {
+  fn get_by_id(&self, id: Self::Id) -> Option<&Model> {
     self.models.get(*id as usize)
   }
 }
