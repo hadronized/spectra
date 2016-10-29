@@ -10,12 +10,12 @@ use resource::ResourceManager;
 
 /// A typed identifier.
 #[derive(Debug)]
-pub struct Id<T> {
+pub struct Id<'a, T> where T: 'a {
   pub id: u32,
-  _t: PhantomData<*const T>
+  _t: PhantomData<&'a T>
 }
 
-impl<T> Id<T> {
+impl<'a, T> Id<'a, T> {
   pub fn new(id: u32) -> Self {
     Id {
       id: id,
@@ -24,13 +24,13 @@ impl<T> Id<T> {
   }
 }
 
-impl<T> Clone for Id<T> {
+impl<'a, T> Clone for Id<'a, T> {
   fn clone(&self) -> Self {
     self.id.into()
   }
 }
 
-impl<T> Deref for Id<T> {
+impl<'a, T> Deref for Id<'a, T> {
   type Target = u32;
 
   fn deref(&self) -> &Self::Target {
@@ -38,7 +38,7 @@ impl<T> Deref for Id<T> {
   }
 }
 
-impl<T> From<u32> for Id<T> {
+impl<'a, T> From<u32> for Id<'a, T> {
   fn from(id: u32) -> Self {
     Id::new(id)
   }
@@ -54,7 +54,7 @@ pub struct Scene<'a> {
   /// All models used in the scene.
   models: Vec<Model>,
   /// Model cache used to resolve Id based on instance name.
-  model_cache: HashMap<String, Id<Model>>,
+  model_cache: HashMap<String, Id<'a, Model>>,
   /// Model entities used in the scene, containing `Id` to the models of the scene.
   model_entities: HashMap<String, SceneModelEntity<'a>>
 }
@@ -80,8 +80,8 @@ impl<'a> Scene<'a> {
 /// be a dynamic model entity, which holds a continuous model entity you can sample in time to
 /// retrieve the varying transform.
 pub enum SceneModelEntity<'a> {
-  Static(Entity<Id<Model>>),
-  Dynamic(Cont<'a, Entity<Id<Model>>>)
+  Static(Entity<Id<'a, Model>>),
+  Dynamic(Cont<'a, Entity<Id<'a, Model>>>)
 }
 
 pub trait Get<T>: Sized {
