@@ -26,6 +26,7 @@ pub mod camera;
 pub mod color;
 pub mod device;
 pub mod entity;
+pub mod id;
 pub mod model;
 pub mod objects;
 pub mod projection;
