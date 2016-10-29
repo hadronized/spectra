@@ -19,8 +19,8 @@ pub struct Scene<'a> {
   models: Vec<Model>,
   /// Model cache used to resolve Id based on instance name.
   model_cache: HashMap<String, Id<'a, Model>>,
-  /// Model entities used in the scene, containing `Id` to the models of the scene.
-  model_entities: HashMap<String, SceneModelEntity<'a>>
+  /// Entities used in the scene.
+  entities: SceneEntities<'a>
 }
 
 impl<'a> Scene<'a> {
@@ -29,12 +29,25 @@ impl<'a> Scene<'a> {
       res_manager: ResourceManager::new(root),
       models: Vec::new(),
       model_cache: HashMap::new(),
-      model_entities: HashMap::new()
+      entities: SceneEntities::new()
     }
   }
 
   pub fn resource_manager(&mut self) -> &mut ResourceManager {
     &mut self.res_manager
+  }
+}
+
+/// A description of a scene in asset terms.
+pub struct SceneEntities<'a> {
+  models: HashMap<String, Entity<Id<'a, Model>>>
+}
+
+impl<'a> SceneEntities<'a> {
+  pub fn new() -> Self {
+    SceneEntities {
+      models: HashMap::new()
+    }
   }
 }
 
