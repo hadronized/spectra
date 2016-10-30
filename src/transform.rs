@@ -1,5 +1,6 @@
 use nalgebra::{ToHomogeneous, Unit, UnitQuaternion, Quaternion};
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Error, Serialize, Serializer};
+use serde::de::{MapVisitor, Visitor};
 use std::default::Default;
 
 use luminance::linear::M44;
@@ -100,6 +101,93 @@ impl Serialize for Transform {
   }
 }
 
+impl Deserialize for Transform {
+  fn deserialize<D>(deserializer: &mut D) -> Result<Self, D::Error> where D: Deserializer {
+    enum Field { Translation, Orientation, Scale };
+
+    impl Deserialize for Field {
+      fn deserialize<D>(deserializer: &mut D) -> Result<Field, D::Error> where D: Deserializer {
+        struct FieldVisitor;
+
+        impl Visitor for FieldVisitor {
+          type Value = Field;
+
+          fn visit_str<E>(&mut self, value: &str) -> Result<Field, E> where E: Error {
+            match value {
+              "translation" => Ok(Field::Translation),
+              "orientation" => Ok(Field::Orientation),
+              "scale" => Ok(Field::Scale),
+              _ => Err(Error::unknown_field(value))
+            }
+          }
+        }
+
+        deserializer.deserialize_struct_field(FieldVisitor)
+      }
+    }
+
+    struct TransformVisitor;
+
+    impl Visitor for TransformVisitor {
+      type Value = Transform;
+
+      fn visit_map<V>(&mut self, mut visitor: V) -> Result<Self::Value, V::Error> where V: MapVisitor {
+        let mut translation: Option<[f32; 3]> = None;
+        let mut orientation: Option<[f32; 4]> = None;
+        let mut scale: Option<[f32; 3]> = None;
+
+        while let Some(key) = try!(visitor.visit_key::<Field>()) {
+          match key {
+            Field::Translation => {
+              if translation.is_some() {
+                return Err(<V::Error as Error>::duplicate_field("translation"));
+              }
+
+              translation = Some(try!(visitor.visit_value()));
+            },
+            Field::Orientation => {
+              if orientation.is_some() {
+                return Err(<V::Error as Error>::duplicate_field("orientation"));
+              }
+
+              orientation = Some(try!(visitor.visit_value()));
+            },
+            Field::Scale => {
+              if scale.is_some() {
+                return Err(<V::Error as Error>::duplicate_field("scale"));
+              }
+
+              scale = Some(try!(visitor.visit_value()));
+            }
+          }
+        }
+
+        try!(visitor.end());
+
+        let translation = match translation {
+          Some(a) => a,
+          None => try!(visitor.missing_field("translation"))
+        };
+
+        let orientation = match orientation {
+          Some(a) => a,
+          None => try!(visitor.missing_field("orientation")),
+        };
+
+        let scale = match scale {
+          Some(a) => a,
+          None => try!(visitor.missing_field("scale"))
+        };
+
+        Ok(Transform::new(Translation::from(&translation), Orientation::new(&Quaternion::from(&orientation)), Scale::from(&scale)))
+      }
+    }
+
+    const FIELDS: &'static [&'static str] = &["translation", "orientation", "scale"];
+    deserializer.deserialize_struct("Transform", FIELDS, TransformVisitor)
+  }
+}
+
 pub type Translation = Vector3<f32>;
 pub type Axis = Vector3<f32>;
 pub type Position = Vector3<f32>;
@@ -144,6 +232,20 @@ impl Scale {
   }
 }
 
+impl Default for Scale {
+  fn default() -> Self { Scale::new(1., 1., 1.) }
+}
+
+impl<'a> From<&'a [f32; 3]> for Scale {
+  fn from(slice: &[f32; 3]) -> Self {
+    Scale {
+      x: slice[0],
+      y: slice[1],
+      z: slice[2]
+    }
+  }
+}
+
 fn translation_matrix(v: Translation) -> Matrix4<f32> {
   Matrix4::new(
     1., 0., 0., v.x,
@@ -151,8 +253,4 @@ fn translation_matrix(v: Translation) -> Matrix4<f32> {
     0., 0., 1., v.z,
     0., 0., 0.,  1.,
   )
-}
-
-impl Default for Scale {
-  fn default() -> Self { Scale::new(1., 1., 1.) }
 }
