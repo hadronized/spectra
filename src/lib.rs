@@ -7,6 +7,8 @@ extern crate nalgebra;
 #[cfg(feature = "hot-resource")]
 extern crate notify;
 extern crate openal;
+extern crate serde;
+extern crate serde_json;
 #[cfg(feature = "hot-resource")]
 extern crate time;
 extern crate vorbis;

@@ -1,8 +1,10 @@
+use nalgebra::{ToHomogeneous, Unit, UnitQuaternion, Quaternion};
+use serde::{Serialize, Serializer};
+use std::default::Default;
+
 use luminance::linear::M44;
 use luminance::shader::program::UniformUpdate;
 use luminance_gl::gl33::Uniform;
-use nalgebra::{ToHomogeneous, Unit, UnitQuaternion, Quaternion};
-use std::default::Default;
 
 pub use nalgebra::{Matrix4, Vector3};
 
@@ -82,6 +84,19 @@ impl Default for Transform {
       orientation: UnitQuaternion::from_unit_value_unchecked(Quaternion::from_parts(1., Vector3::new(0., 0., 0.))),
       scale: Scale::default()
     }
+  }
+}
+
+impl Serialize for Transform {
+  fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error> where S: Serializer {
+    let mut struct_st = try!(serializer.serialize_struct("Transform", 3));
+
+    try!(serializer.serialize_struct_elt(&mut struct_st, "translation", self.translation.as_ref()));
+    try!(serializer.serialize_struct_elt(&mut struct_st, "orientation", self.orientation.as_ref().as_ref()));
+    let scale = [self.scale.x, self.scale.y, self.scale.z];
+    try!(serializer.serialize_struct_elt(&mut struct_st, "scale", scale));
+
+    serializer.serialize_struct_end(struct_st)
   }
 }
 
