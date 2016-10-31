@@ -1,6 +1,8 @@
+use nalgebra::ToHomogeneous;
+
 use id::Id;
 use model::Model;
-use transform::{M44, Orientation, Position, Scale, Transformable};
+use transform::{M44, Orientation, Position, Scale, Transformable, translation_matrix};
 
 pub struct Object<'a> {
   model: Id<'a, Model>,
@@ -11,5 +13,7 @@ pub struct Object<'a> {
 
 impl<'a> Transformable for Object<'a> {
   fn transform(&self) -> M44 {
+    let m = translation_matrix(-self.position) * self.scale.to_mat() * self.orientation.to_rotation_matrix().to_homogeneous();
+    m.as_ref().clone()
   }
 }
