@@ -11,15 +11,15 @@ mod hot {
   pub const UPDATE_AWAIT_TIME: f64 = 0.1; // 100ms
 
   pub struct ResourceManager {
-    receivers: Arc<Mutex<BTreeMap<PathBuf, mpsc::Sender<()>>>>
+    senders: Arc<Mutex<BTreeMap<PathBuf, mpsc::Sender<()>>>>
   }
 
   impl ResourceManager {
     pub fn new<P>(root: P) -> Self where P: AsRef<Path> {
       let (wsx, wrx) = mpsc::channel();
       let mut watcher: RecommendedWatcher = Watcher::new(wsx).unwrap();
-      let receivers: Arc<Mutex<BTreeMap<PathBuf, mpsc::Sender<()>>>> = Arc::new(Mutex::new(BTreeMap::new()));
-      let receivers_ = receivers.clone();
+      let senders: Arc<Mutex<BTreeMap<PathBuf, mpsc::Sender<()>>>> = Arc::new(Mutex::new(BTreeMap::new()));
+      let senders_ = senders.clone();
       let root = root.as_ref().to_path_buf();
 
       let _ = thread::spawn(move || {
@@ -28,7 +28,7 @@ mod hot {
         for event in wrx.iter() {
           match event {
             notify::Event { path: Some(path), op: Ok(notify::op::WRITE) } => {
-              if let Some(sx) = receivers_.lock().unwrap().get(&path) {
+              if let Some(sx) = senders_.lock().unwrap().get(&path) {
                 sx.send(()).unwrap();
               }
             },
@@ -38,14 +38,14 @@ mod hot {
       });
 
       ResourceManager {
-        receivers: receivers
+        senders: senders
       }
     }
 
     pub fn monitor<P>(&mut self, path: P, sx: mpsc::Sender<()>) where P: AsRef<Path> {
-      let mut receivers = self.receivers.lock().unwrap();
+      let mut senders = self.senders.lock().unwrap();
 
-      receivers.insert(path.as_ref().to_path_buf(), sx);
+      senders.insert(path.as_ref().to_path_buf(), sx);
     }
   }
 }
