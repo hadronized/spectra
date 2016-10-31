@@ -4,17 +4,17 @@ use std::default::Default;
 use std::f32::consts::FRAC_PI_4;
 
 use projection::{Projectable, perspective};
-use transform::{Axis, Orientation, Transformable, Translation, X_AXIS, Y_AXIS, Z_AXIS,
+use transform::{Axis, Orientation, Position, Transformable, Translation, X_AXIS, Y_AXIS, Z_AXIS,
                 translation_matrix};
 
 pub struct Camera<P> {
-  position: Translation,
+  position: Position,
   orientation: Orientation,
   properties: P
 }
 
 impl<P> Camera<P> {
-  pub fn new(position: Translation, orientation: Orientation, properties: P) -> Self {
+  pub fn new(position: Position, orientation: Orientation, properties: P) -> Self {
     Camera {
       position: position,
       orientation: orientation,
@@ -25,7 +25,7 @@ impl<P> Camera<P> {
 
 impl<P> Default for Camera<P> where P: Default {
   fn default() -> Self {
-    Camera::new(Translation::new(0., 0., 0.),
+    Camera::new(Position::new(0., 0., 0.),
                 Orientation::from_unit_value_unchecked(Quaternion::from_parts(1., Vector3::new(0., 0., 0.))),
                 P::default())
   }
@@ -33,7 +33,7 @@ impl<P> Default for Camera<P> where P: Default {
 
 impl<P> Transformable for Camera<P> {
   fn transform(&self) -> M44 {
-    let m = self.orientation.to_rotation_matrix().to_homogeneous() * translation_matrix(self.position);
+    let m = self.orientation.to_rotation_matrix().to_homogeneous() * translation_matrix(-self.position);
     m.as_ref().clone()
   }
 }
