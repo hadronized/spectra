@@ -6,7 +6,6 @@ use id::Id;
 use model::Model;
 use resource::ResourceManager;
 
-
 /// The scene type.
 ///
 /// This type gathers all the required objects a scene needs to correctly handle and render all
