@@ -3,7 +3,7 @@ use nalgebra::{Quaternion, Rotate, ToHomogeneous, Unit, UnitQuaternion, Vector3}
 use std::default::Default;
 use std::f32::consts::FRAC_PI_4;
 
-use projection::perspective;
+use projection::{Projectable, perspective};
 use transform::{Axis, Orientation, Transformable, Translation, X_AXIS, Y_AXIS, Z_AXIS,
                 translation_matrix};
 
@@ -70,14 +70,17 @@ impl Freefly {
     }
   }
 
-  pub fn projection_matrix(&self) -> M44 {
-    perspective(self.ratio, self.fovy, self.znear, self.zfar)
-  }
 }
 
 impl Default for Freefly {
   fn default() -> Self {
     Self::new()
+  }
+}
+
+impl Projectable for Freefly {
+  fn projection(&self) -> M44 {
+    perspective(self.ratio, self.fovy, self.znear, self.zfar)
   }
 }
 
