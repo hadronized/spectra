@@ -41,7 +41,7 @@ impl Transform {
     Transform { orientation: UnitQuaternion::from_axisangle(Unit::new(&axis), phi) * self.orientation, .. self }
   }
 
-  pub fn set_uniform_scale(self, scale: f32) -> Self {
+  pub fn uni_scale(self, scale: f32) -> Self {
     Transform { scale: Scale { x: scale, y: scale, z: scale }, .. self }
   }
 
