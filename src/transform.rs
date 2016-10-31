@@ -1,13 +1,14 @@
-use nalgebra::{ToHomogeneous, Unit, UnitQuaternion, Quaternion};
-use serde::{Deserialize, Deserializer, Error, Serialize, Serializer};
-use serde::de::{MapVisitor, Visitor};
+use nalgebra::UnitQuaternion;
 use std::default::Default;
 
 use luminance::linear::M44;
-use luminance::shader::program::UniformUpdate;
-use luminance_gl::gl33::Uniform;
 
 pub use nalgebra::{Matrix4, Vector3};
+
+/// Class of types that can yield transformation matrices.
+pub trait Transformable {
+  fn transform(&self) -> M44;
+}
 
 pub type Translation = Vector3<f32>;
 pub type Axis = Vector3<f32>;
@@ -73,7 +74,7 @@ impl<'a> From<&'a Scale> for [f32; 3] {
   }
 }
 
-fn translation_matrix(v: Translation) -> Matrix4<f32> {
+pub fn translation_matrix(v: Translation) -> Matrix4<f32> {
   Matrix4::new(
     1., 0., 0., v.x,
     0., 1., 0., v.y,
