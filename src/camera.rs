@@ -1,11 +1,10 @@
-use luminance::M44;
 use nalgebra::{Quaternion, Rotate, ToHomogeneous, Unit, UnitQuaternion, Vector3};
 use std::default::Default;
 use std::f32::consts::FRAC_PI_4;
 
 use projection::{Projectable, perspective};
-use transform::{Axis, Orientation, Position, Transformable, Translation, X_AXIS, Y_AXIS, Z_AXIS,
-                translation_matrix};
+use transform::{Axis, M44, Orientation, Position, Transformable, Translation, X_AXIS, Y_AXIS,
+                Z_AXIS, translation_matrix};
 
 pub struct Camera<P> {
   position: Position,

@@ -29,7 +29,8 @@ pub mod color;
 pub mod device;
 pub mod id;
 pub mod model;
-pub mod objects;
+pub mod object;
+pub mod objects; // FIXME: change the name of that module; it’s confusing
 pub mod projection;
 pub mod shader;
 pub mod scene;
