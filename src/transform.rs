@@ -81,11 +81,3 @@ pub fn translation_matrix(v: Translation) -> Matrix4<f32> {
     0., 0., 0.,  1.,
   )
 }
-
-//pub fn instance_matrix(&self) -> Matrix4<f32> {
-//  translation_matrix(self.translation) * self.scale.to_mat() * self.orientation.to_rotation_matrix().to_homogeneous()
-//}
-//
-//pub fn view_matrix(&self) -> Matrix4<f32> {
-//  self.orientation.to_rotation_matrix().to_homogeneous() * translation_matrix(self.translation) * self.scale.to_mat()
-//}
