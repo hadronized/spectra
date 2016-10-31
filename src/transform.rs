@@ -246,6 +246,12 @@ impl<'a> From<&'a [f32; 3]> for Scale {
   }
 }
 
+impl<'a> From<&'a Scale> for [f32; 3] {
+  fn from(scale: &Scale) -> Self {
+    [scale.x, scale.y, scale.z]
+  }
+}
+
 fn translation_matrix(v: Translation) -> Matrix4<f32> {
   Matrix4::new(
     1., 0., 0., v.x,
