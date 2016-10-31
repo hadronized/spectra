@@ -1,10 +1,34 @@
 use luminance::M44;
-use nalgebra::Rotate;
+use nalgebra::{Quaternion, Rotate, Unit, UnitQuaternion, Vector3};
 use std::default::Default;
 use std::f32::consts::FRAC_PI_4;
 
-use entity::{Axis, Entity, Translation, X_AXIS, Y_AXIS, Z_AXIS};
 use projection::perspective;
+use transform::{Axis, Orientation, Translation, X_AXIS, Y_AXIS, Z_AXIS};
+
+pub struct Camera<P> {
+  position: Translation,
+  orientation: Orientation,
+  properties: P
+}
+
+impl<P> Camera<P> {
+  pub fn new(position: Translation, orientation: Orientation, properties: P) -> Self {
+    Camera {
+      position: position,
+      orientation: orientation,
+      properties: properties
+    }
+  }
+}
+
+impl<P> Default for Camera<P> where P: Default {
+  fn default() -> Self {
+    Camera::new(Translation::new(0., 0., 0.),
+                Orientation::from_unit_value_unchecked(Quaternion::from_parts(1., Vector3::new(0., 0., 0.))),
+                P::default())
+  }
+}
 
 pub struct Freefly {
   // sensitivities
@@ -49,20 +73,24 @@ impl Default for Freefly {
   }
 }
 
-impl<'a> Entity<&'a Freefly> {
+impl Camera<Freefly> {
   pub fn mv(&mut self, dir: Translation) {
-    let cam = self.object;
-    let axis = dir * Axis::new(cam.strafe_sens, cam.upward_sens, cam.forward_sens);
-    let v = self.transform.orientation.inverse_rotate(&axis);
+    let p = &self.properties;
+    let axis = dir * Axis::new(p.strafe_sens, p.upward_sens, p.forward_sens);
+    let v = self.orientation.inverse_rotate(&axis);
 
-    self.transform = self.transform.translate(v);
+    self.position -= v;
   }
 
   pub fn look_around(&mut self, dir: Translation) {
-    let cam = self.object;
+    let p = &self.properties;
 
-    self.transform = self.transform.orient(Y_AXIS, cam.yaw_sens * dir.y);
-    self.transform = self.transform.orient(X_AXIS, cam.pitch_sens * dir.x);
-    self.transform = self.transform.orient(Z_AXIS, cam.roll_sens * dir.z);
+    fn orient(axis: &Axis, phi: f32) -> Orientation {
+      UnitQuaternion::from_axisangle(Unit::new(&axis), phi)
+    }
+
+    self.orientation = orient(&Y_AXIS, p.yaw_sens * dir.y) * self.orientation;
+    self.orientation = orient(&X_AXIS, p.pitch_sens * dir.x) * self.orientation;
+    self.orientation = orient(&Z_AXIS, p.roll_sens * dir.z) * self.orientation;
   }
 }

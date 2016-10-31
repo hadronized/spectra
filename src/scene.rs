@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use anim::Cont;
-use entity::Entity;
 use id::Id;
 use model::Model;
 use resource::ResourceManager;
@@ -19,8 +18,6 @@ pub struct Scene<'a> {
   models: Vec<Model>,
   /// Model cache used to resolve Id based on instance name.
   model_cache: HashMap<String, Id<'a, Model>>,
-  /// Entities used in the scene.
-  entities: SceneEntities<'a>
 }
 
 impl<'a> Scene<'a> {
@@ -29,36 +26,12 @@ impl<'a> Scene<'a> {
       res_manager: ResourceManager::new(root),
       models: Vec::new(),
       model_cache: HashMap::new(),
-      entities: SceneEntities::new()
     }
   }
 
   pub fn resource_manager(&mut self) -> &mut ResourceManager {
     &mut self.res_manager
   }
-}
-
-/// A description of a scene in asset terms.
-pub struct SceneEntities<'a> {
-  models: HashMap<String, Entity<Id<'a, Model>>>
-}
-
-impl<'a> SceneEntities<'a> {
-  pub fn new() -> Self {
-    SceneEntities {
-      models: HashMap::new()
-    }
-  }
-}
-
-/// An model entity living in a scene.
-///
-/// It can either be a static model entity, in which case it just holds a transform object or it can
-/// be a dynamic model entity, which holds a continuous model entity you can sample in time to
-/// retrieve the varying transform.
-pub enum SceneModelEntity<'a> {
-  Static(Entity<Id<'a, Model>>),
-  Dynamic(Cont<'a, Entity<Id<'a, Model>>>)
 }
 
 pub trait Get<T>: Sized {

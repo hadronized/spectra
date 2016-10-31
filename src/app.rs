@@ -3,8 +3,8 @@ use std::time::Duration;
 use time::precise_time_ns;
 
 use bootstrap::{Action, Context, Key, Keyboard, Mouse, MouseButton, MouseMove, Scroll, Window};
-use camera::Freefly;
-use entity::{Entity, Translation};
+use camera::{Camera, Freefly};
+use transform::Translation;
 
 /// All common stuff goes here.
 pub struct App {
@@ -47,29 +47,22 @@ impl App {
     (precise_time_ns() - self.start_time) as f32 * 1e-9
   }
 
-  pub fn handle_events<'a>(&mut self, freefly: &mut Entity<&'a Freefly>) -> bool {
-    let mut freefly_tr = Translation::new(0., 0., 0.);
-    let mut freefly_or = Translation::new(0., 0., 0.);
-
+  pub fn handle_events<'a>(&mut self, camera: &mut Camera<Freefly>) -> bool {
     while let Ok((key, action)) = self.kbd.try_recv() {
-      if action == Action::Release {
-        if key == Key::Escape {
-          return false;
-        }
+      if action == Action::Release && key == Key::Escape{
+        return false;
       } else {
         match key {
-          Key::W => freefly_tr += Translation::new(0., 0., 1.),
-          Key::S => freefly_tr += Translation::new(0., 0., -1.),
-          Key::A => freefly_tr += Translation::new(1., 0., 0.),
-          Key::D => freefly_tr += Translation::new(-1., 0., 0.),
-          Key::Q => freefly_tr += Translation::new(0., -1., 0.),
-          Key::E => freefly_tr += Translation::new(0., 1., 0.),
+          Key::W => camera.mv(Translation::new(0., 0., 1.)),
+          Key::S => camera.mv(Translation::new(0., 0., -1.)),
+          Key::A => camera.mv(Translation::new(1., 0., 0.)),
+          Key::D => camera.mv(Translation::new(-1., 0., 0.)),
+          Key::Q => camera.mv(Translation::new(0., -1., 0.)),
+          Key::E => camera.mv(Translation::new(0., 1., 0.)),
           _ => {}
         }
       }
     }
-
-    freefly.mv(freefly_tr);
 
     while let Ok((button, action)) = self.mouse.try_recv() {
       match (button, action) {
@@ -92,16 +85,14 @@ impl App {
     while let Ok(xy) = self.cursor.try_recv() {
       if self.left_down {
         let (dx, dy) = (xy[0] - self.last_cursor[0], xy[1] - self.last_cursor[1]);
-        freefly_or = Translation::new(dy as f32, dx as f32, 0.);
+        camera.look_around(Translation::new(dy as f32, dx as f32, 0.));
       } else if self.right_down {
         let (dx, _) = (xy[0] - self.last_cursor[0], xy[1] - self.last_cursor[1]);
-        freefly_or = Translation::new(0., 0., dx as f32);
+        camera.look_around(Translation::new(0., 0., dx as f32));
       }
 
       self.last_cursor = xy;
     }
-
-    freefly.look_around(freefly_or);
 
     true
   }
