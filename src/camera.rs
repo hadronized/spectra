@@ -69,7 +69,6 @@ impl Freefly {
       zfar: 10.,
     }
   }
-
 }
 
 impl Default for Freefly {
