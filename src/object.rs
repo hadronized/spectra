@@ -17,3 +17,11 @@ impl<'a> Transformable for Object<'a> {
     m.as_ref().clone()
   }
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ObjectManifest {
+  model: String,
+  position: [f32; 3],
+  orientation: [f32; 4],
+  scale: [f32; 3]
+}

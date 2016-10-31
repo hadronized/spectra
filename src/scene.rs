@@ -4,6 +4,7 @@ use std::path::Path;
 use anim::Cont;
 use id::Id;
 use model::Model;
+use object::Object;
 use resource::ResourceManager;
 
 /// The scene type.
@@ -17,6 +18,8 @@ pub struct Scene<'a> {
   models: Vec<Model>,
   /// Model cache used to resolve Id based on instance name.
   model_cache: HashMap<String, Id<'a, Model>>,
+  /// Objects.
+  objects: HashMap<String, Object<'a>>
 }
 
 impl<'a> Scene<'a> {
@@ -25,6 +28,7 @@ impl<'a> Scene<'a> {
       res_manager: ResourceManager::new(root),
       models: Vec::new(),
       model_cache: HashMap::new(),
+      objects: HashMap::new()
     }
   }
 

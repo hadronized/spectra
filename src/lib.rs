@@ -1,3 +1,5 @@
+#![feature(proc_macro)]
+
 extern crate gl;
 pub extern crate glfw;
 extern crate image;
@@ -8,6 +10,8 @@ extern crate nalgebra;
 extern crate notify;
 extern crate openal;
 extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
 #[cfg(feature = "hot-resource")]
 extern crate time;
