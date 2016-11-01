@@ -1,3 +1,16 @@
+use std::path::{Path, PathBuf};
+
+pub trait Load: Sized {
+  fn load<P>(path: P) -> Result<Self, LoadError> where P: AsRef<Path>;
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum LoadError {
+  FileNotFound(PathBuf, String),
+  ParseFailed(String),
+  ConversionFailed(String)
+}
+
 #[cfg(feature = "hot-resource")]
 mod hot {
   use notify::{self, RecommendedWatcher, Watcher};

@@ -8,24 +8,26 @@ use std::path::{Path, PathBuf};
 use std::vec;
 use wavefront_obj::{self, obj};
 
+use resource::{Load, LoadError};
+
 pub type Vertex = (VertexPos, VertexNor, VertexTexCoord);
 pub type VertexPos = [f32; 3];
 pub type VertexNor = [f32; 3];
 pub type VertexTexCoord = [f32; 2];
 
-pub struct ModelBase {
+pub struct Model {
   pub parts: Vec<Part>
 }
 
-impl ModelBase {
+impl Model {
   pub fn from_parts(parts: Vec<Part>) -> Self {
-    ModelBase {
+    Model {
       parts: parts
     }
   }
 }
 
-impl IntoIterator for ModelBase {
+impl IntoIterator for Model {
   type Item = Part;
   type IntoIter = vec::IntoIter<Part>;
 
@@ -47,32 +49,34 @@ impl Part {
   }
 }
 
-pub fn load<P>(path: P) -> Result<ModelBase, ModelError> where P: AsRef<Path> {
-  let path = path.as_ref();
+impl Load for Model {
+  fn load<P>(path: P) -> Result<Self, LoadError> where P: AsRef<Path> {
+    let path = path.as_ref();
 
-  info!("loading model: \x1b[35m{:?}", path);
+    info!("loading model: {:?}", path);
 
-  let mut input = String::new();
+    let mut input = String::new();
 
-  // load the data directly into memory; no buffering nor streaming
-  {
-    let mut file = try!(File::open(path).map_err(|e| ModelError::FileNotFound(path.to_path_buf(), format!("{:?}", e))));
-    let _ = file.read_to_string(&mut input);
+    // load the data directly into memory; no buffering nor streaming
+    {
+      let mut file = try!(File::open(path).map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e))));
+      let _ = file.read_to_string(&mut input);
+    }
+
+    // parse the obj file and convert it
+    let obj_set = try!(obj::parse(input).map_err(|e| LoadError::ParseFailed(format!("{:?}", e))));
+
+    convert_obj(obj_set).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))
   }
-
-  // parse the obj file and convert it
-  let obj_set = try!(obj::parse(input).map_err(ModelError::ParseFailed));
-
-  convert_obj(obj_set)
 }
 
 // Turn a wavefront obj object into a `Model`
-fn convert_obj(obj_set: obj::ObjSet) -> Result<ModelBase, ModelError> {
+fn convert_obj(obj_set: obj::ObjSet) -> Result<Model, ModelError> {
   let mut parts = Vec::new();
 
   info!("{} objects to convert…", obj_set.objects.len());
   for obj in &obj_set.objects {
-    info!("  converting {} geometries in object \x1b[35m{}", obj.geometry.len(), obj.name);
+    info!("  converting {} geometries in object {}", obj.geometry.len(), obj.name);
 
     // convert all the geometries
     for geometry in &obj.geometry {
@@ -83,7 +87,7 @@ fn convert_obj(obj_set: obj::ObjSet) -> Result<ModelBase, ModelError> {
     }
   }
 
-  Ok(ModelBase::from_parts(parts))
+  Ok(Model::from_parts(parts))
 }
 
 // Convert wavefront_obj’s Geometry into a pair of vertices and indices.
@@ -191,94 +195,3 @@ pub enum ModelError {
   UnsupportedVertex,
   NoShape
 }
-
-#[cfg(feature = "hot-resource")]
-mod hot {
-  use std::ops::Deref;
-  use std::path::{Path, PathBuf};
-  use std::sync::mpsc;
-
-  use super::{ModelBase, ModelError};
-
-  use resource::ResourceManager;
-
-  pub struct Model {
-    rx: mpsc::Receiver<()>,
-    last_update_time: Option<f64>,
-    model: ModelBase,
-    path: PathBuf
-  }
-
-  impl Model {
-    pub fn load<P>(manager: &mut ResourceManager, path: P) -> Result<Self, ModelError> where P: AsRef<Path> {
-      let path = path.as_ref();
-      let model = try!(super::load(path));
-
-      let (sx, rx) = mpsc::channel();
-      manager.monitor(path, sx);
-
-      Ok(Model {
-        rx: rx,
-        last_update_time: None,
-        model: model,
-        path: path.to_owned()
-      })
-    }
-
-    fn reload(&mut self) {
-      match super::load(self.path.as_path()) {
-        Ok(model) => {
-          self.model = model;
-          info!("reloaded model");
-        },
-        Err(e) => {
-          err!("reloading model has failed: {:?}", e);
-        }
-      }
-    }
-
-    decl_sync_hot!();
-  }
-
-  impl Deref for Model {
-    type Target = ModelBase;
-
-    fn deref(&self) -> &Self::Target {
-      &self.model
-    }
-  }
-}
-
-#[cfg(not(feature = "hot-resource"))]
-mod cold {
-  use std::ops::Deref;
-  use std::path::Path;
-
-  use super::{ModelBase, ModelError};
-
-  use resource::ResourceManager;
-
-  pub struct Model<'a>(ModelBase<'a>);
-
-  impl Model {
-    pub fn load<P>(_: &mut ResourceManager, path: P) -> Result<Self, ModelError> where P: AsRef<Path> {
-      super::load(path).map(|m| Model(m))
-    }
-
-    pub fn sync(&mut self) {
-    }
-  }
-
-  impl Deref for Model {
-    type Target = ModelBase;
-
-    fn deref(&self) -> &Self::Target {
-      &self.0
-    }
-  }
-}
-
-#[cfg(feature = "hot-resource")]
-pub use self::hot::*;
-#[cfg(not(feature = "hot-resource"))]
-pub use self::cold::*;

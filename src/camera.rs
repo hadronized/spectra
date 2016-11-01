@@ -7,9 +7,9 @@ use transform::{Axis, M44, Orientation, Position, Transformable, Translation, X_
                 Z_AXIS, translation_matrix};
 
 pub struct Camera<P> {
-  position: Position,
-  orientation: Orientation,
-  properties: P
+  pub position: Position,
+  pub orientation: Orientation,
+  pub properties: P
 }
 
 impl<P> Camera<P> {
