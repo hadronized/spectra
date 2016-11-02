@@ -23,7 +23,7 @@ impl<'a> Scene<'a> {
     self.cache.get_id(name)
   }
 
-  pub fn get_by_id<T>(&mut self, id: <Cache<'a> as Get<T>>::Id) -> Option<&T> where Cache<'a>: Get<T>, T: Load {
+  pub fn get_by_id<T>(&mut self, id: &<Cache<'a> as Get<T>>::Id) -> Option<&T> where Cache<'a>: Get<T>, T: Load {
     self.cache.get_by_id(id)
   }
 

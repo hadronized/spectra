@@ -127,9 +127,9 @@ macro_rules! cache_struct {
           }
         }
 
-        fn get_by_id(&mut self, id: Self::Id) -> Option<&$t> {
+        fn get_by_id(&mut self, id: &Self::Id) -> Option<&$t> {
           // synchronization
-          if let Some(data) = self.$n.data.get_mut(*id as usize) {
+          if let Some(data) = self.$n.data.get_mut(id.id as usize) {
             match (data.2).0.try_recv() {
               Ok(timestamp) if timestamp - (data.2).1 >= UPDATE_AWAIT_TIME => {
                 // reload
@@ -150,7 +150,7 @@ macro_rules! cache_struct {
             return None;
           }
 
-          self.$n.data.get(*id as usize).map(|r| &r.0)
+          self.$n.data.get(id.id as usize).map(|r| &r.0)
         }
       }
     )*
@@ -161,9 +161,9 @@ pub trait Get<T> where T: Load {
   type Id;
 
   fn get_id(&mut self, name: &str) -> Option<Self::Id>;
-  fn get_by_id(&mut self, id: Self::Id) -> Option<&T>;
+  fn get_by_id(&mut self, id: &Self::Id) -> Option<&T>;
   fn get(&mut self, name: &str) -> Option<&T> {
-    self.get_id(name).and_then(move |i| self.get_by_id(i))
+    self.get_id(name).and_then(move |i| self.get_by_id(&i))
   }
 }
 
