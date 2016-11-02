@@ -1,11 +1,6 @@
-use std::collections::HashMap;
 use std::path::Path;
 
-use anim::Cont;
 use cache::{Cache, Get};
-use id::Id;
-use model::Model;
-use object::Object;
 use resource::Load;
 
 /// The scene type.
@@ -20,7 +15,7 @@ pub struct Scene<'a> {
 impl<'a> Scene<'a> {
   pub fn new<P>(root: P) -> Self where P: AsRef<Path>{
     Scene {
-      cache: Cache::new(),
+      cache: Cache::new(root),
     }
   }
 

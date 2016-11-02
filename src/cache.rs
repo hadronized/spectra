@@ -1,13 +1,13 @@
+use notify::{self, RecommendedWatcher, Watcher};
 use std::collections::HashMap;
-use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{Receiver, Sender, channel};
+use std::thread;
 use time::precise_time_s;
 
 use id::Id;
 use model::Model;
-use object::Object;
 use resource::Load;
 
 type Timestamp = f64;
@@ -39,11 +39,31 @@ macro_rules! cache_struct {
     }
 
     impl<$l> Cache<$l> {
-      pub fn new() -> Self {
-        let  senders = Arc::new(Mutex::new(HashMap::new()));
+      pub fn new<P>(root:P) -> Self where P: AsRef<Path> {
+        let senders: Arc<Mutex<HashMap<PathBuf, Sender<Timestamp>>>> = Arc::new(Mutex::new(HashMap::new()));
 
         // start watcher thread
-        // TODO
+        {
+          let senders = senders.clone();
+          let root = root.as_ref().to_path_buf();
+          let (wsx, wrx) = channel();
+          let mut watcher: RecommendedWatcher = Watcher::new(wsx).unwrap();
+
+          let _ = thread::spawn(move || {
+            let _ = watcher.watch(root);
+
+            for event in wrx.iter() {
+              match event {
+                notify::Event { path: Some(path), op: Ok(notify::op::WRITE) } => {
+                  if let Some(sx) = senders.lock().unwrap().get(&path) {
+                    sx.send(precise_time_s()).unwrap();
+                  }
+                },
+                _ => {}
+              }
+            }
+          });
+        }
 
         Cache {
           senders: senders,
