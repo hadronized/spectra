@@ -1,22 +1,30 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc::{Receiver, Sender, channel};
+use time::precise_time_s;
 
 use id::Id;
 use model::Model;
 use object::Object;
 use resource::Load;
 
+type Timestamp = f64;
+
+/// Time to await after a resource update to establish that it should be reloaded.
+const UPDATE_AWAIT_TIME: Timestamp = 0.1; // 100ms
+
 pub struct CacheBlock<'a, T> where T: 'a {
-  data: Vec<T>,
-  ids: HashMap<String, Id<'a, T>>
+  data: Vec<(T, PathBuf, (Receiver<Timestamp>, f64))>,
+  ids: HashMap<String, Id<'a, T>>,
 }
 
 impl<'a, T> CacheBlock<'a, T> {
   pub fn new() -> Self {
     CacheBlock {
       data: Vec::new(),
-      ids: HashMap::new()
+      ids: HashMap::new(),
     }
   }
 }
@@ -24,6 +32,7 @@ impl<'a, T> CacheBlock<'a, T> {
 macro_rules! cache_struct {
   ($l:tt, $($n:ident: $t:ty),*) => {
     pub struct Cache<$l> {
+      senders: Arc<Mutex<HashMap<PathBuf, Sender<Timestamp>>>>,
       $(
         $n: CacheBlock<$l, $t>
       ),*
@@ -32,6 +41,7 @@ macro_rules! cache_struct {
     impl<$l> Cache<$l> {
       pub fn new() -> Self {
         Cache {
+          senders: Arc::new(Mutex::new(HashMap::new())),
           $(
             $n: CacheBlock::new()
           ),*
@@ -59,11 +69,21 @@ macro_rules! cache_struct {
               if path.exists() {
                 match <$t as Load>::load(&path) {
                   Ok(resource) => {
+                    let path_buf = path.to_owned();
+
                     // create the id if we have loaded the resource
                     let id: Id<$t> = (self.$n.data.len() as u32).into();
 
+                    // create a channel to notify any update later and register the sender for the
+                    // given path
+                    let (sx, rx) = channel();
+                    {
+                      let mut senders = self.senders.lock().unwrap();
+                      senders.insert(path_buf.clone(), sx);
+                    }
+
                     // add the resource to the list of loaded ones
-                    self.$n.data.push(resource);
+                    self.$n.data.push((resource, path_buf.clone(), (rx, precise_time_s())));
                     // cache the resource
                     self.$n.ids.insert(name.to_owned(), id.clone());
 
@@ -82,8 +102,29 @@ macro_rules! cache_struct {
           }
         }
 
-        fn get_by_id(&self, id: Self::Id) -> Option<&$t> {
-          self.$n.data.get(*id as usize)
+        fn get_by_id(&mut self, id: Self::Id) -> Option<&$t> {
+          // synchronization
+          if let Some(data) = self.$n.data.get_mut(*id as usize) {
+            match (data.2).0.try_recv() {
+              Ok(timestamp) if timestamp - (data.2).1 >= UPDATE_AWAIT_TIME => {
+                // reload
+                match <$t as Load>::load(&data.1) {
+                  Ok(new_resource) => {
+                    // replace the current resource with the freshly loaded one
+                    data.0 = new_resource;
+                  },
+                  Err(e) => {
+                    warn!("reloading resource from {:?} has failed: {:?}", data.1, e);
+                  }
+                }
+              },
+              _ => {}
+            }
+          } else {
+            return None;
+          }
+
+          self.$n.data.get(*id as usize).map(|r| &r.0)
         }
       }
     )*
@@ -94,7 +135,7 @@ pub trait Get<T> where T: Load {
   type Id;
 
   fn get_id(&mut self, name: &str) -> Option<Self::Id>;
-  fn get_by_id(&self, id: Self::Id) -> Option<&T>;
+  fn get_by_id(&mut self, id: Self::Id) -> Option<&T>;
   fn get(&mut self, name: &str) -> Option<&T> {
     self.get_id(name).and_then(move |i| self.get_by_id(i))
   }
