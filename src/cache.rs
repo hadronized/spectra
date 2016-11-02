@@ -40,8 +40,13 @@ macro_rules! cache_struct {
 
     impl<$l> Cache<$l> {
       pub fn new() -> Self {
+        let  senders = Arc::new(Mutex::new(HashMap::new()));
+
+        // start watcher thread
+        // TODO
+
         Cache {
-          senders: Arc::new(Mutex::new(HashMap::new())),
+          senders: senders,
           $(
             $n: CacheBlock::new()
           ),*
