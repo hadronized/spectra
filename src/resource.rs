@@ -1,7 +1,9 @@
 use std::path::{Path, PathBuf};
 
 pub trait Load: Sized {
-  fn load<P>(path: P) -> Result<Self, LoadError> where P: AsRef<Path>;
+  type Args;
+
+  fn load<P>(path: P, args: Option<Self::Args>) -> Result<Self, LoadError> where P: AsRef<Path>;
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

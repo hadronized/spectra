@@ -19,15 +19,15 @@ impl<'a> Scene<'a> {
     }
   }
 
-  pub fn get_id<T>(&mut self, name: &str) -> Option<<Cache<'a> as Get<T>>::Id> where Cache<'a>: Get<T>, T: Load {
-    self.cache.get_id(name)
+  pub fn get_id<T>(&mut self, name: &str, args: Option<<T as Load>::Args>) -> Option<<Cache<'a> as Get<T>>::Id> where Cache<'a>: Get<T>, T: Load {
+    self.cache.get_id(name, args)
   }
 
   pub fn get_by_id<T>(&mut self, id: &<Cache<'a> as Get<T>>::Id) -> Option<&T> where Cache<'a>: Get<T>, T: Load {
     self.cache.get_by_id(id)
   }
 
-  pub fn get<T>(&mut self, name: &str) -> Option<&T> where Cache<'a>: Get<T>, T: Load {
-    self.cache.get(name)
+  pub fn get<T>(&mut self, name: &str, args: Option<<T as Load>::Args>) -> Option<&T> where Cache<'a>: Get<T>, T: Load {
+    self.cache.get(name, args)
   }
 }

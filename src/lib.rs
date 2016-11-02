@@ -1,3 +1,4 @@
+#![feature(associated_type_defaults)]
 #![feature(proc_macro)]
 
 extern crate gl;

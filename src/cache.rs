@@ -30,7 +30,7 @@ impl<'a, T> CacheBlock<'a, T> {
 }
 
 macro_rules! cache_struct {
-  ($l:tt, $($n:ident: $t:ty),*) => {
+  ($l:tt, $($n:ident : $t:ty | $args:ty),*) => {
     pub struct Cache<$l> {
       senders: Arc<Mutex<HashMap<PathBuf, Sender<Timestamp>>>>,
       $(
@@ -78,7 +78,7 @@ macro_rules! cache_struct {
       impl<$l> Get<$t> for Cache<$l> {
         type Id = Id<$l, $t>;
 
-        fn get_id(&mut self, name: &str) -> Option<Self::Id> {
+        fn get_id(&mut self, name: &str, args: Option<<$t as Load>::Args>) -> Option<Self::Id> {
           let path_str = format!("data/{}/{}", stringify!($n), name);
           let path = Path::new(&path_str);
 
@@ -92,7 +92,7 @@ macro_rules! cache_struct {
 
               // specific loading
               if path.exists() {
-                match <$t as Load>::load(&path) {
+                match <$t as Load>::load(&path, args) {
                   Ok(resource) => {
                     let path_buf = path.to_owned();
 
@@ -160,12 +160,12 @@ macro_rules! cache_struct {
 pub trait Get<T> where T: Load {
   type Id;
 
-  fn get_id(&mut self, name: &str) -> Option<Self::Id>;
+  fn get_id(&mut self, name: &str, args: Option<T::Args>) -> Option<Self::Id>;
   fn get_by_id(&mut self, id: &Self::Id) -> Option<&T>;
-  fn get(&mut self, name: &str) -> Option<&T> {
-    self.get_id(name).and_then(move |i| self.get_by_id(&i))
+  fn get(&mut self, name: &str, args: Option<T::Args>) -> Option<&T> {
+    self.get_id(name, args).and_then(move |i| self.get_by_id(&i))
   }
 }
 
 cache_struct!('a,
-              models: Model);
+              models: Model | ());
