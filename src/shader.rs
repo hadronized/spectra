@@ -16,6 +16,7 @@ pub enum ShaderError {
   ProgramError(ProgramError)
 }
 
+// Take raw shader sources and turn them into stages.
 fn compile_stages(tess_src: Option<(&str, &str)>, vs_src: &str, gs_src: Option<&str>, fs_src: &str) -> Result<(Option<(Stage<TessellationControlShader>, Stage<TessellationEvaluationShader>)>, Stage<VertexShader>, Option<Stage<GeometryShader>>, Stage<FragmentShader>), StageError> {
   let tess = match tess_src {
     None => None,
@@ -38,6 +39,7 @@ fn compile_stages(tess_src: Option<(&str, &str)>, vs_src: &str, gs_src: Option<&
   Ok((tess, vs, gs, fs))
 }
 
+/// Build a shader program from the shader sources and a uniform builder function.
 pub fn new_program<GetUni, T>(tess_src: Option<(&str, &str)>, vs_src: &str, gs_src: Option<&str>, fs_src: &str, get_uni: &GetUni) -> Result<gl33::Program<T>, ProgramError> where GetUni: Fn(ProgramProxy) -> Result<T, UniformWarning> {
   let stages = compile_stages(tess_src, vs_src, gs_src, fs_src);
 
@@ -61,6 +63,7 @@ pub fn new_program<GetUni, T>(tess_src: Option<(&str, &str)>, vs_src: &str, gs_s
   }
 }
 
+/// Build a shader program from paths and a uniform builder function.
 pub fn new_program_from_disk<P, GetUni, T>(tess_path: Option<(P, P)>, vs_path: P, gs_path: Option<P>, fs_path: P, get_uni: &GetUni) -> Result<gl33::Program<T>, ProgramError>
       where P: AsRef<Path>,
             GetUni: Fn(ProgramProxy) -> Result<T, UniformWarning> {
@@ -90,7 +93,8 @@ pub fn new_program_from_disk<P, GetUni, T>(tess_path: Option<(P, P)>, vs_path: P
   }
 }
 
-pub fn read_stage<P, T>(path: P) -> Result<Stage<T>, StageError> where P: AsRef<Path>, T: ShaderTypeable {
+// Read a stage from disk.
+fn read_stage<P, T>(path: P) -> Result<Stage<T>, StageError> where P: AsRef<Path>, T: ShaderTypeable {
   let path = path.as_ref();
 
   info!("loading {:?} stage: {:?}", T::shader_type(), path);
