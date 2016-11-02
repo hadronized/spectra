@@ -136,6 +136,7 @@ macro_rules! cache_struct {
                 match <$t as Load>::load(&data.1) {
                   Ok(new_resource) => {
                     // replace the current resource with the freshly loaded one
+                    deb!("reloaded resource from {:?}", data.1);
                     data.0 = new_resource;
                   },
                   Err(e) => {
