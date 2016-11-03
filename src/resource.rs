@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 pub trait Load: Sized {
   type Args;
 
+  // TODO: see whether we can use something with From/Into instead, so that we can use lambdas.
   fn load<P>(path: P, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path>;
 }
 
