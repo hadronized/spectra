@@ -2,7 +2,7 @@ language: rust
 
 rust:
   #- stable
-  - beta
+  #- beta
   - nightly
 
 os:
