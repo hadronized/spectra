@@ -78,7 +78,7 @@ macro_rules! cache_struct {
       impl<$l> Get<$t> for Cache<$l> {
         type Id = Id<$l, $t>;
 
-        fn get_id(&mut self, name: &str, args: Option<<$t as Load>::Args>) -> Option<Self::Id> {
+        fn get_id(&mut self, name: &str, args: <$t as Load>::Args) -> Option<Self::Id> {
           let path_str = format!("data/{}/{}", stringify!($n), name);
           let path = Path::new(&path_str);
 
@@ -133,7 +133,7 @@ macro_rules! cache_struct {
             match (data.2).0.try_recv() {
               Ok(timestamp) if timestamp - (data.2).1 >= UPDATE_AWAIT_TIME => {
                 // reload
-                match <$t as Load>::load(&data.1) {
+                match <$t as Load>::reload(&data.1, &data.0) {
                   Ok(new_resource) => {
                     // replace the current resource with the freshly loaded one
                     deb!("reloaded resource from {:?}", data.1);
@@ -160,9 +160,9 @@ macro_rules! cache_struct {
 pub trait Get<T> where T: Load {
   type Id;
 
-  fn get_id(&mut self, name: &str, args: Option<T::Args>) -> Option<Self::Id>;
+  fn get_id(&mut self, name: &str, args: T::Args) -> Option<Self::Id>;
   fn get_by_id(&mut self, id: &Self::Id) -> Option<&T>;
-  fn get(&mut self, name: &str, args: Option<T::Args>) -> Option<&T> {
+  fn get(&mut self, name: &str, args: T::Args) -> Option<&T> {
     self.get_id(name, args).and_then(move |i| self.get_by_id(&i))
   }
 }

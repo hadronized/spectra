@@ -50,7 +50,9 @@ impl Part {
 }
 
 impl Load for Model {
-  fn load<P>(path: P) -> Result<Self, LoadError> where P: AsRef<Path> {
+  type Args = ();
+
+  fn load<P>(path: P, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     info!("loading model: {:?}", path);
@@ -67,6 +69,10 @@ impl Load for Model {
     let obj_set = try!(obj::parse(input).map_err(|e| LoadError::ParseFailed(format!("{:?}", e))));
 
     convert_obj(obj_set).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))
+  }
+
+  fn reload<P>(path :P, _: &Self) -> Result<Self, LoadError> where P: AsRef<Path> {
+    Self::load(path, ())
   }
 }
 

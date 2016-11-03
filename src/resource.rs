@@ -3,7 +3,8 @@ use std::path::{Path, PathBuf};
 pub trait Load: Sized {
   type Args;
 
-  fn load<P>(path: P, args: Option<Self::Args>) -> Result<Self, LoadError> where P: AsRef<Path>;
+  fn load<P>(path: P, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path>;
+  fn reload<P>(path :P, resource: &Self) -> Result<Self, LoadError> where P: AsRef<Path>;
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

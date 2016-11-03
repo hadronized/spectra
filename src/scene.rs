@@ -19,7 +19,7 @@ impl<'a> Scene<'a> {
     }
   }
 
-  pub fn get_id<T>(&mut self, name: &str, args: Option<<T as Load>::Args>) -> Option<<Cache<'a> as Get<T>>::Id> where Cache<'a>: Get<T>, T: Load {
+  pub fn get_id<T>(&mut self, name: &str, args: <T as Load>::Args) -> Option<<Cache<'a> as Get<T>>::Id> where Cache<'a>: Get<T>, T: Load {
     self.cache.get_id(name, args)
   }
 
@@ -27,7 +27,7 @@ impl<'a> Scene<'a> {
     self.cache.get_by_id(id)
   }
 
-  pub fn get<T>(&mut self, name: &str, args: Option<<T as Load>::Args>) -> Option<&T> where Cache<'a>: Get<T>, T: Load {
+  pub fn get<T>(&mut self, name: &str, args: <T as Load>::Args) -> Option<&T> where Cache<'a>: Get<T>, T: Load {
     self.cache.get(name, args)
   }
 }
