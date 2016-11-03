@@ -8,7 +8,7 @@ use time::precise_time_s;
 
 use id::Id;
 use model::Model;
-use resource::Load;
+use resource::{Load, Reload};
 
 type Timestamp = f64;
 
@@ -157,7 +157,7 @@ macro_rules! cache_struct {
   }
 }
 
-pub trait Get<T> where T: Load {
+pub trait Get<T> where T: Reload {
   type Id;
 
   fn get_id(&mut self, name: &str, args: T::Args) -> Option<Self::Id>;

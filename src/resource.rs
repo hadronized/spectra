@@ -1,11 +1,22 @@
 use std::path::{Path, PathBuf};
 
-/// Class of types that can be loaded and reloaded.
+/// Class of types that can be loaded.
 pub trait Load: Sized {
   type Args;
 
   fn load<P>(path: P, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path>;
+}
+
+/// Class of types that can be reloaded.
+pub trait Reload: Load {
   fn reload<P>(&self, path :P) -> Result<Self, LoadError> where P: AsRef<Path>;
+}
+
+/// Default implementation for types which are loaded without any arguments.
+impl<T> Reload for T where T: Load<Args=()> {
+  fn reload<P>(&self, path :P) -> Result<Self, LoadError> where P: AsRef<Path> {
+    Self::load(path, ())
+  }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
