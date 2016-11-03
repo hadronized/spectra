@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-/// Class of types that can be loaded from 
+/// Class of types that can be loaded and reloaded.
 pub trait Load: Sized {
   type Args;
 
