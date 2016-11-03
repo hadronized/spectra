@@ -71,7 +71,7 @@ impl Load for Model {
     convert_obj(obj_set).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))
   }
 
-  fn reload<P>(path :P, _: &Self) -> Result<Self, LoadError> where P: AsRef<Path> {
+  fn reload<P>(&self, path :P) -> Result<Self, LoadError> where P: AsRef<Path> {
     Self::load(path, ())
   }
 }

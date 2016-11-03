@@ -133,7 +133,7 @@ macro_rules! cache_struct {
             match (data.2).0.try_recv() {
               Ok(timestamp) if timestamp - (data.2).1 >= UPDATE_AWAIT_TIME => {
                 // reload
-                match <$t as Load>::reload(&data.1, &data.0) {
+                match data.0.reload(&data.1) {
                   Ok(new_resource) => {
                     // replace the current resource with the freshly loaded one
                     deb!("reloaded resource from {:?}", data.1);

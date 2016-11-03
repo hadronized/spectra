@@ -1,10 +1,11 @@
 use std::path::{Path, PathBuf};
 
+/// Class of types that can be loaded from 
 pub trait Load: Sized {
   type Args;
 
   fn load<P>(path: P, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path>;
-  fn reload<P>(path :P, resource: &Self) -> Result<Self, LoadError> where P: AsRef<Path>;
+  fn reload<P>(&self, path :P) -> Result<Self, LoadError> where P: AsRef<Path>;
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
