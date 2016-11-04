@@ -2,7 +2,8 @@ use luminance::{FragmentShader, GeometryShader, StageError, ShaderTypeable,
                 TessellationControlShader, TessellationEvaluationShader, VertexShader};
 use luminance_gl::gl33::{ProgramProxy, Stage};
 use std::fs::File;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader};
+use std::ops::Deref;
 use std::path::Path;
 
 pub use luminance::{ProgramError, Uniformable, UniformUpdate};
@@ -69,8 +70,16 @@ fn compile_stages(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_s
 ///
 /// At the top of the file, if you don’t put a pragma, you can use `//` to add comments, or die.
 pub struct Program<T> where T: 'static {
-  program: gl33::Program<T>,
+  pub program: gl33::Program<T>,
   get_uni: &'static Fn(ProgramProxy) -> Result<T, UniformWarning>,
+}
+
+impl<T> Deref for Program<T> where T: 'static {
+  type Target = gl33::Program<T>;
+
+  fn deref(&self) -> &Self::Target {
+    &self.program
+  }
 }
 
 impl<T> Load for Program<T> where T: 'static {
