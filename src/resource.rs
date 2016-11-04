@@ -17,7 +17,7 @@ pub trait Load: Sized {
   type Args;
 
   // TODO: see whether we can use something with From/Into instead, so that we can use lambdas.
-  fn load<P>(path: P, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path>;
+  fn load<'a, P>(path: P, cache: &mut Cache<'a>, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path>;
 }
 
 /// Class of types that can be reloaded.
@@ -123,7 +123,7 @@ macro_rules! cache_struct {
 
               // specific loading
               if path.exists() {
-                match <$t as Load>::load(&path, args) {
+                match <$t as Load>::load(&path, self, args) {
                   Ok(resource) => {
                     let path_buf = path.to_owned();
 
@@ -174,7 +174,7 @@ macro_rules! cache_struct {
           }
 
           if let Some((path, args)) = reload_args {
-            match <$t as Load>::load(&path, args) {
+            match <$t as Load>::load(&path, self, args) {
               Ok(new_resource) => {
                 // replace the current resource with the freshly loaded one
                 deb!("reloaded resource from {:?}", path);

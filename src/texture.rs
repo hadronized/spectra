@@ -6,7 +6,7 @@ use std::path::Path;
 
 pub use luminance::RGBA32F;
 
-use resource::{Load, LoadError, Reload};
+use resource::{Cache, Load, LoadError, Reload};
 
 /// Load an RGBA texture from an image at a path.
 pub fn load_rgba_texture<P>(path: P, sampler: &Sampler, linear: bool) -> ImageResult<Texture<Flat, Dim2, RGBA32F>> where P: AsRef<Path> {
@@ -62,7 +62,7 @@ impl Deref for TextureImage {
 impl Load for TextureImage {
   type Args = (Sampler, bool);
 
-  fn load<P>(path: P, (sampler, linear): Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  fn load<'a, P>(path: P, _: &mut Cache<'a>, (sampler, linear): Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     load_rgba_texture(path, &sampler, linear)
       .map(|tex| TextureImage {
         texture: tex,

@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::vec;
 use wavefront_obj::{self, obj};
 
-use resource::{Load, LoadError};
+use resource::{Cache, Load, LoadError};
 
 pub type Vertex = (VertexPos, VertexNor, VertexTexCoord);
 pub type VertexPos = [f32; 3];
@@ -52,7 +52,7 @@ impl Part {
 impl Load for Model {
   type Args = ();
 
-  fn load<P>(path: P, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  fn load<'a, P>(path: P, _: &mut Cache<'a>, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     info!("loading model: {:?}", path);

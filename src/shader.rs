@@ -11,7 +11,7 @@ pub use luminance::shader::program::UniformWarning;
 pub use luminance_gl::gl33::{self, Uniform};
 pub use luminance_gl::gl33::token::*;
 
-use resource::{Load, LoadError, Reload};
+use resource::{Cache, Load, LoadError, Reload};
 
 #[derive(Debug)]
 pub enum ShaderError {
@@ -85,7 +85,7 @@ impl<T> Deref for Program<T> where T: 'static {
 impl<T> Load for Program<T> where T: 'static {
   type Args = &'static Fn(ProgramProxy) -> Result<T, UniformWarning>;
 
-  fn load<P>(path: P, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  fn load<'a, P>(path: P, _: &mut Cache<'a>, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     enum CurrentStage {
       VS,
       FS,
