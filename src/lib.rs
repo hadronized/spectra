@@ -29,7 +29,6 @@ pub mod anim;
 pub mod app;
 pub mod behavior;
 pub mod bootstrap;
-pub mod cache;
 pub mod camera;
 pub mod color;
 pub mod device;

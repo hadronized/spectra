@@ -1,7 +1,6 @@
 use std::path::Path;
 
-use cache::{Cache, Get};
-use resource::{Load, Reload};
+use resource::{Cache, Load, Get, Reload};
 
 /// The scene type.
 ///
