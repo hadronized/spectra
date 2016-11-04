@@ -1,5 +1,5 @@
-use luminance::{FragmentShader, GeometryShader, StageError, ShaderTypeable,
-                TessellationControlShader, TessellationEvaluationShader, VertexShader};
+use luminance::{FragmentShader, GeometryShader, StageError, TessellationControlShader,
+                TessellationEvaluationShader, VertexShader};
 use luminance_gl::gl33::{ProgramProxy, Stage};
 use std::fs::File;
 use std::io::{BufRead, BufReader};

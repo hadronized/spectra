@@ -5,10 +5,10 @@ use model::Model;
 use transform::{M44, Orientation, Position, Scale, Transformable, translation_matrix};
 
 pub struct Object<'a> {
-  model: Id<'a, Model>,
-  position: Position,
-  orientation: Orientation,
-  scale: Scale
+  pub model: Id<'a, Model>,
+  pub position: Position,
+  pub orientation: Orientation,
+  pub scale: Scale
 }
 
 impl<'a> Transformable for Object<'a> {
