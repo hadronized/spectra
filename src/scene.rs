@@ -31,3 +31,14 @@ impl<'a> Scene<'a> {
     self.cache.get(name, args)
   }
 }
+
+#[macro_export]
+macro_rules! get_id {
+  ($scene:ident, $name:ident) => {
+    $scene.get_id($name, ())
+  };
+
+  ($scene:ident, $name:ident, $($arg:ident),*) => {
+    $scene.get_id($name, ($($arg),*))
+  }
+}
