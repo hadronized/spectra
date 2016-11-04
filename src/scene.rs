@@ -42,3 +42,14 @@ macro_rules! get_id {
     $scene.get_id($name, ($($arg),*))
   }
 }
+
+#[macro_export]
+macro_rules! get {
+  ($scene:ident, $name:expr) => {
+    $scene.get($name, ())
+  };
+
+  ($scene:ident, $name:expr, $($arg:expr),*) => {
+    $scene.get($name, ($($arg),*))
+  }
+}
