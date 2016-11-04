@@ -1,3 +1,5 @@
+// FIXME: add the support of transient objects
+
 use notify::{self, RecommendedWatcher, Watcher};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -11,6 +13,7 @@ use model::Model;
 
 /// Class of types that can be loaded.
 pub trait Load: Sized {
+  /// Arguments passed at loading.
   type Args;
 
   // TODO: see whether we can use something with From/Into instead, so that we can use lambdas.
