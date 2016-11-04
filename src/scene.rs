@@ -34,11 +34,11 @@ impl<'a> Scene<'a> {
 
 #[macro_export]
 macro_rules! get_id {
-  ($scene:ident, $name:ident) => {
+  ($scene:ident, $name:expr) => {
     $scene.get_id($name, ())
   };
 
-  ($scene:ident, $name:ident, $($arg:ident),*) => {
+  ($scene:ident, $name:expr, $($arg:expr),*) => {
     $scene.get_id($name, ($($arg),*))
   }
 }
