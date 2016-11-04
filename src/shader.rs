@@ -19,7 +19,7 @@ pub enum ShaderError {
 }
 
 /// Build a shader program from the shader sources and a uniform builder function.
-pub fn new_program<GetUni, T>(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_src: &str, get_uni: GetUni) -> Result<gl33::Program<T>, ProgramError> where GetUni: Fn(ProgramProxy) -> Result<T, UniformWarning> {
+pub fn new_program<T>(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_src: &str, get_uni: &'static Fn(ProgramProxy) -> Result<T, UniformWarning>) -> Result<gl33::Program<T>, ProgramError> {
   let stages = compile_stages(tcs_src, tes_src, vs_src, gs_src, fs_src);
 
   match stages {
@@ -68,13 +68,13 @@ fn compile_stages(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_s
 /// use twice the same pragma in a file.
 ///
 /// At the top of the file, if you don’t put a pragma, you can use `//` to add comments, or die.
-pub struct Program<T> {
+pub struct Program<T> where T: 'static {
   program: gl33::Program<T>,
-  get_uni: Box<Fn(ProgramProxy) -> Result<T, UniformWarning>>,
+  get_uni: &'static Fn(ProgramProxy) -> Result<T, UniformWarning>,
 }
 
-impl<T> Load for Program<T> {
-  type Args = Box<Fn(ProgramProxy) -> Result<T, UniformWarning>>;
+impl<T> Load for Program<T> where T: 'static {
+  type Args = &'static Fn(ProgramProxy) -> Result<T, UniformWarning>;
 
   fn load<P>(path: P, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     enum CurrentStage {
@@ -160,7 +160,7 @@ impl<T> Load for Program<T> {
           }
         }
 
-        let program = try!(new_program(&tcs_src, &tes_src, &vs_src, &gs_src, &fs_src, &*args)
+        let program = try!(new_program(&tcs_src, &tes_src, &vs_src, &gs_src, &fs_src, args)
           .map_err(|e| LoadError::ConversionFailed(format!("{:?}", e))));
 
         Ok(Program {
@@ -172,6 +172,12 @@ impl<T> Load for Program<T> {
         Err(LoadError::FileNotFound(path.as_ref().to_owned(), format!("{:?}", e)))
       }
     }
+  }
+}
+
+impl<T> Reload for Program<T> where T: 'static {
+  fn reload<P>(&self, path :P) -> Result<Self, LoadError> where P: AsRef<Path> {
+    Self::load(path, self.get_uni)
   }
 }
 
