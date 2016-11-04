@@ -185,8 +185,8 @@ impl<T> Load for Program<T> where T: 'static {
 }
 
 impl<T> Reload for Program<T> where T: 'static {
-  fn reload<P>(&self, path :P) -> Result<Self, LoadError> where P: AsRef<Path> {
-    Self::load(path, self.get_uni)
+  fn reload_args(&self) -> Self::Args {
+    self.get_uni
   }
 }
 

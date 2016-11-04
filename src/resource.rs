@@ -21,14 +21,16 @@ pub trait Load: Sized {
 }
 
 /// Class of types that can be reloaded.
+///
+/// The idea is to simply recover the arguments used in `Load::load`.
 pub trait Reload: Load {
-  fn reload<P>(&self, path :P) -> Result<Self, LoadError> where P: AsRef<Path>;
+  fn reload_args(&self) -> Self::Args;
 }
 
 /// Default implementation for types which are loaded without any arguments.
 impl<T> Reload for T where T: Load<Args=()> {
-  fn reload<P>(&self, path :P) -> Result<Self, LoadError> where P: AsRef<Path> {
-    Self::load(path, ())
+  fn reload_args(&self) -> Self::Args {
+    ()
   }
 }
 
@@ -158,25 +160,30 @@ macro_rules! cache_struct {
 
         fn get_by_id(&mut self, id: &Self::Id) -> Option<&$t> {
           // synchronization
-          if let Some(data) = self.$n.data.get_mut(id.id as usize) {
+          let mut reload_args = None;
+
+          if let Some(data) = self.$n.data.get(id.id as usize) {
             match (data.2).0.try_recv() {
               Ok(timestamp) if timestamp - (data.2).1 >= UPDATE_AWAIT_TIME => {
-                // reload
-                match data.0.reload(&data.1) {
-                  Ok(new_resource) => {
-                    // replace the current resource with the freshly loaded one
-                    deb!("reloaded resource from {:?}", data.1);
-                    data.0 = new_resource;
-                  },
-                  Err(e) => {
-                    warn!("reloading resource from {:?} has failed: {:?}", data.1, e);
-                  }
-                }
+                reload_args = Some((data.1.to_owned(), data.0.reload_args()));
               },
               _ => {}
             }
           } else {
             return None;
+          }
+
+          if let Some((path, args)) = reload_args {
+            match <$t as Load>::load(&path, args) {
+              Ok(new_resource) => {
+                // replace the current resource with the freshly loaded one
+                deb!("reloaded resource from {:?}", path);
+                self.$n.data[id.id as usize].0 = new_resource;
+              },
+              Err(e) => {
+                warn!("reloading resource from {:?} has failed: {:?}", path, e);
+              }
+            }
           }
 
           self.$n.data.get(id.id as usize).map(|r| &r.0)

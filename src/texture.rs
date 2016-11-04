@@ -74,7 +74,7 @@ impl Load for TextureImage {
 }
 
 impl Reload for TextureImage {
-  fn reload<P>(&self, path :P) -> Result<Self, LoadError> where P: AsRef<Path> {
-    Self::load(path, (self.sampler, self.linear))
+  fn reload_args(&self) -> Self::Args {
+    (self.sampler, self.linear)
   }
 }
