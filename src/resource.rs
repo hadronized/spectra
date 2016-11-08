@@ -46,7 +46,7 @@ type Timestamp = f64;
 /// Time to await after a resource update to establish that it should be reloaded.
 const UPDATE_AWAIT_TIME: Timestamp = 0.1; // 100ms
 
-pub struct CacheBlock<'a, T> where T: 'a {
+struct CacheBlock<'a, T> where T: 'a {
   data: Vec<(T, PathBuf, (Receiver<Timestamp>, f64))>,
   ids: HashMap<String, Id<'a, T>>,
 }
