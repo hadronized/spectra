@@ -1,15 +1,15 @@
-use luminance::{FragmentShader, GeometryShader, StageError, TessellationControlShader,
-                TessellationEvaluationShader, VertexShader};
-use luminance_gl::gl33::{ProgramProxy, Stage};
+use luminance::{Sem, StageError};
+use luminance::shader::stage;
+use luminance_gl::gl33::Stage;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::ops::Deref;
 use std::path::Path;
 
-pub use luminance::{ProgramError, Uniformable, UniformUpdate};
+pub use luminance::{ProgramError,Uniformable};
 pub use luminance::shader::program::UniformWarning;
 pub use luminance_gl::gl33::{self, Uniform};
-pub use luminance_gl::gl33::token::*;
+pub use luminance_gl::gl33::token::GL33;
 
 use resource::{Cache, Load, LoadError, Reload};
 
@@ -19,22 +19,21 @@ pub enum ShaderError {
   ProgramError(ProgramError)
 }
 
-/// Build a shader program from the shader sources and a uniform builder function.
-pub fn new_program<T>(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_src: &str, get_uni: &'static Fn(ProgramProxy) -> Result<T, UniformWarning>) -> Result<gl33::Program<T>, ProgramError> {
+pub fn new_program(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_src: &str, sem_map: &[Sem]) -> Result<(gl33::Program, Vec<UniformWarning>), ProgramError> {
   let stages = compile_stages(tcs_src, tes_src, vs_src, gs_src, fs_src);
 
   match stages {
     Ok((tess, vs, gs, fs)) => {
       if let Some((tcs, tes)) = tess {
         if let Some(gs) = gs {
-          gl33::Program::new(Some((&tcs, &tes)), &vs, Some(&gs), &fs, get_uni)
+          gl33::Program::new(Some((&tcs, &tes)), &vs, Some(&gs), &fs, sem_map)
         } else {
-          gl33::Program::new(Some((&tcs, &tes)), &vs, None, &fs, get_uni)
+          gl33::Program::new(Some((&tcs, &tes)), &vs, None, &fs, sem_map)
         }
       } else if let Some(gs) = gs {
-        gl33::Program::new(None, &vs, Some(&gs), &fs, get_uni)
+        gl33::Program::new(None, &vs, Some(&gs), &fs, sem_map)
       } else {
-        gl33::Program::new(None, &vs, None, &fs, get_uni)
+        gl33::Program::new(None, &vs, None, &fs, sem_map)
       }
     },
     Err(stage_error) => {
@@ -44,11 +43,17 @@ pub fn new_program<T>(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, 
 }
 
 // Take raw shader sources and turn them into stages.
-fn compile_stages(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_src: &str) -> Result<(Option<(Stage<TessellationControlShader>, Stage<TessellationEvaluationShader>)>, Stage<VertexShader>, Option<Stage<GeometryShader>>, Stage<FragmentShader>), StageError> {
-  let tess = if !tcs_src.is_empty() && !tes_src.is_empty() { Some((try!(Stage::new(tcs_src)), try!(Stage::new(tes_src)))) } else { None };
-  let vs = try!(Stage::new(vs_src));
-  let gs = if !gs_src.is_empty() { Some(try!(Stage::new(gs_src))) } else { None };
-  let fs = try!(Stage::new(fs_src));
+fn compile_stages(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_src: &str) -> Result<(Option<(Stage, Stage)>, Stage, Option<Stage>, Stage), StageError> {
+  let tess = if !tcs_src.is_empty() && !tes_src.is_empty() {
+    Some((try!(Stage::new(stage::Type::TessellationControlShader, tcs_src)),
+          try!(Stage::new(stage::Type::TessellationEvaluationShader, tes_src))))
+  } else {
+    None
+  };
+
+  let vs = try!(Stage::new(stage::Type::VertexShader, vs_src));
+  let gs = if !gs_src.is_empty() { Some(try!(Stage::new(stage::Type::GeometryShader, gs_src))) } else { None };
+  let fs = try!(Stage::new(stage::Type::FragmentShader, fs_src));
 
   Ok((tess, vs, gs, fs))
 }
@@ -69,21 +74,13 @@ fn compile_stages(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_s
 /// use twice the same pragma in a file.
 ///
 /// At the top of the file, if you don’t put a pragma, you can use `//` to add comments, or die.
-pub struct Program<T> where T: 'static {
-  pub program: gl33::Program<T>,
-  get_uni: &'static Fn(ProgramProxy) -> Result<T, UniformWarning>,
+pub struct Program {
+  program: gl33::Program,
+  sem_map: Vec<Sem>
 }
 
-impl<T> Deref for Program<T> where T: 'static {
-  type Target = gl33::Program<T>;
-
-  fn deref(&self) -> &Self::Target {
-    &self.program
-  }
-}
-
-impl<T> Load for Program<T> where T: 'static {
-  type Args = &'static Fn(ProgramProxy) -> Result<T, UniformWarning>;
+impl Load for Program {
+  type Args = Vec<Sem>;
 
   fn load<'a, P>(path: P, _: &mut Cache<'a>, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     enum CurrentStage {
@@ -169,13 +166,20 @@ impl<T> Load for Program<T> where T: 'static {
           }
         }
 
-        let program = try!(new_program(&tcs_src, &tes_src, &vs_src, &gs_src, &fs_src, args)
+        let (program, warnings) = try!(new_program(&tcs_src, &tes_src, &vs_src, &gs_src, &fs_src, &args)
           .map_err(|e| LoadError::ConversionFailed(format!("{:?}", e))));
 
-        Ok(Program {
-          program: program,
-          get_uni: args
-        })
+        // check for semantic errors
+        for warning in warnings {
+          warn!("uniform warning: {:?}", warning);
+        }
+
+        Ok(
+          Program {
+            program: program,
+            sem_map: args
+          }
+        )
       },
       Err(e) => {
         Err(LoadError::FileNotFound(path.as_ref().to_owned(), format!("{:?}", e)))
@@ -184,9 +188,9 @@ impl<T> Load for Program<T> where T: 'static {
   }
 }
 
-impl<T> Reload for Program<T> where T: 'static {
+impl Reload for Program {
   fn reload_args(&self) -> Self::Args {
-    self.get_uni
+    self.sem_map.clone()
   }
 }
 
