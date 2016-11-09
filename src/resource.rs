@@ -10,6 +10,7 @@ use time::precise_time_s;
 
 use id::Id;
 use model::Model;
+use shader::Program;
 
 /// Class of types that can be loaded.
 pub trait Load: Sized {
@@ -61,7 +62,7 @@ impl<'a, T> CacheBlock<'a, T> {
 }
 
 macro_rules! cache_struct {
-  ($l:tt, $($n:ident : $t:ty | $args:ty),*) => {
+  ($l:tt, $($n:ident : $t:ty),*) => {
     pub struct Cache<$l> {
       senders: Arc<Mutex<HashMap<PathBuf, Sender<Timestamp>>>>,
       $(
@@ -204,4 +205,5 @@ pub trait Get<T> where T: Reload {
 }
 
 cache_struct!('a,
-              models: Model | ());
+              models: Model,
+              shader_programs: Program);

@@ -1,4 +1,4 @@
-use luminance::{Sem, StageError};
+use luminance::StageError;
 use luminance::shader::stage;
 use luminance_gl::gl33::Stage;
 use std::fs::File;
@@ -6,7 +6,7 @@ use std::io::{BufRead, BufReader};
 use std::ops::Deref;
 use std::path::Path;
 
-pub use luminance::{ProgramError,Uniformable};
+pub use luminance::{ProgramError, Sem, Uniformable};
 pub use luminance::shader::program::UniformWarning;
 pub use luminance_gl::gl33::{self, Uniform};
 pub use luminance_gl::gl33::token::GL33;
@@ -77,6 +77,14 @@ fn compile_stages(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_s
 pub struct Program {
   program: gl33::Program,
   sem_map: Vec<Sem>
+}
+
+impl Deref for Program {
+  type Target = gl33::Program;
+
+  fn deref(&self) -> &Self::Target {
+    &self.program
+  }
 }
 
 impl Load for Program {
