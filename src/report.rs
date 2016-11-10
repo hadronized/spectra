@@ -2,13 +2,12 @@
 macro_rules! now {
   () => {{
     let t = ::time::now();
-    let h = t.tm_hour;
     
-    format!("{month:0>2}/{day:0>2}/{year} {hour:>2}:{min:0>2}:{secs:0>2}:{nsecs:0>9}",
+    format!("{month:0>2}/{day:0>2}/{year} {hour:0>2}:{min:0>2}:{secs:0>2}:{nsecs:0>9}",
             month = t.tm_mon + 1,
             day = t.tm_mday,
             year = t.tm_year - 100,
-            hour = if h == 23 { 0 } else { h + 1 },
+            hour = t.tm_hour,
             min = t.tm_min,
             secs = t.tm_sec,
             nsecs = t.tm_nsec)
