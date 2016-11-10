@@ -107,10 +107,8 @@ macro_rules! cache_struct {
     }
 
     $(
-      impl<$l> Get<$t> for Cache<$l> {
-        type Id = Id<$l, $t>;
-
-        fn get_id(&mut self, name: &str, args: <$t as Load>::Args) -> Option<Self::Id> {
+      impl<$l> Get<$l, $t> for Cache<$l> {
+        fn get_id(&mut self, name: &str, args: <$t as Load>::Args) -> Option<Id<$l, $t>> {
           let path_str = format!("data/{}/{}", stringify!($n), name);
           let path = Path::new(&path_str);
 
@@ -159,7 +157,7 @@ macro_rules! cache_struct {
           }
         }
 
-        fn get_by_id(&mut self, id: &Self::Id) -> Option<&$t> {
+        fn get_by_id(&mut self, id: &Id<$l, $t>) -> Option<&$t> {
           // synchronization
           let mut reload_args = None;
 
@@ -194,11 +192,9 @@ macro_rules! cache_struct {
   }
 }
 
-pub trait Get<T> where T: Reload {
-  type Id;
-
-  fn get_id(&mut self, name: &str, args: T::Args) -> Option<Self::Id>;
-  fn get_by_id(&mut self, id: &Self::Id) -> Option<&T>;
+pub trait Get<'a, T> where T: 'a + Reload {
+  fn get_id(&mut self, name: &str, args: T::Args) -> Option<Id<'a, T>>;
+  fn get_by_id(&mut self, id: &Id<'a, T>) -> Option<&T>;
   fn get(&mut self, name: &str, args: T::Args) -> Option<&T> {
     self.get_id(name, args).and_then(move |i| self.get_by_id(&i))
   }
