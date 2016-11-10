@@ -45,15 +45,15 @@ pub fn new_program(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_
 // Take raw shader sources and turn them into stages.
 fn compile_stages(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_src: &str) -> Result<(Option<(Stage, Stage)>, Stage, Option<Stage>, Stage), StageError> {
   let tess = if !tcs_src.is_empty() && !tes_src.is_empty() {
-    Some((try!(Stage::new(stage::Type::TessellationControlShader, tcs_src)),
-          try!(Stage::new(stage::Type::TessellationEvaluationShader, tes_src))))
+    Some((Stage::new(stage::Type::TessellationControlShader, tcs_src)?,
+          Stage::new(stage::Type::TessellationEvaluationShader, tes_src)?))
   } else {
     None
   };
 
-  let vs = try!(Stage::new(stage::Type::VertexShader, vs_src));
-  let gs = if !gs_src.is_empty() { Some(try!(Stage::new(stage::Type::GeometryShader, gs_src))) } else { None };
-  let fs = try!(Stage::new(stage::Type::FragmentShader, fs_src));
+  let vs = Stage::new(stage::Type::VertexShader, vs_src)?;
+  let gs = if !gs_src.is_empty() { Some(Stage::new(stage::Type::GeometryShader, gs_src)?) } else { None };
+  let fs = Stage::new(stage::Type::FragmentShader, fs_src)?;
 
   Ok((tess, vs, gs, fs))
 }
@@ -174,8 +174,8 @@ impl Load for Program {
           }
         }
 
-        let (program, warnings) = try!(new_program(&tcs_src, &tes_src, &vs_src, &gs_src, &fs_src, &args)
-          .map_err(|e| LoadError::ConversionFailed(format!("{:?}", e))));
+        let (program, warnings) = new_program(&tcs_src, &tes_src, &vs_src, &gs_src, &fs_src, &args)
+          .map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?;
 
         // check for semantic errors
         for warning in warnings {

@@ -61,12 +61,12 @@ impl Load for Model {
 
     // load the data directly into memory; no buffering nor streaming
     {
-      let mut file = try!(File::open(path).map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e))));
+      let mut file = File::open(path).map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e)))?;
       let _ = file.read_to_string(&mut input);
     }
 
     // parse the obj file and convert it
-    let obj_set = try!(obj::parse(input).map_err(|e| LoadError::ParseFailed(format!("{:?}", e))));
+    let obj_set = obj::parse(input).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?;
 
     convert_obj(obj_set).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))
   }
@@ -83,7 +83,7 @@ fn convert_obj(obj_set: obj::ObjSet) -> Result<Model, ModelError> {
     // convert all the geometries
     for geometry in &obj.geometry {
       info!("    {} vertices, {} normals, {} tex vertices", obj.vertices.len(), obj.normals.len(), obj.tex_vertices.len());
-      let (vertices, indices, mode) = try!(convert_geometry(geometry, &obj.vertices, &obj.normals, &obj.tex_vertices));
+      let (vertices, indices, mode) = convert_geometry(geometry, &obj.vertices, &obj.normals, &obj.tex_vertices)?;
       let part = Part::new(Tessellation::new(mode, &vertices, Some(&indices))); // FIXME: material
       parts.push(part);
     }
@@ -110,7 +110,7 @@ fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[o
   let mode = guess_mode(geo.shapes[0].primitive);
 
   for prim in geo.shapes.iter().map(|s| s.primitive) {
-    let keys = try!(create_keys_from_primitive(prim));
+    let keys = create_keys_from_primitive(prim)?;
 
     for key in keys {
       match index_map.get(&key).map(|&i| i) {
@@ -140,18 +140,18 @@ fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[o
 fn create_keys_from_primitive(prim: obj::Primitive) -> Result<Vec<(usize, usize, Option<usize>)>, ModelError> {
   match prim {
     obj::Primitive::Point(i) => {
-      let a = try!(vtnindex_to_key(i));
+      let a = vtnindex_to_key(i)?;
       Ok(vec![a])
     },
     obj::Primitive::Line(i, j) => {
-      let a = try!(vtnindex_to_key(i));
-      let b = try!(vtnindex_to_key(j));
+      let a = vtnindex_to_key(i)?;
+      let b = vtnindex_to_key(j)?;
       Ok(vec![a, b])
     },
     obj::Primitive::Triangle(i, j, k) => {
-      let a = try!(vtnindex_to_key(i));
-      let b = try!(vtnindex_to_key(j));
-      let c = try!(vtnindex_to_key(k));
+      let a = vtnindex_to_key(i)?;
+      let b = vtnindex_to_key(j)?;
+      let c = vtnindex_to_key(k)?;
       Ok(vec![a, b, c])
     }
   }
