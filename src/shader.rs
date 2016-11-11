@@ -87,10 +87,10 @@ impl Deref for Program {
   }
 }
 
-impl Load for Program {
+impl<'a> Load<'a> for Program {
   type Args = Vec<Sem>;
 
-  fn load<'a, P>(path: P, _: &mut Cache<'a>, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  fn load<P>(path: P, _: &mut Cache<'a>, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     enum CurrentStage {
       VS,
       FS,
@@ -196,7 +196,7 @@ impl Load for Program {
   }
 }
 
-impl Reload for Program {
+impl<'a> Reload<'a> for Program {
   fn reload_args(&self) -> Self::Args {
     self.sem_map.clone()
   }

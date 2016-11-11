@@ -13,23 +13,23 @@ use model::Model;
 use shader::Program;
 
 /// Class of types that can be loaded.
-pub trait Load: Sized {
+pub trait Load<'a>: Sized {
   /// Arguments passed at loading.
   type Args;
 
   // TODO: see whether we can use something with From/Into instead, so that we can use lambdas.
-  fn load<'a, P>(path: P, cache: &mut Cache<'a>, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path>;
+  fn load<P>(path: P, cache: &mut Cache<'a>, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path>;
 }
 
 /// Class of types that can be reloaded.
 ///
 /// The idea is to simply recover the arguments used in `Load::load`.
-pub trait Reload: Load {
+pub trait Reload<'a>: Load<'a> {
   fn reload_args(&self) -> Self::Args;
 }
 
 /// Default implementation for types which are loaded without any arguments.
-impl<T> Reload for T where T: Load<Args=()> {
+impl<'a, T> Reload<'a> for T where T: Load<'a, Args=()> {
   fn reload_args(&self) -> Self::Args {
     ()
   }
@@ -192,7 +192,7 @@ macro_rules! cache_struct {
   }
 }
 
-pub trait Get<'a, T> where T: 'a + Reload {
+pub trait Get<'a, T> where T: 'a + Reload<'a> {
   fn get_id(&mut self, name: &str, args: T::Args) -> Option<Id<'a, T>>;
   fn get_by_id(&mut self, id: &Id<'a, T>) -> Option<&T>;
   fn get(&mut self, name: &str, args: T::Args) -> Option<&T> {

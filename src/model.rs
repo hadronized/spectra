@@ -49,10 +49,10 @@ impl Part {
   }
 }
 
-impl Load for Model {
+impl<'a> Load<'a> for Model {
   type Args = ();
 
-  fn load<'a, P>(path: P, _: &mut Cache<'a>, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  fn load<P>(path: P, _: &mut Cache<'a>, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     info!("loading model: {:?}", path);

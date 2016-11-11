@@ -59,10 +59,10 @@ impl Deref for TextureImage {
   }
 }
 
-impl Load for TextureImage {
+impl<'a> Load<'a> for TextureImage {
   type Args = (Sampler, bool);
 
-  fn load<'a, P>(path: P, _: &mut Cache<'a>, (sampler, linear): Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  fn load<P>(path: P, _: &mut Cache<'a>, (sampler, linear): Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     load_rgba_texture(path, &sampler, linear)
       .map(|tex| TextureImage {
         texture: tex,
@@ -73,7 +73,7 @@ impl Load for TextureImage {
   }
 }
 
-impl Reload for TextureImage {
+impl<'a> Reload<'a> for TextureImage {
   fn reload_args(&self) -> Self::Args {
     (self.sampler, self.linear)
   }
