@@ -217,8 +217,8 @@ macro_rules! impl_get_no_lifetime {
 
 cache_struct!('a,
               models: Model,
-              objects: Object<'a>,
-              shader_programs: Program);
+              shader_programs: Program,
+              objects: Object<'a>);
 
 impl_get_no_lifetime!(models: Model);
 impl_get_no_lifetime!(shader_programs: Program);
