@@ -201,18 +201,34 @@ macro_rules! impl_get_by_id {
   }}
 }
 
+macro_rules! impl_get_no_lifetime {
+  ($n:ident : $t:ty) => {
+    impl<'a> Get<'a, $t> for Cache<'a> {
+      fn get_id(&mut self, name: &str, args: <$t as Load<'a>>::Args) -> Option<Id<'a, $t>> {
+        impl_get_id!($n: $t, self, name, args)
+      }
+    
+      fn get_by_id(&mut self, id: &Id<'a, $t>) -> Option<&$t> {
+        impl_get_by_id!($n: $t, self, id)
+      }
+    }
+  }
+}
+
 cache_struct!('a,
               models: Model,
               objects: Object<'a>,
               shader_programs: Program);
 
-impl<'a> Get<'a, Model> for Cache<'a> {
-  fn get_id(&mut self, name: &str, args: <Model as Load<'a>>::Args) -> Option<Id<'a, Model>> {
-    impl_get_id!(models: Model, self, name, args)
-  }
+impl_get_no_lifetime!(models: Model);
+impl_get_no_lifetime!(shader_programs: Program);
 
-  fn get_by_id(&mut self, id: &Id<'a, Model>) -> Option<&Model> {
-    impl_get_by_id!(models: Model, self, id)
+impl<'a> Get<'a, Object<'a>> for Cache<'a> {
+  fn get_id(&mut self, name: &str, args: <Object<'a> as Load<'a>>::Args) -> Option<Id<'a, Object<'a>>> {
+    impl_get_id!(objects: Object<'a>, self, name, args)
+  }
+  
+  fn get_by_id(&mut self, id: &Id<'a, Object<'a>>) -> Option<&Object<'a>> {
+    impl_get_by_id!(objects: Object<'a>, self, id)
   }
 }
-
