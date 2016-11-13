@@ -10,6 +10,7 @@ use time::precise_time_s;
 
 use id::Id;
 use model::Model;
+use object::Object;
 use shader::Program;
 
 /// Class of types that can be loaded.
@@ -105,90 +106,6 @@ macro_rules! cache_struct {
         }
       }
     }
-
-    $(
-      impl<$l> Get<$l, $t> for Cache<$l> {
-        fn get_id(&mut self, name: &str, args: <$t as Load>::Args) -> Option<Id<$l, $t>> {
-          let path_str = format!("data/{}/{}", stringify!($n), name);
-          let path = Path::new(&path_str);
-
-          match self.$n.ids.get(name).cloned() {
-            id@Some(..) => {
-              deb!("cache hit for {}", path_str);
-              id
-            },
-            None => {
-              deb!("cache miss for {}", path_str);
-
-              // specific loading
-              if path.exists() {
-                match <$t as Load>::load(&path, self, args) {
-                  Ok(resource) => {
-                    let path_buf = path.to_owned();
-
-                    // create the id if we have loaded the resource
-                    let id: Id<$t> = (self.$n.data.len() as u32).into();
-
-                    // create a channel to notify any update later and register the sender for the
-                    // given path
-                    let (sx, rx) = channel();
-                    {
-                      let mut senders = self.senders.lock().unwrap();
-                      senders.insert(path_buf.clone(), sx);
-                    }
-
-                    // add the resource to the list of loaded ones
-                    self.$n.data.push((resource, path_buf.clone(), (rx, precise_time_s())));
-                    // cache the resource
-                    self.$n.ids.insert(name.to_owned(), id.clone());
-
-                    Some(id)
-                  },
-                  Err(e) => {
-                    err!("unable to load resource from {}: {:?}", path_str, e);
-                    None
-                  }
-                }
-              } else { // path doesn’t exist
-                err!("ressource at {} cannot be found", path_str);
-                None
-              }
-            }
-          }
-        }
-
-        fn get_by_id(&mut self, id: &Id<$l, $t>) -> Option<&$t> {
-          // synchronization
-          let mut reload_args = None;
-
-          if let Some(data) = self.$n.data.get(id.id as usize) {
-            match (data.2).0.try_recv() {
-              Ok(timestamp) if timestamp - (data.2).1 >= UPDATE_AWAIT_TIME => {
-                reload_args = Some((data.1.to_owned(), data.0.reload_args()));
-              },
-              _ => {}
-            }
-          } else {
-            return None;
-          }
-
-          if let Some((path, args)) = reload_args {
-            match <$t as Load>::load(&path, self, args) {
-              Ok(new_resource) => {
-                // replace the current resource with the freshly loaded one
-                deb!("reloaded resource from {:?}", path);
-                self.$n.data[id.id as usize].0 = new_resource;
-              },
-              Err(e) => {
-                warn!("reloading resource from {:?} has failed: {:?}", path, e);
-              }
-            }
-          }
-
-          self.$n.data.get(id.id as usize).map(|r| &r.0)
-        }
-      }
-    )*
   }
 }
 
@@ -200,6 +117,102 @@ pub trait Get<'a, T> where T: 'a + Reload<'a> {
   }
 }
 
+macro_rules! impl_get_id {
+  ($n:ident : $t:ty, $this:ident, $name:ident, $args: ident) => {{
+    let path_str = format!("data/{}/{}", stringify!($n), $name);
+    let path = Path::new(&path_str);
+
+    match $this.$n.ids.get($name).cloned() {
+      id@Some(..) => {
+        deb!("cache hit for {}", path_str);
+        id
+      },
+      None => {
+        deb!("cache miss for {}", path_str);
+
+        // specific loading
+        if path.exists() {
+          match <$t as Load>::load(&path, $this, $args) {
+            Ok(resource) => {
+              let path_buf = path.to_owned();
+
+              // create the id if we have loaded the resource
+              let id: Id<$t> = ($this.$n.data.len() as u32).into();
+
+              // create a channel to notify any update later and register the sender for the
+              // given path
+              let (sx, rx) = channel();
+              {
+                let mut senders = $this.senders.lock().unwrap();
+                senders.insert(path_buf.clone(), sx);
+              }
+
+              // add the resource to the list of loaded ones
+              $this.$n.data.push((resource, path_buf.clone(), (rx, precise_time_s())));
+              // cache the resource
+              $this.$n.ids.insert($name.to_owned(), id.clone());
+
+              Some(id)
+            },
+            Err(e) => {
+              err!("unable to load resource from {}: {:?}", path_str, e);
+              None
+            }
+          }
+        } else { // path doesn’t exist
+          err!("ressource at {} cannot be found", path_str);
+          None
+        }
+      }
+    }
+  }}
+}
+
+macro_rules! impl_get_by_id {
+  ($n:ident : $t:ty, $this:ident, $id:ident) => {{
+    // synchronization
+    let mut reload_args = None;
+
+    if let Some(data) = $this.$n.data.get($id.id as usize) {
+      match (data.2).0.try_recv() {
+        Ok(timestamp) if timestamp - (data.2).1 >= UPDATE_AWAIT_TIME => {
+          reload_args = Some((data.1.to_owned(), data.0.reload_args()));
+        },
+        _ => {}
+      }
+    } else {
+      return None;
+    }
+
+    if let Some((path, args)) = reload_args {
+      match <$t as Load>::load(&path, $this, args) {
+        Ok(new_resource) => {
+          // replace the current resource with the freshly loaded one
+          deb!("reloaded resource from {:?}", path);
+          $this.$n.data[$id.id as usize].0 = new_resource;
+        },
+        Err(e) => {
+          warn!("reloading resource from {:?} has failed: {:?}", path, e);
+        }
+      }
+    }
+
+    $this.$n.data.get($id.id as usize).map(|r| &r.0)
+  }}
+}
+
 cache_struct!('a,
               models: Model,
+              objects: Object<'a>,
               shader_programs: Program);
+
+impl<'a> Get<'a, Model> for Cache<'a> {
+  fn get_id(&mut self, name: &str, args: <Model as Load<'a>>::Args) -> Option<Id<'a, Model>> {
+    impl_get_id!(models: Model, self, name, args)
+  }
+
+  fn get_by_id(&mut self, id: &Id<'a, Model>) -> Option<&Model> {
+    impl_get_by_id!(models: Model, self, id)
+  }
+}
+
