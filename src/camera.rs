@@ -1,11 +1,17 @@
 use nalgebra::{Quaternion, Rotate, ToHomogeneous, Unit, UnitQuaternion, Vector3};
+use serde::Deserialize;
+use serde_json::from_reader;
 use std::default::Default;
 use std::f32::consts::FRAC_PI_4;
+use std::fs::File;
+use std::path::Path;
 
 use projection::{Projectable, perspective};
+use resource::{Cache, Load, LoadError};
 use transform::{Axis, M44, Orientation, Position, Transformable, Translation, X_AXIS, Y_AXIS,
                 Z_AXIS, translation_matrix};
 
+#[derive(Clone, Debug)]
 pub struct Camera<P> {
   pub position: Position,
   pub orientation: Orientation,
@@ -37,6 +43,35 @@ impl<P> Transformable for Camera<P> {
   }
 }
 
+#[derive(Deserialize)]
+struct Manifest<P> {
+  position: [f32; 3],
+  orientation: [f32; 4],
+  properties: P
+}
+
+impl<'a, A> Load<'a> for Camera<A> where A: Deserialize {
+  type Args = ();
+
+  fn load<P>(path: P, _: &mut Cache<'a>, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+    let path = path.as_ref();
+
+    info!("loading camera {:?}", path);
+
+    let manifest: Manifest<A> = {
+      let file = File::open(path).map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e)))?;
+      from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?
+    };
+
+    Ok(Camera {
+      position: (&manifest.position).into(),
+      orientation: Unit::new(&Quaternion::from(&manifest.orientation)),
+      properties: manifest.properties
+    })
+  }
+}
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct Freefly {
   // sensitivities
   pub yaw_sens: f32,
