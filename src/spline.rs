@@ -2,6 +2,8 @@ use std::f32::consts;
 use std::ops::{Add, Div, Mul, Sub};
 use nalgebra::{UnitQuaternion, Vector2, Vector3, Vector4};
 
+pub use serde_json::ser::to_string;
+
 /// Time used as sampling type in splines.
 pub type Time = f32;
 
@@ -9,7 +11,7 @@ pub type Time = f32;
 ///
 /// This type associates a value at a given type. It also contains an interpolation object used to
 /// determine how to interpolate values on the segment defined by this key and the next one.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
 pub struct Key<T> {
   /// Time at which the `Key` should be reached.
   pub t: Time,
@@ -38,17 +40,21 @@ pub enum Interpolation {
   /// *Note: if you set the threshold to `0.5`, the first key will be used until the time is half
   /// between the two keys; the second key will be in used afterwards. If you set it to `1.0`, the
   /// first key will be kept until the next key.*
+  #[serde(rename = "step")]
   Step(f32),
   /// Linear interpolation between a key and the next one.
+  #[serde(rename = "linear")]
   Linear,
   /// Cosine interpolation between a key and the next one.
+  #[serde(rename = "cosine")]
   Cosine,
   /// Catmull-Rom interpolation.
+  #[serde(rename = "catmull_rom")]
   CatmullRom
 }
 
 /// Spline curve used to provide interpolation between control points (keys).
-#[derive(Debug)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Spline<T> {
   keys: Vec<Key<T>>,
 }
@@ -174,7 +180,7 @@ fn cubic_hermite<T>(x: (T, Time), a: (T, Time), b: (T, Time), y: (T, Time), t: T
 
 /// Samplers can sample `Spline` by providing a `Time`. They should be mutable so that they can
 /// maintain an internal state for optimization purposes.
-#[derive(Default)]
+#[derive(Copy, Clone, Default)]
 pub struct Sampler {
   /// Playback cursor – gives the lower control point index of the current portion of the curve
   /// we’re sampling at.
