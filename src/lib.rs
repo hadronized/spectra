@@ -39,5 +39,6 @@ pub mod objects; // FIXME: change the name of that module; it’s confusing
 pub mod projection;
 pub mod shader;
 pub mod scene;
+pub mod spline;
 pub mod texture;
 pub mod transform;
