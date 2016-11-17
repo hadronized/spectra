@@ -40,7 +40,7 @@ impl<'a> Load<'a> for Object<'a> {
 
     // read the manifest
     let manifest: ObjectManifest = {
-      let file = File::open("data/scene/objects/{}.json").map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e)))?;
+      let file = File::open(path).map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e)))?;
       from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?
     };
 

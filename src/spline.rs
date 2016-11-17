@@ -1,8 +1,12 @@
-use std::f32::consts;
-use std::ops::{Add, Div, Mul, Sub};
 use nalgebra::{UnitQuaternion, Vector2, Vector3, Vector4};
+use serde::Deserialize;
+use serde_json::from_reader;
+use std::f32::consts;
+use std::fs::File;
+use std::ops::{Add, Div, Mul, Sub};
+use std::path::Path;
 
-pub use serde_json::ser::to_string;
+use resource::{Cache, Load, LoadError};
 
 /// Time used as sampling type in splines.
 pub type Time = f32;
@@ -68,6 +72,20 @@ impl<T> Spline<T> {
     }
   }
 }
+
+impl<'a, T> Load<'a> for Spline<T> where T: Deserialize {
+  type Args = ();
+
+  fn load<P>(path: P, _: &mut Cache<'a>, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+    let path = path.as_ref();
+
+    let file = File::open(path).map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e)))?;
+    let keys = from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?;
+
+    Ok(Spline::new(keys))
+  }
+}
+
 
 pub struct SplineIterator<'a, T> where T: 'a {
   anim_param: &'a Spline<T>,

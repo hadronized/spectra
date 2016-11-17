@@ -12,6 +12,7 @@ use id::Id;
 use model::Model;
 use object::Object;
 use shader::Program;
+use spline::Spline;
 
 /// Class of types that can be loaded.
 pub trait Load<'a>: Sized {
@@ -218,10 +219,12 @@ macro_rules! impl_get_no_lifetime {
 cache_struct!('a,
               models: Model,
               objects: Object<'a>,
-              shader_programs: Program);
+              shader_programs: Program,
+              splines: Spline<f32>);
 
 impl_get_no_lifetime!(models: Model);
 impl_get_no_lifetime!(shader_programs: Program);
+impl_get_no_lifetime!(splines: Spline<f32>);
 
 impl<'a> Get<'a, Object<'a>> for Cache<'a> {
   fn get_id(&mut self, name: &str, args: <Object<'a> as Load<'a>>::Args) -> Option<Id<'a, Object<'a>>> {
