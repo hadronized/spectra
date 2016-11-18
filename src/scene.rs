@@ -9,7 +9,7 @@ use resource::{Cache, Load, Get, Reload};
 /// visual effects.
 pub struct Scene<'a> {
   /// Cache.
-  cache: Cache<'a>
+  pub cache: Cache<'a>
 }
 
 impl<'a> Scene<'a> {
