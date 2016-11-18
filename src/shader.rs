@@ -91,6 +91,10 @@ impl<'a> Load<'a> for Program {
   type Args = Vec<Sem>;
 
   fn load<P>(path: P, _: &mut Cache<'a>, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+    let path = path.as_ref();
+
+    info!("loading shader: {:?}", path);
+
     enum CurrentStage {
       VS,
       FS,
@@ -99,13 +103,11 @@ impl<'a> Load<'a> for Program {
       TES
     }
 
-    fn add_line_to_src(src: &mut String, line: &String, line_nb: usize) {
-      if src.is_empty() {
-        *src += &format!("#line {}\n{}\n", line_nb, line);
-      }
+    fn add_line_to_src(src: &mut String, line: &str, line_nb: usize) {
+      *src += &format!("#line {}\n{}\n", line_nb, line);
     }
 
-    match File::open(path.as_ref()) {
+    match File::open(path) {
       Ok(fh) => {
         let buffered = BufReader::new(fh);
         let mut tcs_src = String::new();
@@ -125,50 +127,65 @@ impl<'a> Load<'a> for Program {
               return Err(LoadError::ParseFailed(format!("(line {}) several #vs sections", line_nb)));
             }
 
+            info!("  found a vertex shader");
+
             current_stage = Some(CurrentStage::VS);
+            continue;
           } else if trimmed.starts_with("#fs") {
             if !fs_src.is_empty() {
               return Err(LoadError::ParseFailed(format!("(line {}) several #fs sections", line_nb)));
             }
 
+            info!("  found a fragment shader");
+
             current_stage = Some(CurrentStage::FS);
+            continue;
           } else if trimmed.starts_with("#gs") {
             if !gs_src.is_empty() {
               return Err(LoadError::ParseFailed(format!("(line {}) several #gs sections", line_nb)));
             }
 
+            info!("  found a geometry shader");
+
             current_stage = Some(CurrentStage::GS);
+            continue;
           } else if trimmed.starts_with("#tcs") {
             if !tcs_src.is_empty() {
               return Err(LoadError::ParseFailed(format!("(line {}) several #tcs sections", line_nb)));
             }
 
+            info!("  found a tessellation control shader");
+
             current_stage = Some(CurrentStage::TCS);
+            continue;
           } else if trimmed.starts_with("#tes") {
             if !tes_src.is_empty() {
               return Err(LoadError::ParseFailed(format!("(line {}) several #tes sections", line_nb)));
             }
 
+            info!("  found a tessellation evaluation shader");
+
             current_stage = Some(CurrentStage::TES);
-          } else if current_stage.is_none() && !trimmed.starts_with("//") {
+            continue;
+          } else if current_stage.is_none() && !trimmed.is_empty() && !trimmed.starts_with("//") && !trimmed.starts_with("\n") {
             return Err(LoadError::ParseFailed(format!("(line {}) not in a shader stage nor a comment", line_nb)));
           }
 
           match current_stage {
             Some(CurrentStage::VS) => {
-              add_line_to_src(&mut vs_src, &line, line_nb);
+              add_line_to_src(&mut vs_src, trimmed, line_nb);
             },
             Some(CurrentStage::FS) => {
-              add_line_to_src(&mut fs_src, &line, line_nb);
+              add_line_to_src(&mut fs_src, trimmed, line_nb);
             },
             Some(CurrentStage::GS) => {
-              add_line_to_src(&mut gs_src, &line, line_nb);
+              add_line_to_src(&mut gs_src, trimmed, line_nb);
             },
             Some(CurrentStage::TCS) => {
-              add_line_to_src(&mut tcs_src, &line, line_nb);
+              add_line_to_src(&mut tcs_src, trimmed, line_nb);
             },
             Some(CurrentStage::TES) => {
-              add_line_to_src(&mut tes_src, &line, line_nb);
+              add_line_to_src(&mut tes_src, trimmed, line_nb);
             },
             None => {}
           }
@@ -190,7 +207,7 @@ impl<'a> Load<'a> for Program {
         )
       },
       Err(e) => {
-        Err(LoadError::FileNotFound(path.as_ref().to_owned(), format!("{:#?}", e)))
+        Err(LoadError::FileNotFound(path.to_owned(), format!("{:#?}", e)))
       }
     }
   }
