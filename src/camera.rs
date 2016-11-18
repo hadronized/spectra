@@ -47,10 +47,11 @@ impl<P> Transformable for Camera<P> {
 struct Manifest<P> {
   position: [f32; 3],
   orientation: [f32; 4],
+  #[serde(default)]
   properties: P
 }
 
-impl<'a, A> Load<'a> for Camera<A> where A: Deserialize {
+impl<'a, A> Load<'a> for Camera<A> where A: Default + Deserialize {
   type Args = ();
 
   fn load<P>(path: P, _: &mut Cache<'a>, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
