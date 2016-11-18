@@ -219,7 +219,7 @@ macro_rules! impl_get_no_lifetime {
 cache_struct!('a,
               models: Model,
               objects: Object<'a>,
-              shader_programs: Program,
+              shaders: Program,
               splines: Spline<f32>);
 
 impl_get_no_lifetime!(models: Model);
