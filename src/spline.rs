@@ -79,6 +79,8 @@ impl<'a, T> Load<'a> for Spline<T> where T: Deserialize {
   fn load<P>(path: P, _: &mut Cache<'a>, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
+    info!("loading spline: {:?}", path);
+
     let file = File::open(path).map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e)))?;
     let keys = from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?;
 
