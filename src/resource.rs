@@ -223,7 +223,7 @@ cache_struct!('a,
               splines: Spline<f32>);
 
 impl_get_no_lifetime!(models: Model);
-impl_get_no_lifetime!(shader_programs: Program);
+impl_get_no_lifetime!(shader: Program);
 impl_get_no_lifetime!(splines: Spline<f32>);
 
 impl<'a> Get<'a, Object<'a>> for Cache<'a> {
