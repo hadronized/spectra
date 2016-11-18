@@ -156,7 +156,7 @@ macro_rules! impl_get_id {
               Some(id)
             },
             Err(e) => {
-              err!("unable to load resource from {}: {:?}", path_str, e);
+              err!("unable to load resource from {}:\n{:#?}", path_str, e);
               None
             }
           }
@@ -193,7 +193,7 @@ macro_rules! impl_get_by_id {
           $this.$n.data[$id.id as usize].0 = new_resource;
         },
         Err(e) => {
-          warn!("reloading resource from {:?} has failed: {:?}", path, e);
+          warn!("reloading resource from {:?} has failed:\n{:#?}", path, e);
         }
       }
     }
