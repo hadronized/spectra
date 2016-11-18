@@ -75,33 +75,43 @@ impl<'a, A> Load<'a> for Camera<A> where A: Default + Deserialize {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Freefly {
   // sensitivities
+  #[serde(default = "def_yaw_sens")]
   pub yaw_sens: f32,
+  #[serde(default = "def_pitch_sens")]
   pub pitch_sens: f32,
+  #[serde(default = "def_roll_sens")]
   pub roll_sens: f32,
+  #[serde(default = "def_forward_sens")]
   pub forward_sens: f32,
+  #[serde(default = "def_strafe_sens")]
   pub strafe_sens: f32,
+  #[serde(default = "def_upward_sens")]
   pub upward_sens: f32,
   // projection
+  #[serde(default = "def_ratio")]
   pub ratio: f32,
+  #[serde(default = "def_fovy")]
   pub fovy: f32,
   // clipping
+  #[serde(default = "def_znear")]
   pub znear: f32,
+  #[serde(default = "def_zfar")]
   pub zfar: f32,
 }
 
 impl Freefly {
   pub fn new() -> Self {
     Freefly {
-      yaw_sens: 0.01,
-      pitch_sens: 0.01,
-      roll_sens: 0.01,
-      forward_sens: 0.1,
-      strafe_sens: 0.1,
-      upward_sens: 0.1,
-      ratio: 4. / 3.,
-      fovy: FRAC_PI_4,
-      znear: 0.1,
-      zfar: 10.,
+      yaw_sens: def_yaw_sens(),
+      pitch_sens: def_pitch_sens(),
+      roll_sens: def_roll_sens(),
+      forward_sens: def_forward_sens(),
+      strafe_sens: def_strafe_sens(),
+      upward_sens: def_upward_sens(),
+      ratio: def_ratio(),
+      fovy: def_fovy(),
+      znear: def_znear(),
+      zfar: def_zfar(),
     }
   }
 }
@@ -139,3 +149,14 @@ impl Camera<Freefly> {
     self.orientation = orient(&Z_AXIS, p.roll_sens * dir.z) * self.orientation;
   }
 }
+
+fn def_yaw_sens() -> f32 { 0.01 }
+fn def_pitch_sens() -> f32 { 0.01 }
+fn def_roll_sens() -> f32 { 0.01 }
+fn def_forward_sens() -> f32 { 0.1 }
+fn def_strafe_sens() -> f32 { 0.1 }
+fn def_upward_sens() -> f32 { 0.1 }
+fn def_ratio() -> f32 { 4. / 3. }
+fn def_fovy() -> f32 { FRAC_PI_4 }
+fn def_znear() -> f32 { 0.1 }
+fn def_zfar() -> f32 { 10. }
