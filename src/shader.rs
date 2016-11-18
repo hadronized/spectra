@@ -175,7 +175,7 @@ impl<'a> Load<'a> for Program {
         }
 
         let (program, warnings) = new_program(&tcs_src, &tes_src, &vs_src, &gs_src, &fs_src, &args)
-          .map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?;
+          .map_err(|e| LoadError::ConversionFailed(format!("{:#?}", e)))?;
 
         // check for semantic errors
         for warning in warnings {
@@ -190,7 +190,7 @@ impl<'a> Load<'a> for Program {
         )
       },
       Err(e) => {
-        Err(LoadError::FileNotFound(path.as_ref().to_owned(), format!("{:?}", e)))
+        Err(LoadError::FileNotFound(path.as_ref().to_owned(), format!("{:#?}", e)))
       }
     }
   }
