@@ -14,6 +14,7 @@ use model::Model;
 use object::Object;
 use shader::Program;
 use spline::Spline;
+use texture::TextureImage;
 
 /// Class of types that can be loaded.
 pub trait Load<'a>: Sized {
@@ -221,11 +222,13 @@ cache_struct!('a,
               models: Model,
               objects: Object<'a>,
               shaders: Program,
-              splines: Spline<f32>);
+              splines: Spline<f32>,
+              textures: TextureImage);
 
 impl_get_no_lifetime!(models: Model);
 impl_get_no_lifetime!(shaders: Program);
 impl_get_no_lifetime!(splines: Spline<f32>);
+impl_get_no_lifetime!(textures: TextureImage);
 
 impl<'a> Get<'a, Object<'a>> for Cache<'a> {
   fn get_id(&mut self, name: &str, args: <Object<'a> as Load<'a>>::Args) -> Option<Id<'a, Object<'a>>> {
