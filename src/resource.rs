@@ -3,6 +3,7 @@
 use notify::{self, RecommendedWatcher, Watcher};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread;
@@ -50,7 +51,7 @@ type Timestamp = f64;
 const UPDATE_AWAIT_TIME: Timestamp = 0.1; // 100ms
 
 struct CacheBlock<'a, T> where T: 'a {
-  data: Vec<(T, PathBuf, (Receiver<Timestamp>, f64))>,
+  data: Vec<(Rc<T>, PathBuf, (Receiver<Timestamp>, f64))>,
   ids: HashMap<String, Id<'a, T>>,
 }
 
@@ -112,8 +113,8 @@ macro_rules! cache_struct {
 
 pub trait Get<'a, T> where T: 'a + Reload<'a> {
   fn get_id(&mut self, name: &str, args: T::Args) -> Option<Id<'a, T>>;
-  fn get_by_id(&mut self, id: &Id<'a, T>) -> Option<&T>;
-  fn get(&mut self, name: &str, args: T::Args) -> Option<&T> {
+  fn get_by_id(&mut self, id: &Id<'a, T>) -> Option<Rc<T>>;
+  fn get(&mut self, name: &str, args: T::Args) -> Option<Rc<T>> {
     self.get_id(name, args).and_then(move |i| self.get_by_id(&i))
   }
 }
@@ -149,7 +150,7 @@ macro_rules! impl_get_id {
               }
 
               // add the resource to the list of loaded ones
-              $this.$n.data.push((resource, path_buf.clone(), (rx, precise_time_s())));
+              $this.$n.data.push((Rc::new(resource), path_buf.clone(), (rx, precise_time_s())));
               // cache the resource
               $this.$n.ids.insert($name.to_owned(), id.clone());
 
@@ -190,7 +191,7 @@ macro_rules! impl_get_by_id {
         Ok(new_resource) => {
           // replace the current resource with the freshly loaded one
           deb!("reloaded resource from {:?}", path);
-          $this.$n.data[$id.id as usize].0 = new_resource;
+          $this.$n.data[$id.id as usize].0 = Rc::new(new_resource);
         },
         Err(e) => {
           warn!("reloading resource from {:?} has failed:\n{:#?}", path, e);
@@ -198,7 +199,7 @@ macro_rules! impl_get_by_id {
       }
     }
 
-    $this.$n.data.get($id.id as usize).map(|r| &r.0)
+    $this.$n.data.get($id.id as usize).map(|r| r.0.clone())
   }}
 }
 
@@ -209,7 +210,7 @@ macro_rules! impl_get_no_lifetime {
         impl_get_id!($n: $t, self, name, args)
       }
     
-      fn get_by_id(&mut self, id: &Id<'a, $t>) -> Option<&$t> {
+      fn get_by_id(&mut self, id: &Id<'a, $t>) -> Option<Rc<$t>> {
         impl_get_by_id!($n: $t, self, id)
       }
     }
@@ -231,7 +232,7 @@ impl<'a> Get<'a, Object<'a>> for Cache<'a> {
     impl_get_id!(objects: Object<'a>, self, name, args)
   }
   
-  fn get_by_id(&mut self, id: &Id<'a, Object<'a>>) -> Option<&Object<'a>> {
+  fn get_by_id(&mut self, id: &Id<'a, Object<'a>>) -> Option<Rc<Object<'a>>> {
     impl_get_by_id!(objects: Object<'a>, self, id)
   }
 }
