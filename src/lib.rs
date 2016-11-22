@@ -24,6 +24,8 @@ pub mod report;
 
 #[macro_use]
 pub mod resource;
+#[macro_use]
+pub mod scene;
 
 pub mod anim;
 pub mod app;
@@ -38,7 +40,6 @@ pub mod model;
 pub mod object;
 pub mod projection;
 pub mod shader;
-pub mod scene;
 pub mod spline;
 pub mod texture;
 pub mod transform;
