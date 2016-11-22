@@ -32,4 +32,3 @@ pub fn new_cube() -> Tessellation {
 
   Tessellation::new(Mode::Triangle, &vertices, Some(&indices))
 }
-
