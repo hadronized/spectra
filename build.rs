@@ -9,30 +9,27 @@ fn main() {
   let path = Path::new(&out_dir).join("resources.rs");
 
   if path.exists() {
-    //exit(0);
+    exit(0);
   }
 
   let mut manifest = File::create(path).unwrap();
-
-  let resource_manifest = read_dir("ionize/data").unwrap();
-
   let mut resources: Vec<PathBuf> = Vec::new();
 
   visit_dirs("ionize/data", &mut |entry| {
     resources.push(Path::new("../..").join(entry.path()));
-  });
+  }).unwrap();
 
-  write!(&mut manifest, "use std::path::PathBuf;\n");
-  write!(&mut manifest, "pub fn get_resources() -> Vec<(PathBuf, &'static [u8])> {{\n");
-  write!(&mut manifest, "  let mut resources = Vec::new();\n");
+  write!(&mut manifest, "use std::path::PathBuf;\n").unwrap();
+  write!(&mut manifest, "pub fn get_resources() -> Vec<(PathBuf, &'static [u8])> {{\n").unwrap();
+  write!(&mut manifest, "  let mut resources = Vec::new();\n").unwrap();
 
   for entry in &resources {
     println!("cargo:warning=packing up resource {:?}", entry);
-    write!(&mut manifest, "  resources.push((PathBuf::from(&{0:?}[13..]), include_bytes!({0:?}).as_ref()));\n", entry);
+    write!(&mut manifest, "  resources.push((PathBuf::from(&{0:?}[13..]), include_bytes!({0:?}).as_ref()));\n", entry).unwrap();
   }
 
-  write!(&mut manifest, "  resources\n");
-  write!(&mut manifest, "}}"); // get_resources
+  write!(&mut manifest, "  resources\n").unwrap();
+  write!(&mut manifest, "}}").unwrap(); // get_resources
 }
 
 fn visit_dirs<P, F>(dir: P, visitor: &mut F) -> io::Result<()> where P: AsRef<Path>, F: FnMut(&DirEntry) {
@@ -44,7 +41,7 @@ fn visit_dirs<P, F>(dir: P, visitor: &mut F) -> io::Result<()> where P: AsRef<Pa
       let path = entry.path();
 
       if path.is_dir() {
-        visit_dirs(path, visitor);
+        visit_dirs(path, visitor).unwrap();
       } else {
         visitor(&entry);
       }
