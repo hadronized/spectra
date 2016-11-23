@@ -15,7 +15,7 @@ fn main() {
   let mut manifest = File::create(path).unwrap();
   let mut resources: Vec<PathBuf> = Vec::new();
 
-  visit_dirs("ionize/data", &mut |entry| {
+  visit_dirs("spectra/data", &mut |entry| {
     resources.push(Path::new("../..").join(entry.path()));
   }).unwrap();
 

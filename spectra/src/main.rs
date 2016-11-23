@@ -8,7 +8,7 @@ use std::path::Path;
 include!(concat!(env!("OUT_DIR"), "/resources.rs"));
 
 fn main() {
-  let options = App::new("ionize")
+  let options = App::new("spectra")
     .arg(Arg::with_name("bootstrap")
          .short("b")
          .long("bootstrap")

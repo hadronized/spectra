@@ -1,5 +1,5 @@
 [package]
-name = "ion"
+name = "spectra"
 version = "0.1.0"
 license = "BSD-3-Clause"
 authors = ["Dimitri Sabadie <dimitri.sabadie@gmail.com>"]
@@ -7,13 +7,13 @@ description = "Demoscene framework"
 keywords = ["demoscene"]
 build = "build.rs"
 
-homepage = "https://github.com/phaazon/ion"
-repository = "https://github.com/phaazon/ion"
-documentation = "http://phaazon.github.io/ion"
+homepage = "https://github.com/phaazon/spectra"
+repository = "https://github.com/phaazon/spectra"
+documentation = "http://phaazon.github.io/spectra"
 
 [[bin]]
-name = "ionize"
-path = "ionize/src/main.rs"
+name = "spectra"
+path = "spectra/src/main.rs"
 
 [features]
 default = ["debug"]
