@@ -23,6 +23,6 @@ impl<'a> Deref for DefaultProgram2D<'a> {
 
 impl<'a> DefaultProgram2D<'a> {
   pub fn get_from(scene: &mut Scene<'a>) -> Option<Self> {
-    get_id!(scene, "default_2d.glsl", vec![ColorUniform::sem("color")]).map(DefaultProgram)
+    get_id!(scene, "default_2d.glsl", vec![ColorUniform::sem("color")]).map(DefaultProgram2D)
   }
 }
