@@ -11,7 +11,7 @@ use scene::Scene;
 pub type ColorUniform = Uniform<[f32; 4]>;
 pub const DEFAULT_2D_COLOR: ColorUniform = Uniform::new(0);
 
-struct DefaultProgram<'a>(Id<'a, Program>);
+pub struct DefaultProgram<'a>(Id<'a, Program>);
 
 impl<'a> Deref for DefaultProgram<'a> {
   type Target = Id<'a, Program>;
@@ -22,7 +22,7 @@ impl<'a> Deref for DefaultProgram<'a> {
 }
 
 impl<'a> DefaultProgram<'a> {
-  pub fn get_id(scene: &'a mut Scene) -> Option<Self> {
+  pub fn get_from(scene: &mut Scene<'a>) -> Option<Self> {
     get_id!(scene, "default.glsl", vec![ColorUniform::sem("color")]).map(DefaultProgram)
   }
 }
