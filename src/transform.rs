@@ -9,6 +9,12 @@ pub trait Transformable {
   fn transform(&self) -> M44;
 }
 
+impl Transformable for M44 {
+  fn transform(&self) -> M44 {
+    self.clone()
+  }
+}
+
 pub type Translation = Vector3<f32>;
 pub type Axis = Vector3<f32>;
 pub type Position = Vector3<f32>;
