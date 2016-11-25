@@ -36,6 +36,7 @@ pub mod color;
 pub mod device;
 pub mod extra;
 pub mod id;
+pub mod linear;
 pub mod model;
 pub mod object;
 pub mod projection;
