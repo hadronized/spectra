@@ -4,9 +4,9 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
 use std::iter::IntoIterator;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::vec;
-use wavefront_obj::{self, obj};
+use wavefront_obj::obj;
 
 use resource::{Cache, Load, LoadError};
 
@@ -191,9 +191,6 @@ fn guess_mode(prim: obj::Primitive) -> tessellation::Mode {
 
 #[derive(Debug)]
 pub enum ModelError {
-  FileNotFound(PathBuf, String),
-  ParseFailed(wavefront_obj::ParseError),
-  MultiObjects,
   UnsupportedVertex,
   NoShape
 }
