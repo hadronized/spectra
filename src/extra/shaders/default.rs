@@ -1,6 +1,6 @@
 //! Default shaders.
 
-use luminance::{M44, Sem};
+use luminance::M44;
 use luminance_gl::gl33::Uniform;
 use std::ops::Deref;
 
@@ -32,7 +32,8 @@ impl<'a> DefaultProgram2D<'a> {
 pub const DEFAULT_3D_PROJ: Mat44Uniform = Uniform::new(0);
 pub const DEFAULT_3D_VIEW: Mat44Uniform = Uniform::new(1);
 pub const DEFAULT_3D_INST: Mat44Uniform = Uniform::new(2);
-pub const DEFAULT_3D_COLOR: ColorUniform = Uniform::new(3);
+pub const DEFAULT_3D_NORMAL: Mat44Uniform = Uniform::new(3);
+pub const DEFAULT_3D_COLOR: ColorUniform = Uniform::new(4);
 
 pub struct DefaultProgram3D<'a>(Id<'a, Program>);
 
@@ -50,6 +51,7 @@ impl<'a> DefaultProgram3D<'a> {
               Mat44Uniform::sem("proj"),
               Mat44Uniform::sem("view"),
               Mat44Uniform::sem("inst"),
+              Mat44Uniform::sem("normal_matrix"),
               ColorUniform::sem("color")])
       .map(DefaultProgram3D)
   }
