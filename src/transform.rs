@@ -1,8 +1,9 @@
-use nalgebra::UnitQuaternion;
 use std::default::Default;
 
+use linear::UnitQuaternion;
+
 pub use luminance::linear::M44;
-pub use nalgebra::{Matrix4, Vector3};
+pub use linear::{Matrix4, Vector3};
 
 /// Class of types that can yield transformation matrices.
 pub trait Transformable {

@@ -1,3 +1,3 @@
-use nalgebra::Vector3;
+use linear::Vector3;
 
 pub type Color = Vector3<f32>;

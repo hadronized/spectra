@@ -1,4 +1,3 @@
-use nalgebra::{UnitQuaternion, Vector2, Vector3, Vector4};
 use serde::Deserialize;
 use serde_json::from_reader;
 use std::f32::consts;
@@ -6,6 +5,7 @@ use std::fs::File;
 use std::ops::{Add, Div, Mul, Sub};
 use std::path::Path;
 
+use linear::{UnitQuaternion, Vector2, Vector3, Vector4};
 use resource::{Cache, Load, LoadError};
 
 /// Time used as sampling type in splines.

@@ -1,4 +1,4 @@
-use nalgebra::{Matrix4, Perspective3};
+use linear::{Matrix4, Perspective3};
 
 pub trait Projectable {
   fn projection(&self) -> Matrix4<f32>;

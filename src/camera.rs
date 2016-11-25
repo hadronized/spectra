@@ -1,4 +1,3 @@
-use nalgebra::{Matrix4, Quaternion, Rotate, ToHomogeneous, Unit, UnitQuaternion, Vector3};
 use serde::Deserialize;
 use serde_json::from_reader;
 use std::default::Default;
@@ -6,6 +5,7 @@ use std::f32::consts::FRAC_PI_4;
 use std::fs::File;
 use std::path::Path;
 
+use linear::{Matrix4, Quaternion, Rotate, ToHomogeneous, Unit, UnitQuaternion, Vector3};
 use projection::{Projectable, perspective};
 use resource::{Cache, Load, LoadError};
 use transform::{Axis, Orientation, Position, Transformable, Translation, X_AXIS, Y_AXIS, Z_AXIS,

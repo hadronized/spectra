@@ -1,9 +1,9 @@
-use nalgebra::{Matrix4, Quaternion, ToHomogeneous, Unit};
 use serde_json::from_reader;
 use std::path::Path;
 use std::fs::File;
 
 use id::Id;
+use linear::{Matrix4, Quaternion, ToHomogeneous, Unit};
 use model::Model;
 use resource::{Cache, Get, Load, LoadError};
 use transform::{Orientation, Position, Scale, Transformable, translation_matrix};
