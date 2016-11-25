@@ -150,6 +150,12 @@ impl Camera<Freefly> {
   }
 }
 
+impl<T> Projectable for Camera<T> where T: Projectable {
+  fn projection(&self) -> M44 {
+    self.properties.projection()
+  }
+}
+
 fn def_yaw_sens() -> f32 { 0.01 }
 fn def_pitch_sens() -> f32 { 0.01 }
 fn def_roll_sens() -> f32 { 0.01 }
