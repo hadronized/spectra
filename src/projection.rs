@@ -1,11 +1,10 @@
-pub use luminance::M44;
-use nalgebra::Perspective3;
+use nalgebra::{Matrix4, Perspective3};
 
 pub trait Projectable {
-  fn projection(&self) -> M44;
+  fn projection(&self) -> Matrix4<f32>;
 }
 
-pub fn perspective(ratio: f32, fovy: f32, znear: f32, zfar: f32) -> M44 {
-  Perspective3::new(ratio, fovy, znear, zfar).to_matrix().as_ref().clone()
+pub fn perspective(ratio: f32, fovy: f32, znear: f32, zfar: f32) -> Matrix4<f32> {
+  Perspective3::new(ratio, fovy, znear, zfar).to_matrix()
 }
 

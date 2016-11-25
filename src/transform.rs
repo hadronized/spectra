@@ -6,11 +6,11 @@ pub use nalgebra::{Matrix4, Vector3};
 
 /// Class of types that can yield transformation matrices.
 pub trait Transformable {
-  fn transform(&self) -> M44;
+  fn transform(&self) -> Matrix4<f32>;
 }
 
-impl Transformable for M44 {
-  fn transform(&self) -> M44 {
+impl Transformable for Matrix4<f32> {
+  fn transform(&self) -> Matrix4<f32> {
     self.clone()
   }
 }

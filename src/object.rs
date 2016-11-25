@@ -1,4 +1,4 @@
-use nalgebra::{Quaternion, ToHomogeneous, Unit};
+use nalgebra::{Matrix4, Quaternion, ToHomogeneous, Unit};
 use serde_json::from_reader;
 use std::path::Path;
 use std::fs::File;
@@ -6,7 +6,7 @@ use std::fs::File;
 use id::Id;
 use model::Model;
 use resource::{Cache, Get, Load, LoadError};
-use transform::{M44, Orientation, Position, Scale, Transformable, translation_matrix};
+use transform::{Orientation, Position, Scale, Transformable, translation_matrix};
 
 pub struct Object<'a> {
   pub model: Id<'a, Model>,
@@ -16,9 +16,8 @@ pub struct Object<'a> {
 }
 
 impl<'a> Transformable for Object<'a> {
-  fn transform(&self) -> M44 {
-    let m = translation_matrix(-self.position) * self.scale.to_mat() * self.orientation.to_rotation_matrix().to_homogeneous();
-    m.as_ref().clone()
+  fn transform(&self) -> Matrix4<f32> {
+    translation_matrix(-self.position) * self.scale.to_mat() * self.orientation.to_rotation_matrix().to_homogeneous()
   }
 }
 

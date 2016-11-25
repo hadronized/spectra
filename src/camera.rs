@@ -1,4 +1,4 @@
-use nalgebra::{Quaternion, Rotate, ToHomogeneous, Unit, UnitQuaternion, Vector3};
+use nalgebra::{Matrix4, Quaternion, Rotate, ToHomogeneous, Unit, UnitQuaternion, Vector3};
 use serde::Deserialize;
 use serde_json::from_reader;
 use std::default::Default;
@@ -8,8 +8,8 @@ use std::path::Path;
 
 use projection::{Projectable, perspective};
 use resource::{Cache, Load, LoadError};
-use transform::{Axis, M44, Orientation, Position, Transformable, Translation, X_AXIS, Y_AXIS,
-                Z_AXIS, translation_matrix};
+use transform::{Axis, Orientation, Position, Transformable, Translation, X_AXIS, Y_AXIS, Z_AXIS,
+                translation_matrix};
 
 #[derive(Clone, Debug)]
 pub struct Camera<P> {
@@ -37,9 +37,8 @@ impl<P> Default for Camera<P> where P: Default {
 }
 
 impl<P> Transformable for Camera<P> {
-  fn transform(&self) -> M44 {
-    let m = self.orientation.to_rotation_matrix().to_homogeneous() * translation_matrix(-self.position);
-    m.as_ref().clone()
+  fn transform(&self) -> Matrix4<f32> {
+    self.orientation.to_rotation_matrix().to_homogeneous() * translation_matrix(-self.position)
   }
 }
 
@@ -123,7 +122,7 @@ impl Default for Freefly {
 }
 
 impl Projectable for Freefly {
-  fn projection(&self) -> M44 {
+  fn projection(&self) -> Matrix4<f32> {
     perspective(self.ratio, self.fovy, self.znear, self.zfar)
   }
 }
@@ -151,7 +150,7 @@ impl Camera<Freefly> {
 }
 
 impl<T> Projectable for Camera<T> where T: Projectable {
-  fn projection(&self) -> M44 {
+  fn projection(&self) -> Matrix4<f32> {
     self.properties.projection()
   }
 }
