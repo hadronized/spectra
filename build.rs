@@ -25,7 +25,7 @@ fn main() {
 
   for entry in &resources {
     println!("cargo:warning=packing up resource {:?}", entry);
-    write!(&mut manifest, "  resources.push((PathBuf::from(&{0:?}[13..]), include_bytes!({0:?}).as_ref()));\n", entry).unwrap();
+    write!(&mut manifest, "  resources.push((PathBuf::from(&{0:?}[14..]), include_bytes!({0:?}).as_ref()));\n", entry).unwrap();
   }
 
   write!(&mut manifest, "  resources\n").unwrap();
