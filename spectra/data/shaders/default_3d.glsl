@@ -39,7 +39,7 @@ in vec3 g_baryctr;
 out vec4 frag;
 
 void main() {
-  float pi = 3.141592;
+  float pi = 3.14159265;
   float d = min(min(g_baryctr.x, g_baryctr.y), g_baryctr.z);
   float m = max(max(g_baryctr.x, g_baryctr.y), g_baryctr.z);
   vec4 color = vec4(0., 0., 0., 0.);
