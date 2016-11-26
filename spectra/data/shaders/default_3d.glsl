@@ -12,12 +12,12 @@ uniform mat4 inst;
 
 void main() {
   mat4 view_inst = view * inst;
-  mat4 normal_mat = transpose(inverse(view_inst);
+  mat4 normal_mat = transpose(inverse(view_inst));
 
   gl_Position = proj * view_inst * vec4(co, 1.);
 
-  v_p = inst * vec4(co, 1.);
-  v_no = normal_mat * vec4(no, 1.);
+  v_p = (inst * vec4(co, 1.)).xyz;
+  v_no = (normal_mat * vec4(no, 1.)).xyz;
 }
 
 #fs
@@ -33,5 +33,5 @@ void main() {
   vec3 light_dir = vec3(0., 1., 0.);
   float kd = max(0., dot(v_no, light_dir));
 
-  frag = color * kd;
+  frag = vec4(color * kd, 1.);
 }
