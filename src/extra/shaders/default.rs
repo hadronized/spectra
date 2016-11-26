@@ -32,8 +32,6 @@ impl<'a> DefaultProgram2D<'a> {
 pub const DEFAULT_3D_PROJ: Mat44Uniform = Uniform::new(0);
 pub const DEFAULT_3D_VIEW: Mat44Uniform = Uniform::new(1);
 pub const DEFAULT_3D_INST: Mat44Uniform = Uniform::new(2);
-pub const DEFAULT_3D_NORMAL: Mat44Uniform = Uniform::new(3);
-pub const DEFAULT_3D_COLOR: ColorUniform = Uniform::new(4);
 
 pub struct DefaultProgram3D<'a>(Id<'a, Program>);
 
@@ -50,9 +48,7 @@ impl<'a> DefaultProgram3D<'a> {
     get_id!(scene, "default_3d.glsl", vec![
               Mat44Uniform::sem("proj"),
               Mat44Uniform::sem("view"),
-              Mat44Uniform::sem("inst"),
-              Mat44Uniform::sem("normal_mat"),
-              ColorUniform::sem("color")])
+              Mat44Uniform::sem("inst")])
       .map(DefaultProgram3D)
   }
 }

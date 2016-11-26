@@ -1,37 +1,54 @@
 #vs
 
 layout (location = 0) in vec3 co;
-layout (location = 1) in vec3 no;
 
-out vec3 v_p;
-out vec3 v_no;
+uniform mat4 inst;
+
+void main() {
+  gl_Position = inst * vec4(co, 1.);
+}
+
+#gs
+
+layout (triangles) in;
+layout (triangle_strip, max_vertices = 3) out;
 
 uniform mat4 proj;
 uniform mat4 view;
-uniform mat4 inst;
-uniform mat4 normal_mat;
+
+out vec3 g_baryctr;
 
 void main() {
-  mat4 view_inst = view * inst;
+  gl_Position = proj * view * gl_in[0].gl_Position;
+  g_baryctr = vec3(1., 0., 0.);
+  EmitVertex();
+  gl_Position = proj * view * gl_in[1].gl_Position;
+  g_baryctr = vec3(0., 1., 0.);
+  EmitVertex();
+  gl_Position = proj * view * gl_in[2].gl_Position;
+  g_baryctr = vec3(0., 0., 1.);
+  EmitVertex();
 
-  gl_Position = proj * view_inst * vec4(co, 1.);
-
-  v_p = (inst * vec4(co, 1.)).xyz;
-  v_no = (normal_mat * vec4(no, 1.)).xyz;
+  EndPrimitive();
 }
 
 #fs
 
-in vec3 v_p;
-in vec3 v_no;
+in vec3 g_baryctr;
 
 out vec4 frag;
 
-uniform vec3 color;
-
 void main() {
-  vec3 light_dir = vec3(0., 1., 0.);
-  float kd = max(0., dot(v_no, light_dir));
+  float pi = 3.141592;
+  float d = min(min(g_baryctr.x, g_baryctr.y), g_baryctr.z);
+  float m = max(max(g_baryctr.x, g_baryctr.y), g_baryctr.z);
+  vec4 color = vec4(0., 0., 0., 0.);
 
-  frag = vec4(color * kd, 1.);
+  if (d < 0.01) {
+    color = vec4(.8, .5, 1., 0.) * cos(8. * 2. * pi * m);
+  } else {
+    color = vec4(0., 0., 0., 1.);
+  }
+
+  frag = color;
 }
