@@ -51,7 +51,7 @@ impl<'a> DefaultProgram3D<'a> {
               Mat44Uniform::sem("proj"),
               Mat44Uniform::sem("view"),
               Mat44Uniform::sem("inst"),
-              Mat44Uniform::sem("normal_matrix"),
+              Mat44Uniform::sem("normal_mat"),
               ColorUniform::sem("color")])
       .map(DefaultProgram3D)
   }

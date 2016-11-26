@@ -9,10 +9,10 @@ out vec3 v_no;
 uniform mat4 proj;
 uniform mat4 view;
 uniform mat4 inst;
+uniform mat4 normal_mat;
 
 void main() {
   mat4 view_inst = view * inst;
-  mat4 normal_mat = transpose(inverse(view_inst));
 
   gl_Position = proj * view_inst * vec4(co, 1.);
 
