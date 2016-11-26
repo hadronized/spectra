@@ -8,7 +8,7 @@ use id::Id;
 use shader::Program;
 use scene::Scene;
 
-pub type ColorUniform = Uniform<[f32; 4]>;
+pub type ColorUniform = Uniform<[f32; 3]>;
 pub type Mat44Uniform = Uniform<M44>;
 
 pub const DEFAULT_2D_COLOR: ColorUniform = Uniform::new(0);

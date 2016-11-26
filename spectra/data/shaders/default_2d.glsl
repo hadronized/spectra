@@ -8,8 +8,8 @@ void main() {
 #fs
 out vec4 frag;
 
-uniform vec4 color;
+uniform vec3 color;
 
 void main() {
-  frag = vec4(color);
+  frag = vec4(color, 1.);
 }
