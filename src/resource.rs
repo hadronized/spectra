@@ -177,11 +177,15 @@ macro_rules! impl_get_by_id {
     let mut reload_args = None;
 
     if let Some(data) = $this.$n.data.get($id.id as usize) {
-      match (data.2).0.try_recv() {
-        Ok(timestamp) if timestamp - (data.2).1 >= UPDATE_AWAIT_TIME => {
+      // this while loop unqueue the channel to prevent any resource reloading saturation; that can
+      // occur if several changes / update are required by the channel is not consumed for a long
+      // period of time
+      while let Ok(timestamp) = (data.2).0.try_recv() {
+        // if the change is old enough, consider the resource has been updated; otherwise, keep on
+        // waiting
+        if timestamp - (data.2).1 >= UPDATE_AWAIT_TIME {
           reload_args = Some((data.1.to_owned(), data.0.reload_args()));
-        },
-        _ => {}
+        }
       }
     } else {
       return None;
