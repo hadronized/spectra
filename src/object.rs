@@ -24,8 +24,11 @@ impl<'a> Transformable for Object<'a> {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ObjectManifest {
   model: String,
+  #[serde(default = "def_position")]
   position: [f32; 3],
+  #[serde(default = "def_orientation")]
   orientation: [f32; 4],
+  #[serde(default = "def_scale")]
   scale: [f32; 3]
 }
 
@@ -54,3 +57,7 @@ impl<'a> Load<'a> for Object<'a> {
     })
   }
 }
+
+fn def_position() -> [f32; 3] { [0., 0., 0.] }
+fn def_orientation() -> [f32; 4] { [1., 0., 0., 0.] }
+fn def_scale() -> [f32; 3] { [1., 1., 1.] }
