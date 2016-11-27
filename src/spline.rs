@@ -249,7 +249,8 @@ impl Sampler {
     match cp0.interpolation {
       Interpolation::Step(threshold) => {
         let cp1 = &param.keys[i+1];
-        Some(if t < threshold { cp0.value } else { cp1.value })
+        let nt = normalize_time(t, cp0, cp1);
+        Some(if nt < threshold { cp0.value } else { cp1.value })
       },
       Interpolation::Linear => {
         let cp1 = &param.keys[i+1];

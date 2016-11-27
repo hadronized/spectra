@@ -4,20 +4,20 @@ extern crate spectra;
 use rand::{Rng, thread_rng};
 use spectra::linear::{UnitQuaternion, Quaternion};
 use spectra::spline::*;
-use spectra::transform::*;
 
 #[test]
 fn sampler_hold() {
   let mut sampler = Sampler::new();
   let p = Spline::new(vec![
     Key::new(0., 10., Interpolation::Step(1.)),
-    Key::new(24.,  100., Interpolation::Step(1.)),
-    Key::new(45.,  -3.34, Interpolation::Step(1.))
+    Key::new(24., 100., Interpolation::Step(1.)),
+    Key::new(45., -3.34, Interpolation::Step(1.))
   ]);
 
   assert_eq!(sampler.sample(0., &p, true), Some(10.));
   assert_eq!(sampler.sample(2., &p, true), Some(10.));
   assert_eq!(sampler.sample(23., &p, true), Some(10.));
+  assert_eq!(sampler.sample(24., &p, true), Some(100.));
   assert_eq!(sampler.sample(44., &p, true), Some(100.));
   assert_eq!(sampler.sample(44., &p, false), Some(100.));
   assert_eq!(sampler.sample(45., &p, true), None);
