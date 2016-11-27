@@ -42,12 +42,11 @@ void main() {
   float pi = 3.14159265;
   float d = min(min(g_baryctr.x, g_baryctr.y), g_baryctr.z);
   float m = max(max(g_baryctr.x, g_baryctr.y), g_baryctr.z);
-  vec4 color = vec4(0., 0., 0., 0.);
+  vec4 color = vec4(.6, 0., .5, 1.);
+  float k = clamp(cos(8. * 2. * pi * m), 0., 1.);
 
   if (d < 0.01) {
-    color = vec4(.8, .5, 1., 0.) * cos(8. * 2. * pi * m);
-  } else {
-    color = vec4(0., 0., 0., 1.);
+    color = color * (1. - k) + vec4(.4, 1., .5, 1.) * k;
   }
 
   frag = color;
