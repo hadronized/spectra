@@ -1,9 +1,9 @@
+use std::fmt;
 use std::marker::PhantomData;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 
 /// A typed identifier.
-#[derive(Debug)]
 pub struct Id<'a, T> where T: 'a {
   pub id: u32,
   _t: PhantomData<&'a T>
@@ -15,6 +15,12 @@ impl<'a, T> Id<'a, T> {
       id: id,
       _t: PhantomData
     }
+  }
+}
+
+impl<'a, T> fmt::Debug for Id<'a, T> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    write!(f, "Id {{ id: {} }}", self.id)
   }
 }
 

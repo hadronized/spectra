@@ -8,6 +8,7 @@ use model::Model;
 use resource::{Cache, Get, Load, LoadError};
 use transform::{Orientation, Position, Scale, Transformable, translation_matrix};
 
+#[derive(Clone, Debug)]
 pub struct Object<'a> {
   pub model: Id<'a, Model>,
   pub position: Position,
