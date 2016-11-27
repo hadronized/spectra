@@ -22,6 +22,7 @@ pub struct Key<T> {
   /// Actual value.
   pub value: T,
   /// Interpolation mode.
+  #[serde(default)]
   pub interpolation: Interpolation
 }
 
@@ -55,6 +56,12 @@ pub enum Interpolation {
   /// Catmull-Rom interpolation.
   #[serde(rename = "catmull_rom")]
   CatmullRom
+}
+
+impl Default for Interpolation {
+  fn default() -> Self {
+    Interpolation::Linear
+  }
 }
 
 /// Spline curve used to provide interpolation between control points (keys).
