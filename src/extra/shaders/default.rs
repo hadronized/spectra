@@ -25,7 +25,7 @@ impl<'a> Deref for DefaultProgram2D<'a> {
 
 impl<'a> DefaultProgram2D<'a> {
   pub fn get_from(scene: &mut Scene<'a>) -> Option<Self> {
-    get_id!(scene, "default_2d.glsl", vec![ColorUniform::sem("color")]).map(DefaultProgram2D)
+    get_id!(scene, "spectra/default_2d.glsl", vec![ColorUniform::sem("color")]).map(DefaultProgram2D)
   }
 }
 
@@ -45,7 +45,7 @@ impl<'a> Deref for DefaultProgram3D<'a> {
 
 impl<'a> DefaultProgram3D<'a> {
   pub fn get_from(scene: &mut Scene<'a>) -> Option<Self> {
-    get_id!(scene, "default_3d.glsl", vec![
+    get_id!(scene, "spectra/default_3d.glsl", vec![
               Mat44Uniform::sem("proj"),
               Mat44Uniform::sem("view"),
               Mat44Uniform::sem("inst")])
