@@ -29,7 +29,6 @@ pub mod scene;
 
 pub mod anim;
 pub mod app;
-pub mod behavior;
 pub mod bootstrap;
 pub mod camera;
 pub mod color;
@@ -44,3 +43,20 @@ pub mod shader;
 pub mod spline;
 pub mod texture;
 pub mod transform;
+
+pub use anim::Cont;
+pub use app::App;
+pub use bootstrap::{LuminanceBackend, Keyboard, Mouse, MouseMove, Scroll, WindowDim, bootstrap};
+pub use camera::{Camera, Freefly};
+pub use color::Color;
+pub use device::Device;
+pub use id::Id;
+pub use linear::{Matrix4};
+pub use model::{Model, ModelError, Part};
+pub use object::Object;
+pub use projection::{Projectable, perspective};
+pub use shader::{Program, ShaderError, new_program};
+pub use spline::{Interpolate, Interpolation, Key, Sampler, Spline, SplineIterator, Time};
+pub use texture::{TextureImage, load_rgba_texture, save_rgba_texture};
+pub use transform::{Axis, Orientation, Position, Translation, Transformable, X_AXIS, Y_AXIS, Z_AXIS,
+                   Scale, translation_matrix};

@@ -218,12 +218,3 @@ impl<'a> Reload<'a> for Program {
     self.sem_map.clone()
   }
 }
-
-/// A helper function used to make uniforms optionable. If there’s a warning, it’s printed out.
-pub fn opt_uni<T>(uni: (Uniform<T>, Option<UniformWarning>)) -> Uniform<T> where T: Uniformable<GL33> {
-  if let Some(warning) = uni.1 {
-    warn!("{:?}", warning);
-  }
-
-  uni.0
-}

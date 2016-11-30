@@ -184,13 +184,13 @@ impl Interpolate for UnitQuaternion<f32> {
 }
 
 // Default implementation of Interpolate::lerp.
-fn lerp<T>(a: T, b: T, t: Time) -> T where T: Add<Output = T> + Mul<Time, Output = T> {
+pub fn lerp<T>(a: T, b: T, t: Time) -> T where T: Add<Output = T> + Mul<Time, Output = T> {
   a * (1. - t) + b * t
 }
 
 // Default implementation of Interpolate::cubic_hermit.
 
-fn cubic_hermite<T>(x: (T, Time), a: (T, Time), b: (T, Time), y: (T, Time), t: Time) -> T
+pub fn cubic_hermite<T>(x: (T, Time), a: (T, Time), b: (T, Time), y: (T, Time), t: Time) -> T
     where T: Copy + Add<Output = T> + Sub<Output = T> + Mul<Time, Output = T> + Div<Time, Output = T> {
   // time stuff
   let t2 = t * t;
@@ -284,7 +284,7 @@ impl Sampler {
 }
 
 // Normalize a time ([0;1]) given two control points.
-fn normalize_time<T>(t: Time, cp: &Key<T>, cp1: &Key<T>) -> Time {
+pub fn normalize_time<T>(t: Time, cp: &Key<T>, cp1: &Key<T>) -> Time {
   (t - cp.t) / (cp1.t - cp.t)
 }
 
