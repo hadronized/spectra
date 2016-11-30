@@ -1,6 +1,6 @@
 extern crate clap;
 
-use clap::{Arg, App};
+use clap::{App, SubCommand};
 use std::fs::{File, create_dir_all};
 use std::io::Write;
 use std::path::Path;
@@ -9,14 +9,11 @@ include!(concat!(env!("OUT_DIR"), "/resources.rs"));
 
 fn main() {
   let options = App::new("spectra")
-    .arg(Arg::with_name("bootstrap")
-         .short("b")
-         .long("bootstrap")
-         .takes_value(false)
-         .help("bootstrap default resources into the current application"))
+    .subcommand(SubCommand::with_name("bootstrap")
+         .about("Create default resources in your end-user project"))
     .get_matches();
 
-  if options.is_present("bootstrap") {
+  if options.subcommand_matches("bootstrap").is_some() {
     println!("bootstraping resources");
 
     for resource in &get_resources() {
