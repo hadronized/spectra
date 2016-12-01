@@ -1,4 +1,3 @@
-
 use luminance::{Dim2, Flat, RGBA32F};
 use luminance::framebuffer::ColorSlot;
 use luminance_gl::gl33::{Framebuffer, GL33, Texture};
