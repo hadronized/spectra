@@ -40,6 +40,7 @@ pub mod linear;
 pub mod model;
 pub mod object;
 pub mod projection;
+pub mod renderer;
 pub mod shader;
 pub mod spline;
 pub mod texture;
