@@ -6,7 +6,7 @@ use effect::Effect;
 pub enum Screen<'a> {
   /// Screen display.
   ///
-  /// This shrinks the output to the display and consume it, displaying the content to the user.
+  /// This shrinks the output to the display and consumes it, displaying the content to the user.
   Display,
   /// Captured output screen.
   ///
