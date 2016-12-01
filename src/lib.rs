@@ -34,7 +34,6 @@ pub mod camera;
 pub mod compositor;
 pub mod color;
 pub mod device;
-pub mod effect;
 pub mod extra;
 pub mod id;
 pub mod linear;
