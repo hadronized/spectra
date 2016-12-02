@@ -1,3 +1,4 @@
+#![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(proc_macro)]
 

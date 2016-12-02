@@ -15,9 +15,32 @@ pub type Texture2D<A> = Texture<Flat, Dim2, A>;
 
 /// Simple renderer that takes a camera, a set of model and applies a shader on them. This renderer
 /// outputs a single color map along with the depth map.
-pub struct SimpleRenderer<'a> {
-  program: Id<'a, Program>,
-  framebuffer: Framebuffer<Flat, Dim2, Texture2D<RGBA32F>, Texture2D<Depth32F>>,
+pub struct Simple<'a> {
+  program: DefaultProgram3D<'a>,
+  framebuffer: Framebuffer<Flat, Dim2, Texture2D<RGBA32F>, Texture2D<Depth32F>>
+}
+
+impl<'a> Simple<'a> {
+  pub fn new_from(w: u32, h: u32, scene: &'a mut Scene<'a>) -> Self {
+    Simple {
+      program: DefaultProgram3D::new_from(scene).unwrap(),
+      framebuffer: Framebuffer::new((w, h), 0).unwrap()
+    }
+  }
+
+  pub fn renderer(&'a mut self, camera: &'a Camera<Freefly>, objects: &'a [Object<'a>]) -> impl Renderer<'a, Output=(&'a Texture2D<RGBA32F>, &'a Texture2D<Depth32F>)> {
+    SimpleRenderer {
+      program: &self.program,
+      framebuffer: &self.framebuffer,
+      camera: camera,
+      objects: objects
+    }
+  }
+}
+
+struct SimpleRenderer<'a> {
+  program: &'a Id<'a, Program>,
+  framebuffer: &'a Framebuffer<Flat, Dim2, Texture2D<RGBA32F>, Texture2D<Depth32F>>,
   camera: &'a Camera<Freefly>,
   objects: &'a [Object<'a>]
 }
@@ -26,7 +49,7 @@ impl<'a> Renderer<'a> for SimpleRenderer<'a> {
   type Output = (&'a Texture2D<RGBA32F>, &'a Texture2D<Depth32F>);
 
   fn render(&'a mut self, scene: &'a mut Scene<'a>) -> Self::Output {
-    let program = scene.get_by_id(&self.program).unwrap();
+    let program = scene.get_by_id(self.program).unwrap();
 
     // reify objects
     let objects: Vec<_> = self.objects.iter().map(|object| {
@@ -42,7 +65,7 @@ impl<'a> Renderer<'a> for SimpleRenderer<'a> {
       })
     }).collect();
 
-    Pipeline::new(&self.framebuffer, [0., 0., 0., 0.], &[], &[], vec![
+    Pipeline::new(self.framebuffer, [0., 0., 0., 0.], &[], &[], vec![
       Pipe::new(|program| {
                   // update the camera
                   program.update(&DEFAULT_3D_PROJ, *self.camera.projection().as_ref());

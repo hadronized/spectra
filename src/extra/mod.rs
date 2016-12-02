@@ -7,5 +7,5 @@ pub mod shaders;
 pub use self::cube::new_cube;
 pub use self::curve::new_curve_2d;
 pub use self::plane::new_plane;
-//pub use self::renderers::simple::*;
+pub use self::renderers::simple::Simple;
 pub use self::shaders::*;
