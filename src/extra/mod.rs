@@ -1,3 +1,4 @@
+pub mod compositors;
 pub mod cube;
 pub mod curve;
 pub mod plane;
