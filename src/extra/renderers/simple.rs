@@ -1,4 +1,4 @@
-use luminance::{Depth32F, Dim2, Flat, RGBA32F, Uniformable};
+use luminance::{Depth32F, Dim2, Flat, RGBA32F};
 use luminance_gl::gl33::{Framebuffer, Pipe, Pipeline, RenderCommand, ShadingCommand, Texture};
 
 use camera::{Camera, Freefly};
@@ -21,7 +21,7 @@ pub struct Simple<'a> {
 }
 
 impl<'a> Simple<'a> {
-  pub fn new_from(w: u32, h: u32, scene: &'a mut Scene<'a>) -> Self {
+  pub fn new_from(w: u32, h: u32, scene: &mut Scene<'a>) -> Self {
     Simple {
       program: DefaultProgram3D::new_from(scene).unwrap(),
       framebuffer: Framebuffer::new((w, h), 0).unwrap()
