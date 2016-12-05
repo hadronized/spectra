@@ -71,7 +71,7 @@ pub fn bootstrap<App: FnOnce(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Windo
     }
   };
 
-  deb!("window opened");
+  deb!("opened window");
 
   window.make_current();
 
