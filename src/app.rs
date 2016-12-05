@@ -47,7 +47,7 @@ impl App {
     (precise_time_ns() - self.start_time) as f32 * 1e-9
   }
 
-  pub fn handle_events<'a>(&mut self, camera: &mut Camera<Freefly>) -> bool {
+  pub fn handle_events(&mut self, camera: &mut Camera<Freefly>) -> bool {
     while let Ok((key, action)) = self.kbd.try_recv() {
       if action == Action::Release && key == Key::Escape{
         return false;
