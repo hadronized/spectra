@@ -30,6 +30,8 @@ pub type MouseMove = mpsc::Receiver<[f64; 2]>;
 pub type Scroll = mpsc::Receiver<[f64; 2]>;
 
 pub fn bootstrap<App: FnOnce(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Window)>(dim: WindowDim, title: &'static str, backend: LuminanceBackend, app: App) {
+  info!("{} starting\nwindow mode: {:?}\nluminance backend: {:?}", title, dim, backend);
+
   let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
   match backend {
@@ -67,9 +69,12 @@ pub fn bootstrap<App: FnOnce(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Windo
     }
   };
 
+  deb!("window opened");
+
   window.make_current();
 
   if cfg!(feature = "release") {
+    deb!("hiding cursor");
     window.set_cursor_mode(CursorMode::Disabled);
   }
 
@@ -78,10 +83,10 @@ pub fn bootstrap<App: FnOnce(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Windo
   window.set_mouse_button_polling(true);
   window.set_scroll_polling(true);
 
+  deb!("initializing OpenGL pointers");
+
   // init OpenGL
   gl::load_with(|s| window.get_proc_address(s) as *const c_void);
-
-  info!("using resolution {}x{}", w, h);
 
   // create channels to stream keyboard and mouse events
   let (kbd_snd, kbd_rcv) = mpsc::channel();
@@ -89,7 +94,7 @@ pub fn bootstrap<App: FnOnce(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Windo
   let (mouse_move_snd, mouse_move_rcv) = mpsc::channel();
   let (scroll_snd, scroll_rcv) = mpsc::channel();
 
-  // start the event threads
+  deb!("spawing the event thread");
   let _ = thread::spawn(move || {
     loop {
       glfw.wait_events();
@@ -114,5 +119,6 @@ pub fn bootstrap<App: FnOnce(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Windo
     }
   });
 
+  deb!("bootstrapping finished");
   app(w, h, kbd_rcv, mouse_rcv, mouse_move_rcv, scroll_rcv, window);
 }
