@@ -31,7 +31,7 @@ pub type Scroll = mpsc::Receiver<[f64; 2]>;
 
 pub fn bootstrap<App: FnOnce(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Window)>(dim: WindowDim, title: &'static str, backend: LuminanceBackend, app: App) {
   info!("{} starting", title);
-  info!("{} window mode: {:?}", dim);
+  info!("window mode: {:?}", dim);
   info!("luminance backend: {:?}", backend);
 
   let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
