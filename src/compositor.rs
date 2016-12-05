@@ -21,7 +21,7 @@ pub enum Screen<'a> {
 }
 
 pub trait Compositor<'a, 'b, Input> {
-  fn composite(&'a mut self, &'a mut Scene<'b>, Input) -> Screen<'a>;
+  fn composite(&'a self, &'a mut Scene<'b>, Input) -> Screen<'a>;
 }
 
 pub trait Effect<'a>: Sized {

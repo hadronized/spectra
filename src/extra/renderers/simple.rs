@@ -5,6 +5,7 @@ use camera::{Camera, Freefly};
 use extra::shaders::default::{DEFAULT_3D_INST, DEFAULT_3D_PROJ, DEFAULT_3D_VIEW, DefaultProgram3D};
 use object::Object;
 use projection::Projectable;
+use renderer::Renderer;
 use scene::Scene;
 use transform::Transformable;
 
@@ -24,8 +25,11 @@ impl<'a> SimpleRenderer<'a> {
       framebuffer: Framebuffer::new((w, h), 0).unwrap()
     }
   }
+}
 
-  pub fn render(&mut self, scene: &mut Scene<'a>, camera: &Camera<Freefly>, objects: &[&Object<'a>]) -> (&Texture2D<RGBA32F>, &Texture2D<Depth32F>) {
+impl<'a, 'b, 'c> Renderer<'a, 'b, 'c, (&'a Camera<Freefly>, &'a [&'a Object<'c>]), (&'a Texture2D<RGBA32F>, &'a Texture2D<Depth32F>)> for SimpleRenderer<'c> {
+  fn render(&'a self, scene: &'b mut Scene<'c>, input: (&'a Camera<Freefly>, &'a [&'a Object<'c>])) -> (&'a Texture2D<RGBA32F>, &'a Texture2D<Depth32F>) {
+    let (camera, objects) = input;
     let program = scene.get_by_id(&self.program).unwrap();
 
     // reify objects

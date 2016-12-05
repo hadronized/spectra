@@ -1,7 +1,5 @@
 use scene::Scene;
 
-pub trait Renderer<'a> {
-  type Output;
-
-  fn render(&'a mut self, scene: &'a mut Scene<'a>) -> Self::Output;
+pub trait Renderer<'a, 'b, 'c, Input, Output> {
+  fn render(&'a self, &'b mut Scene<'c>, Input) -> Output;
 }
