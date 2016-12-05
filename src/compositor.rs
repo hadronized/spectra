@@ -20,10 +20,8 @@ pub enum Screen<'a> {
   Capture(&'a Texture<Flat, Dim2, RGBA32F>),
 }
 
-pub trait Compositor<'a, 'b> {
-  type Input;
-
-  fn composite(&'a mut self, &'a mut Scene<'b>, Self::Input) -> Screen<'a>;
+pub trait Compositor<'a, 'b, Input> {
+  fn composite(&'a mut self, &'a mut Scene<'b>, Input) -> Screen<'a>;
 }
 
 pub trait Effect<'a>: Sized {

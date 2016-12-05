@@ -37,10 +37,8 @@ impl<'a> Forward<'a> {
   }
 }
 
-impl<'a, 'b> Compositor<'a, 'b> for Forward<'b> {
-  type Input = &'a Texture2D<RGBA32F>;
-
-  fn composite(&'a mut self, scene: &'a mut Scene<'b>, source: Self::Input) -> Screen<'a> {
+impl<'a, 'b> Compositor<'a, 'b, &'a Texture2D<RGBA32F>> for Forward<'b> {
+  fn composite(&'a mut self, scene: &'a mut Scene<'b>, source: &'a Texture2D<RGBA32F>) -> Screen<'a> {
     let program = scene.get_by_id(&self.program).unwrap();
     let back_fb = Framebuffer::default((self.w, self.h));
     let textures = &[source.into()];
