@@ -96,7 +96,7 @@ pub fn bootstrap<App: FnOnce(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Windo
   let (mouse_move_snd, mouse_move_rcv) = mpsc::channel();
   let (scroll_snd, scroll_rcv) = mpsc::channel();
 
-  deb!("spawing the event thread");
+  deb!("spawning the event thread");
   let _ = thread::spawn(move || {
     loop {
       glfw.wait_events();
