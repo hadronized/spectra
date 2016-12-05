@@ -3,6 +3,7 @@ use luminance::framebuffer::ColorSlot;
 use luminance_gl::gl33::{Framebuffer, GL33, Texture};
 use std::marker::PhantomData;
 
+use scene::Scene;
 use shader::Program;
 
 pub enum Screen<'a> {
@@ -19,22 +20,17 @@ pub enum Screen<'a> {
   Capture(&'a Texture<Flat, Dim2, RGBA32F>),
 }
 
-pub trait Compositor<'a, I> {
-  fn composite(&'a mut self, input: I) -> Screen;
-}
+pub trait Compositor<'a, 'b> {
+  type Input;
 
-impl<'a, E, I> Compositor<'a, I> for E where E: Effect<'a, Input=I, Output=()> {
-  fn composite(&'a mut self, input: I) -> Screen {
-    self.apply(input);
-    Screen::Display
-  }
+  fn composite(&'a mut self, &'a mut Scene<'b>, Self::Input) -> Screen<'a>;
 }
 
 pub trait Effect<'a>: Sized {
   type Input;
   type Output;
 
-  fn apply(&'a mut self, Self::Input) -> Self::Output;
+  fn apply(&mut self, Self::Input) -> Self::Output;
 
   fn then<A, E>(self, next: E) -> Then<'a, Self::Input, Self::Output, A, Self, E> where
       E: Effect<'a, Input=Self::Output, Output=A> {
@@ -60,7 +56,7 @@ impl<'a, A, B, C, I0, I1> Effect<'a> for Then<'a, A, B, C, I0, I1> where
   type Input = A;
   type Output = C;
 
-  fn apply(&'a mut self, input: Self::Input) -> Self::Output {
+  fn apply(&mut self, input: Self::Input) -> Self::Output {
     self.back.apply(self.front.apply(input))
   }
 }

@@ -2,6 +2,7 @@ use luminance::{Dim2, Flat, Mode, RGBA32F, Unit};
 use luminance_gl::gl33::{Framebuffer, Pipe, Pipeline, RenderCommand, ShadingCommand, Tessellation,
                          Texture, Uniform};
 
+use compositor::{Compositor, Screen};
 use id::Id;
 use scene::Scene;
 use shader::Program;
@@ -34,8 +35,12 @@ impl<'a> Forward<'a> {
       h: h
     }
   }
+}
 
-  pub fn composite(&mut self, scene: &mut Scene<'a>, source: &Texture2D<RGBA32F>) {
+impl<'a, 'b> Compositor<'a, 'b> for Forward<'b> {
+  type Input = &'a Texture2D<RGBA32F>;
+
+  fn composite(&'a mut self, scene: &'a mut Scene<'b>, source: Self::Input) -> Screen<'a> {
     let program = scene.get_by_id(&self.program).unwrap();
     let back_fb = Framebuffer::default((self.w, self.h));
     let textures = &[source.into()];
@@ -46,5 +51,7 @@ impl<'a> Forward<'a> {
           Pipe::new(|_|{}, &self.quad)], 1, None))
         ]))
     ]).run();
+
+    Screen::Display
   }
 }
