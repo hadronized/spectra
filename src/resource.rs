@@ -163,7 +163,7 @@ macro_rules! impl_get_id {
             }
           }
         } else { // path doesn’t exist
-          err!("ressource at {} cannot be found", path_str);
+          err!("resource at {} cannot be found", path_str);
           None
         }
       }
