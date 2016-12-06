@@ -97,7 +97,7 @@ impl App {
     true
   }
 
-  pub fn step<R>(&mut self, mut draw_frame: R) -> bool where R: FnMut(f32) {
+  pub fn step<R>(&mut self, fps: Option<u32>, mut draw_frame: R) -> bool where R: FnMut(f32) {
     let loop_start_time = precise_time_ns();
 
     if self.window.should_close() {
@@ -111,12 +111,14 @@ impl App {
     self.window.swap_buffers();
 
     // wait for next frame according to the wished FPS
-    let fps = 60.;
-    let elapsed_time_ms = ((precise_time_ns() - loop_start_time) as f64 * 1e-6) as i64;
-    let sleep_time_ms = (1. / fps * 1e3) as i64 - elapsed_time_ms;
+    if let Some(fps) = fps {
+      let fps = fps as f32;
+      let elapsed_time_ms = ((precise_time_ns() - loop_start_time) as f64 * 1e-6) as i64;
+      let sleep_time_ms = (1. / fps * 1e3) as i64 - elapsed_time_ms;
 
-    if sleep_time_ms > 0 {
-      thread::sleep(Duration::from_millis(sleep_time_ms as u64));
+      if sleep_time_ms > 0 {
+        thread::sleep(Duration::from_millis(sleep_time_ms as u64));
+      }
     }
 
     true
