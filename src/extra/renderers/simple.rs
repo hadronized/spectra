@@ -21,7 +21,7 @@ pub struct SimpleRenderer<'a> {
 impl<'a> SimpleRenderer<'a> {
   pub fn new(w: u32, h: u32, scene: &mut Scene<'a>) -> Self {
     SimpleRenderer {
-      program: DefaultProgram3D::new_from(scene).unwrap(),
+      program: DefaultProgram3D::new(scene).unwrap(),
       framebuffer: Framebuffer::new((w, h), 0).unwrap()
     }
   }
