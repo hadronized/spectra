@@ -10,6 +10,7 @@ pub extern crate luminance_gl;
 extern crate nalgebra;
 #[cfg(feature = "hot-resource")]
 extern crate notify;
+extern crate num;
 extern crate openal;
 extern crate serde;
 #[macro_use]

@@ -1,6 +1,8 @@
 use std::default::Default;
 
 use linear::UnitQuaternion;
+use num::One;
+use std::ops::Mul;
 
 pub use luminance::linear::M44;
 pub use linear::{Matrix4, Vector3};
@@ -77,6 +79,24 @@ impl<'a> From<&'a [f32; 3]> for Scale {
 impl<'a> From<&'a Scale> for [f32; 3] {
   fn from(scale: &Scale) -> Self {
     [scale.x, scale.y, scale.z]
+  }
+}
+
+impl Mul for Scale {
+  type Output = Scale;
+
+  fn mul(self, rhs: Self) -> Self::Output {
+    Scale {
+      x: self.x * rhs.x,
+      y: self.y * rhs.y,
+      z: self.z * rhs.z
+    }
+  }
+}
+
+impl One for Scale {
+  fn one() -> Self {
+    Scale::new(1., 1., 1.)
   }
 }
 
