@@ -16,6 +16,17 @@ pub struct Object<'a> {
   pub scale: Scale
 }
 
+impl<'a> Object<'a> {
+  pub fn new(model: Id<'a, Model>, position: Position, orientation: Orientation, scale: Scale) -> Self {
+    Object {
+      model: model,
+      position: position,
+      orientation: orientation,
+      scale: scale
+    }
+  }
+}
+
 impl<'a> Transformable for Object<'a> {
   fn transform(&self) -> Matrix4<f32> {
     translation_matrix(-self.position) * self.scale.to_mat() * self.orientation.to_rotation_matrix().to_homogeneous()
