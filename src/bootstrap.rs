@@ -29,7 +29,7 @@ pub type Mouse = mpsc::Receiver<(MouseButton, Action)>;
 pub type MouseMove = mpsc::Receiver<[f64; 2]>;
 pub type Scroll = mpsc::Receiver<[f64; 2]>;
 
-pub fn bootstrap<App: FnOnce(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Window)>(dim: WindowDim, title: &'static str, backend: LuminanceBackend, app: App) {
+pub fn bootstrap(dim: WindowDim, title: &'static str, backend: LuminanceBackend) -> (u32, u32, Keyboard, Mouse, MouseMove, Scroll, Window) {
   info!("{} starting", title);
   info!("window mode: {:?}", dim);
   info!("luminance backend: {:?}", backend);
@@ -122,5 +122,5 @@ pub fn bootstrap<App: FnOnce(u32, u32, Keyboard, Mouse, MouseMove, Scroll, Windo
   });
 
   deb!("bootstrapping finished");
-  app(w, h, kbd_rcv, mouse_rcv, mouse_move_rcv, scroll_rcv, window);
+  (w, h, kbd_rcv, mouse_rcv, mouse_move_rcv, scroll_rcv, window)
 }
