@@ -1,6 +1,6 @@
 use luminance::{Dim2, Flat, Mode, RGBA32F, Unit};
-use luminance_gl::gl33::{Framebuffer, Pipe, Pipeline, RenderCommand, ShadingCommand, Tessellation,
-                         Texture, Uniform};
+use luminance_gl::gl33::{Framebuffer, Pipe, Pipeline, RenderCommand, ShadingCommand, Tess, Texture,
+                         Uniform};
 
 use compositor::{Compositor, Screen};
 use id::Id;
@@ -13,7 +13,7 @@ const FORWARD_SOURCE: Uniform<Unit> = Uniform::new(0);
 
 pub struct Forward<'a> {
   program: Id<'a, Program>,
-  quad: Tessellation,
+  quad: Tess,
   w: u32,
   h: u32
 }
@@ -30,7 +30,7 @@ impl<'a> Forward<'a> {
 
     Forward {
       program: program,
-      quad: Tessellation::attributeless(Mode::TriangleStrip, 4),
+      quad: Tess::attributeless(Mode::TriangleStrip, 4),
       w: w,
       h: h
     }

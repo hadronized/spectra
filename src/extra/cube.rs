@@ -1,5 +1,5 @@
 use luminance::Mode;
-use luminance_gl::gl33::Tessellation;
+use luminance_gl::gl33::Tess;
 
 // A unit cube.
 //
@@ -9,7 +9,7 @@ use luminance_gl::gl33::Tessellation;
 //   | ×---+-×
 //   |/    |/
 //   ×-----×
-pub fn new_cube(with_normals: bool) -> Tessellation {
+pub fn new_cube(with_normals: bool) -> Tess {
   if with_normals {
     let vertices = [
       // front face
@@ -53,7 +53,7 @@ pub fn new_cube(with_normals: bool) -> Tessellation {
       20, 21, 22, 22, 21, 23, // bottom face
     ];
 
-    Tessellation::new(Mode::Triangle, &vertices, Some(&indices))
+    Tess::new(Mode::Triangle, &vertices, Some(&indices))
   } else {
     let vertices = [
       [ 1., -1.,  1.],
@@ -75,6 +75,6 @@ pub fn new_cube(with_normals: bool) -> Tessellation {
       4, 5, 6, 6, 5, 7, // back face
     ];
 
-    Tessellation::new(Mode::Triangle, &vertices, Some(&indices))
+    Tess::new(Mode::Triangle, &vertices, Some(&indices))
   }
 }

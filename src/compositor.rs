@@ -1,10 +1,8 @@
 use luminance::{Dim2, Flat, RGBA32F};
-use luminance::framebuffer::ColorSlot;
-use luminance_gl::gl33::{Framebuffer, GL33, Texture};
+use luminance_gl::gl33::Texture;
 use std::marker::PhantomData;
 
 use scene::Scene;
-use shader::Program;
 
 pub enum Screen<'a> {
   /// Screen display.
@@ -57,9 +55,4 @@ impl<'a, A, B, C, I0, I1> Effect<'a> for Then<'a, A, B, C, I0, I1> where
   fn apply(&mut self, input: Self::Input) -> Self::Output {
     self.back.apply(self.front.apply(input))
   }
-}
-
-pub struct BaseEffect<Output> where Output: ColorSlot<GL33, Flat, Dim2> {
-  framebuffer: Framebuffer<Flat, Dim2, Output, ()>,
-  program: Program
 }

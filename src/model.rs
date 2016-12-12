@@ -1,5 +1,5 @@
-use luminance::tessellation;
-use luminance_gl::gl33::Tessellation;
+use luminance::tess;
+use luminance_gl::gl33::Tess;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
@@ -37,12 +37,12 @@ impl IntoIterator for Model {
 }
 
 pub struct Part {
-  pub tess: Tessellation,
+  pub tess: Tess,
   // TODO: add material index
 }
 
 impl Part {
-  pub fn new(tess: Tessellation) -> Self {
+  pub fn new(tess: Tess) -> Self {
     Part {
       tess: tess,
     }
@@ -84,7 +84,7 @@ fn convert_obj(obj_set: obj::ObjSet) -> Result<Model, ModelError> {
     for geometry in &obj.geometry {
       info!("    {} vertices, {} normals, {} tex vertices", obj.vertices.len(), obj.normals.len(), obj.tex_vertices.len());
       let (vertices, indices, mode) = convert_geometry(geometry, &obj.vertices, &obj.normals, &obj.tex_vertices)?;
-      let part = Part::new(Tessellation::new(mode, &vertices, Some(&indices))); // FIXME: material
+      let part = Part::new(Tess::new(mode, &vertices, Some(&indices))); // FIXME: material
       parts.push(part);
     }
   }
@@ -96,7 +96,7 @@ fn convert_obj(obj_set: obj::ObjSet) -> Result<Model, ModelError> {
 //
 // This function will regenerate the indices on the fly based on which are used in the shapes in the
 // geometry. It’s used to create independent tessellation.
-fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[obj::Normal], tvertices: &[obj::TVertex]) -> Result<(Vec<Vertex>, Vec<u32>, tessellation::Mode), ModelError> {
+fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[obj::Normal], tvertices: &[obj::TVertex]) -> Result<(Vec<Vertex>, Vec<u32>, tess::Mode), ModelError> {
   if geo.shapes.is_empty() {
     return Err(ModelError::NoShape);
   }
@@ -181,11 +181,11 @@ fn convert_tvertex(t: &obj::TVertex) -> VertexTexCoord {
   [t.u as f32, t.v as f32]
 }
 
-fn guess_mode(prim: obj::Primitive) -> tessellation::Mode {
+fn guess_mode(prim: obj::Primitive) -> tess::Mode {
   match prim {
-    obj::Primitive::Point(_) => tessellation::Mode::Point,
-    obj::Primitive::Line(_, _) => tessellation::Mode::Line,
-    obj::Primitive::Triangle(_, _, _) => tessellation::Mode::Triangle
+    obj::Primitive::Point(_) => tess::Mode::Point,
+    obj::Primitive::Line(_, _) => tess::Mode::Line,
+    obj::Primitive::Triangle(_, _, _) => tess::Mode::Triangle
   }
 }
 
