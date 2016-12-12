@@ -22,7 +22,7 @@ pub trait Load<'a>: Sized {
   type Args;
 
   // TODO: see whether we can use something with From/Into instead, so that we can use lambdas.
-  fn load<P>(path: P, cache: &mut Cache<'a>, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path>;
+  fn load<P>(path: P, cache: &mut Cache<'a>, args: Self::Args) -> Result<Self> where P: AsRef<Path>;
 }
 
 /// Class of types that can be reloaded.
@@ -45,6 +45,8 @@ pub enum LoadError {
   ParseFailed(String),
   ConversionFailed(String)
 }
+
+pub type Result<T> = ::std::result::Result<T, LoadError>;
 
 type Timestamp = f64;
 

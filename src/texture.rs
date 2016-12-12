@@ -1,18 +1,18 @@
 use luminance::{Dim2, Flat, Sampler};
 use luminance_gl::gl33::Texture;
-use image::{self, ImageResult};
+use image;
 use std::ops::Deref;
 use std::path::Path;
 
 pub use luminance::RGBA32F;
 
-use resource::{Cache, Load, LoadError, Reload};
+use resource::{Cache, Load, LoadError, Reload, Result};
 
 /// Load an RGBA texture from an image at a path.
-pub fn load_rgba_texture<P>(path: P, sampler: &Sampler, linear: bool) -> ImageResult<Texture<Flat, Dim2, RGBA32F>> where P: AsRef<Path> {
+pub fn load_rgba_texture<P>(path: P, sampler: &Sampler, linear: bool) -> Result<Texture<Flat, Dim2, RGBA32F>> where P: AsRef<Path> {
   info!("loading texture image: \x1b[35m{:?}", path.as_ref());
 
-  let image = image::open(path)?.to_rgba();
+  let image = image::open(path).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?.to_rgba();
   let dim = image.dimensions();
   let raw: Vec<f32> = image.into_raw().into_iter().map(|x| {
     let y = x as f32 / 255.;
@@ -24,7 +24,7 @@ pub fn load_rgba_texture<P>(path: P, sampler: &Sampler, linear: bool) -> ImageRe
     }
   }).collect();
 
-  let tex = Texture::new(dim, 0, sampler);
+  let tex = Texture::new(dim, 0, sampler).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?;
   tex.upload_raw(false, &raw);
 
   Ok(tex)
@@ -62,7 +62,7 @@ impl Deref for TextureImage {
 impl<'a> Load<'a> for TextureImage {
   type Args = (Sampler, bool);
 
-  fn load<P>(path: P, _: &mut Cache<'a>, (sampler, linear): Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  fn load<P>(path: P, _: &mut Cache<'a>, (sampler, linear): Self::Args) -> Result<Self> where P: AsRef<Path> {
     load_rgba_texture(path, &sampler, linear)
       .map(|tex| TextureImage {
         texture: tex,
