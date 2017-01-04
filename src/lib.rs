@@ -53,7 +53,7 @@ pub use anim::Cont;
 pub use app::App;
 pub use bootstrap::{LuminanceBackend, Keyboard, Mouse, MouseMove, Scroll, WindowDim, bootstrap};
 pub use camera::{Camera, Freefly};
-pub use color::Color;
+pub use color::{Color, ColorAlpha};
 pub use compositor::{Compositor, Screen};
 pub use device::Device;
 pub use id::Id;
