@@ -20,7 +20,7 @@ pub struct Forward<'a> {
 
 impl<'a> Forward<'a> {
   pub fn new(w: u32, h: u32, scene: &mut Scene<'a>) -> Self {
-    let program = get_id!(scene, "spectra/compositors/forward.glsl", vec![Uniform::<Unit>::sem("source")]).unwrap();
+    let program = get_id!(scene, "spectra/compositors/forward.glsl", vec![FORWARD_SOURCE.sem("source")]).unwrap();
 
     // update the texture uniform once and for all
     {

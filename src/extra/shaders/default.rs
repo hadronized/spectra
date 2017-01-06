@@ -25,13 +25,27 @@ impl<'a> Deref for DefaultProgram2D<'a> {
 
 impl<'a> DefaultProgram2D<'a> {
   pub fn new(scene: &mut Scene<'a>) -> Option<Self> {
-    get_id!(scene, "spectra/default_2d.glsl", vec![ColorUniform::sem("color")]).map(DefaultProgram2D)
+    get_id!(scene, "spectra/default_2d.glsl", vec![DEFAULT_2D_COLOR.sem("color")]).map(DefaultProgram2D)
   }
 }
 
-pub const DEFAULT_3D_PROJ: Mat44Uniform = Uniform::new(0);
-pub const DEFAULT_3D_VIEW: Mat44Uniform = Uniform::new(1);
-pub const DEFAULT_3D_INST: Mat44Uniform = Uniform::new(2);
+macro_rules! uniforms {
+  ($sem_index:expr => $name:ident : $t:ty) => {
+    pub const $name : Uniform<$t> = Uniform::new($sem_index);
+  };
+
+  ($($name:ident : $t:ty),*) => {
+    $(
+      uniforms!{0 => $name : $t}
+    )*
+  };
+}
+
+uniforms!{
+  DEFAULT_3D_PROJ: M44,
+  DEFAULT_3D_VIEW: M44,
+  DEFAULT_3D_INST: M44
+}
 
 pub struct DefaultProgram3D<'a>(Id<'a, Program>);
 
@@ -46,9 +60,9 @@ impl<'a> Deref for DefaultProgram3D<'a> {
 impl<'a> DefaultProgram3D<'a> {
   pub fn new(scene: &mut Scene<'a>) -> Option<Self> {
     get_id!(scene, "spectra/default_3d.glsl", vec![
-              Mat44Uniform::sem("proj"),
-              Mat44Uniform::sem("view"),
-              Mat44Uniform::sem("inst")])
+              DEFAULT_3D_PROJ.sem("proj"),
+              DEFAULT_3D_VIEW.sem("view"),
+              DEFAULT_3D_INST.sem("inst")])
       .map(DefaultProgram3D)
   }
 }
