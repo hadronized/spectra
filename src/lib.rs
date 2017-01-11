@@ -1,6 +1,5 @@
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
-#![feature(proc_macro)]
 
 extern crate gl;
 pub extern crate glfw;
