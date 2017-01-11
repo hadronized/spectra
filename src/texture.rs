@@ -68,8 +68,7 @@ impl<'a> Load<'a> for TextureImage {
         texture: tex,
         sampler: sampler,
         linear: linear
-        })
-      .map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))
+      })
   }
 }
 
