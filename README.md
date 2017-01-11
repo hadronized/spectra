@@ -20,6 +20,6 @@ If you target animation-related applications, you should find **spectra** a frie
 
 ## Hacking
 
-Because **spectra** exists to help me writing demos, I don’t usually accepts PR on that project,
+Because **spectra** exists to help me writing demos, I don’t usually accept PR on that project,
 since I want to be the only one working on my demo. However, as I love Open Source, if you really
 provide a useful patch or a very nice idea, I shall merge it. But hush… ;)
