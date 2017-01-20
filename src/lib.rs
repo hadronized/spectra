@@ -5,7 +5,6 @@ extern crate gl;
 pub extern crate glfw;
 extern crate image;
 pub extern crate luminance;
-pub extern crate luminance_gl;
 extern crate nalgebra;
 #[cfg(feature = "hot-resource")]
 extern crate notify;

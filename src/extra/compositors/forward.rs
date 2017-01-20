@@ -1,6 +1,5 @@
-use luminance::{Dim2, Flat, Mode, RGBA32F, Unit};
-use luminance_gl::gl33::{Framebuffer, Pipe, Pipeline, RenderCommand, ShadingCommand, Tess, Texture,
-                         Uniform};
+use luminance::{Dim2, Flat, Framebuffer, Mode, Pipe, Pipeline, RGBA32F, RenderCommand,
+                ShadingCommand, Tess, Texture, Unit, Uniform};
 
 use compositor::{Compositor, Screen};
 use id::Id;

@@ -1,5 +1,5 @@
-use luminance::{Depth32F, Dim2, Flat, RGBA32F};
-use luminance_gl::gl33::{Framebuffer, Pipe, Pipeline, RenderCommand, ShadingCommand, Texture};
+use luminance::{Depth32F, Dim2, Flat, Framebuffer, Pipe, Pipeline, RGBA32F, RenderCommand,
+                ShadingCommand, Texture};
 
 use camera::{Camera, Freefly};
 use extra::shaders::default::{DEFAULT_3D_INST, DEFAULT_3D_PROJ, DEFAULT_3D_VIEW, DefaultProgram3D};
