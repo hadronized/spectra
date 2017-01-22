@@ -22,7 +22,7 @@ hot-resource = ["notify", "time"]
 
 [dependencies]
 clap = "2.19.0"
-luminance = { git = "https://github.com/phaazon/luminance-rs", branch = "no-backend" }
+luminance = { git = "https://github.com/phaazon/luminance-rs" }
 gl = "0.5.2"
 glfw = { version = "0.9.1", default-features = false }
 image = "0.10.1"
