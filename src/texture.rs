@@ -1,9 +1,8 @@
-use luminance::{Dim2, Flat, Sampler, Texture};
+use luminance::{Dim2, Flat, Sampler};
+pub use luminance::{RGBA32F, Texture};
 use image;
 use std::ops::Deref;
 use std::path::Path;
-
-pub use luminance::RGBA32F;
 
 use resource::{Cache, Load, LoadError, Reload, Result};
 
