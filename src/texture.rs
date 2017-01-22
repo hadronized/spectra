@@ -1,5 +1,4 @@
-use luminance::{Dim2, Flat, Sampler};
-use luminance_gl::gl33::Texture;
+use luminance::{Dim2, Flat, Sampler, Texture};
 use image;
 use std::ops::Deref;
 use std::path::Path;
@@ -35,7 +34,7 @@ pub fn save_rgba_texture<P>(texture: &Texture<Flat, Dim2, RGBA32F>, path: P) whe
   info!("saving texture image to: \x1b[35m{:?}", path.as_ref());
 
   let texels = texture.get_raw_texels();
-  let (w, h) = texture.size;
+  let (w, h) = texture.size();
   let mut output = Vec::with_capacity((w * h) as usize);
 
   for texel in &texels {

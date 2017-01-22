@@ -1,5 +1,4 @@
-use luminance::tess;
-use luminance_gl::gl33::Tess;
+use luminance::{Mode, Tess};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
@@ -96,7 +95,7 @@ fn convert_obj(obj_set: obj::ObjSet) -> Result<Model, ModelError> {
 //
 // This function will regenerate the indices on the fly based on which are used in the shapes in the
 // geometry. It’s used to create independent tessellation.
-fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[obj::Normal], tvertices: &[obj::TVertex]) -> Result<(Vec<Vertex>, Vec<u32>, tess::Mode), ModelError> {
+fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[obj::Normal], tvertices: &[obj::TVertex]) -> Result<(Vec<Vertex>, Vec<u32>, Mode), ModelError> {
   if geo.shapes.is_empty() {
     return Err(ModelError::NoShape);
   }
@@ -181,11 +180,11 @@ fn convert_tvertex(t: &obj::TVertex) -> VertexTexCoord {
   [t.u as f32, t.v as f32]
 }
 
-fn guess_mode(prim: obj::Primitive) -> tess::Mode {
+fn guess_mode(prim: obj::Primitive) -> Mode {
   match prim {
-    obj::Primitive::Point(_) => tess::Mode::Point,
-    obj::Primitive::Line(_, _) => tess::Mode::Line,
-    obj::Primitive::Triangle(_, _, _) => tess::Mode::Triangle
+    obj::Primitive::Point(_) => Mode::Point,
+    obj::Primitive::Line(_, _) => Mode::Line,
+    obj::Primitive::Triangle(_, _, _) => Mode::Triangle
   }
 }
 

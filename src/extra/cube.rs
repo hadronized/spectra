@@ -1,5 +1,4 @@
-use luminance::Mode;
-use luminance_gl::gl33::Tess;
+use luminance::{Mode, Tess};
 
 // A unit cube.
 //

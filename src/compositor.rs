@@ -1,5 +1,4 @@
-use luminance::{Dim2, Flat, RGBA32F};
-use luminance_gl::gl33::Texture;
+use luminance::{Dim2, Flat, RGBA32F, Texture};
 use std::marker::PhantomData;
 
 use scene::Scene;

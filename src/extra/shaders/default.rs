@@ -1,7 +1,6 @@
 //! Default shaders.
 
-use luminance::M44;
-use luminance_gl::gl33::Uniform;
+use luminance::{M44, Uniform};
 use std::ops::Deref;
 
 use id::Id;

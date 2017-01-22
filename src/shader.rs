@@ -1,15 +1,11 @@
-use luminance::StageError;
-use luminance::shader::stage;
-use luminance_gl::gl33::Stage;
+use luminance::{self, Stage, StageError};
+use luminance::shader::stage::Type;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::ops::Deref;
 use std::path::Path;
 
-pub use luminance::{ProgramError, Sem, Uniformable};
-pub use luminance::shader::program::UniformWarning;
-pub use luminance_gl::gl33::{self, Uniform};
-pub use luminance_gl::gl33::token::GL33;
+pub use luminance::{ProgramError, Sem, Uniform, UniformWarning, Uniformable};
 
 use resource::{Cache, Load, LoadError, Reload};
 
@@ -19,21 +15,21 @@ pub enum ShaderError {
   ProgramError(ProgramError)
 }
 
-pub fn new_program(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_src: &str, sem_map: &[Sem]) -> Result<(gl33::Program, Vec<UniformWarning>), ProgramError> {
+pub fn new_program(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_src: &str, sem_map: &[Sem]) -> Result<(luminance::Program, Vec<UniformWarning>), ProgramError> {
   let stages = compile_stages(tcs_src, tes_src, vs_src, gs_src, fs_src);
 
   match stages {
     Ok((tess, vs, gs, fs)) => {
       if let Some((tcs, tes)) = tess {
         if let Some(gs) = gs {
-          gl33::Program::new(Some((&tcs, &tes)), &vs, Some(&gs), &fs, sem_map)
+          luminance::Program::new(Some((&tcs, &tes)), &vs, Some(&gs), &fs, sem_map)
         } else {
-          gl33::Program::new(Some((&tcs, &tes)), &vs, None, &fs, sem_map)
+          luminance::Program::new(Some((&tcs, &tes)), &vs, None, &fs, sem_map)
         }
       } else if let Some(gs) = gs {
-        gl33::Program::new(None, &vs, Some(&gs), &fs, sem_map)
+        luminance::Program::new(None, &vs, Some(&gs), &fs, sem_map)
       } else {
-        gl33::Program::new(None, &vs, None, &fs, sem_map)
+        luminance::Program::new(None, &vs, None, &fs, sem_map)
       }
     },
     Err(stage_error) => {
@@ -45,15 +41,15 @@ pub fn new_program(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_
 // Take raw shader sources and turn them into stages.
 fn compile_stages(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_src: &str) -> Result<(Option<(Stage, Stage)>, Stage, Option<Stage>, Stage), StageError> {
   let tess = if !tcs_src.is_empty() && !tes_src.is_empty() {
-    Some((Stage::new(stage::Type::TessellationControlShader, tcs_src)?,
-          Stage::new(stage::Type::TessellationEvaluationShader, tes_src)?))
+    Some((Stage::new(Type::TessellationControlShader, tcs_src)?,
+          Stage::new(Type::TessellationEvaluationShader, tes_src)?))
   } else {
     None
   };
 
-  let vs = Stage::new(stage::Type::VertexShader, vs_src)?;
-  let gs = if !gs_src.is_empty() { Some(Stage::new(stage::Type::GeometryShader, gs_src)?) } else { None };
-  let fs = Stage::new(stage::Type::FragmentShader, fs_src)?;
+  let vs = Stage::new(Type::VertexShader, vs_src)?;
+  let gs = if !gs_src.is_empty() { Some(Stage::new(Type::GeometryShader, gs_src)?) } else { None };
+  let fs = Stage::new(Type::FragmentShader, fs_src)?;
 
   Ok((tess, vs, gs, fs))
 }
@@ -75,12 +71,12 @@ fn compile_stages(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_s
 ///
 /// At the top of the file, if you don’t put a pragma, you can use `//` to add comments, or die.
 pub struct Program {
-  program: gl33::Program,
+  program: luminance::Program,
   sem_map: Vec<Sem>
 }
 
 impl Deref for Program {
-  type Target = gl33::Program;
+  type Target = luminance::Program;
 
   fn deref(&self) -> &Self::Target {
     &self.program

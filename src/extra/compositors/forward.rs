@@ -1,4 +1,4 @@
-use luminance::{Dim2, Flat, Framebuffer, Mode, Pipe, Pipeline, RGBA32F, RenderCommand,
+use luminance::{Dim2, Flat, Framebuffer, Mode, Pipe, Pipeline, RGBA32F, RawTexture, RenderCommand,
                 ShadingCommand, Tess, Texture, Unit, Uniform};
 
 use compositor::{Compositor, Screen};
@@ -40,7 +40,7 @@ impl<'a, 'b> Compositor<'a, 'b, &'a Texture2D<RGBA32F>> for Forward<'b> {
   fn composite(&'a self, scene: &'a mut Scene<'b>, source: &'a Texture2D<RGBA32F>) -> Screen<'a> {
     let program = scene.get_by_id(&self.program).unwrap();
     let back_fb = Framebuffer::default((self.w, self.h));
-    let textures = &[source.into()];
+    let textures: &[&RawTexture] = &[source];
 
     Pipeline::new(&back_fb, [0., 0., 0., 0.], textures, &[], vec![
       Pipe::new(|_| {}, ShadingCommand::new(&program, vec![
