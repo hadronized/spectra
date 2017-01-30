@@ -1,4 +1,4 @@
-use luminance::{Mode, Tess};
+use luminance::{Mode, Tess, TessVertices};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
@@ -83,7 +83,7 @@ fn convert_obj(obj_set: obj::ObjSet) -> Result<Model, ModelError> {
     for geometry in &obj.geometry {
       info!("    {} vertices, {} normals, {} tex vertices", obj.vertices.len(), obj.normals.len(), obj.tex_vertices.len());
       let (vertices, indices, mode) = convert_geometry(geometry, &obj.vertices, &obj.normals, &obj.tex_vertices)?;
-      let part = Part::new(Tess::new(mode, &vertices, Some(&indices))); // FIXME: material
+      let part = Part::new(Tess::new(mode, TessVertices::Fill(&vertices), Some(&indices))); // FIXME: material
       parts.push(part);
     }
   }

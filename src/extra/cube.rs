@@ -1,4 +1,4 @@
-use luminance::{Mode, Tess};
+use luminance::{Mode, Tess, TessVertices};
 
 // A unit cube.
 //
@@ -52,7 +52,7 @@ pub fn new_cube(with_normals: bool) -> Tess {
       20, 21, 22, 22, 21, 23, // bottom face
     ];
 
-    Tess::new(Mode::Triangle, &vertices, Some(&indices))
+    Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), Some(&indices))
   } else {
     let vertices = [
       [ 1., -1.,  1.],
@@ -74,6 +74,6 @@ pub fn new_cube(with_normals: bool) -> Tess {
       4, 5, 6, 6, 5, 7, // back face
     ];
 
-    Tess::new(Mode::Triangle, &vertices, Some(&indices))
+    Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), Some(&indices))
   }
 }

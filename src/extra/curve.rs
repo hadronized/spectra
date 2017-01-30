@@ -1,5 +1,5 @@
 use spline::{Spline, Key, Interpolation, Sampler};
-use luminance::{Mode, Tess};
+use luminance::{Mode, Tess, TessVertices};
 
 // Build a curve connected by segments.
 pub fn new_curve_2d(gap: f32, interpolation: Interpolation, points: &[(f32, f32)]) -> Tess {
@@ -17,6 +17,6 @@ pub fn new_curve_2d(gap: f32, interpolation: Interpolation, points: &[(f32, f32)
     t += gap;
   }
 
-  Tess::new(Mode::LineStrip, &vertices, None)
+  Tess::new(Mode::LineStrip, TessVertices::Fill(&vertices), None)
 }
 
