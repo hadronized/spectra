@@ -1,5 +1,5 @@
 use luminance::{Dim2, Flat, Framebuffer, Mode, Pipe, Pipeline, RGBA32F, RawTexture, RenderCommand,
-                ShadingCommand, Tess, Texture, Unit, Uniform};
+                ShadingCommand, Tess, TessRender, Texture, Unit, Uniform};
 
 use compositor::{Compositor, Screen};
 use id::Id;
@@ -41,11 +41,12 @@ impl<'a, 'b> Compositor<'a, 'b, &'a Texture2D<RGBA32F>> for Forward<'b> {
     let program = scene.get_by_id(&self.program).unwrap();
     let back_fb = Framebuffer::default((self.w, self.h));
     let textures: &[&RawTexture] = &[source];
+    let tess_render = TessRender::one_whole(&self.quad);
 
     Pipeline::new(&back_fb, [0., 0., 0., 0.], textures, &[], vec![
       Pipe::new(|_| {}, ShadingCommand::new(&program, vec![
         Pipe::new(|_| {}, RenderCommand::new(None, true, vec![
-          Pipe::new(|_|{}, &self.quad)], 1, None))
+          Pipe::new(|_|{}, tess_render)]))
         ]))
     ]).run();
 
