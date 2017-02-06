@@ -61,7 +61,6 @@ impl Device {
       let mut al_buffer = al_ctx.new_buffer().unwrap();
       let mut al_source = al_ctx.new_streaming_source().unwrap();
 
-
       // fill the OpenAL buffers with the PCM data
       let _ = al_buffer.set_data::<alto::Stereo<_>, _>(&pcm_buffer[..], 44100);
 
