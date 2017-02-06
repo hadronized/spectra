@@ -61,11 +61,13 @@ impl Device {
       let mut al_buffer = al_ctx.new_buffer().unwrap();
       let mut al_source = al_ctx.new_streaming_source().unwrap();
 
-      // compute the length of soundtrack
-      let l = (al_buffer.size().unwrap() * 8 / (al_buffer.channels().unwrap() * al_buffer.bits().unwrap())) as f32 / al_buffer.frequency().unwrap() as f32;
 
       // fill the OpenAL buffers with the PCM data
       let _ = al_buffer.set_data::<alto::Stereo<_>, _>(&pcm_buffer[..], 44100);
+
+      // compute the length of soundtrack
+      let l = (al_buffer.size().unwrap() * 8 / (al_buffer.channels().unwrap() * al_buffer.bits().unwrap())) as f32 / al_buffer.frequency().unwrap() as f32;
+
       let _ = al_source.queue_buffer(al_buffer);
 
       loop {
