@@ -1,6 +1,7 @@
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 
+extern crate alto;
 extern crate gl;
 pub extern crate glfw;
 extern crate image;
@@ -9,7 +10,6 @@ extern crate nalgebra;
 #[cfg(feature = "hot-resource")]
 extern crate notify;
 extern crate num;
-extern crate openal;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;

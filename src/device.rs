@@ -1,8 +1,8 @@
-use openal::al;
-use openal::alc;
+use alto::{self, SourceTrait};
 use std::fs::File;
 use std::path::Path;
-use std::mem;
+use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
+use std::thread::spawn;
 use vorbis::Decoder;
 
 /// The device is responsible of managing synchronization and audio playback by providing a playback
@@ -10,29 +10,31 @@ use vorbis::Decoder;
 ///
 /// You shouldn’t have more than one Device per program.
 pub struct Device {
-  /// Length of the demo (seconds).
-  length: f32,
-  /// OpenAL device.
-  al_device: alc::Device,
-  /// OpenAL context.
-  al_ctx: alc::Context,
-  /// OpenAL buffer.
-  al_buffer: al::Buffer,
-  /// OpenAL source.
-  al_source: al::Source
+  /// Playback length.
+  len: f32,
+  /// Sender used to send requests to audio thread.
+  req_sx: SyncSender<Request>,
+  /// Receiver used to receive responses from the audio thread.
+  resp_rx: Receiver<Response>
+}
+
+enum Request {
+  Toggle,
+  PlaybackLength,
+  PlaybackCursor,
+  SetCursor(f32)
+}
+
+enum Response {
+  PlaybackLength(f32),
+  PlaybackCursor(f32)
 }
 
 impl Device {
   pub fn new<P>(track_path: P) -> Self where P: AsRef<Path> {
-    // initialising OpenAL
-    let al_device = alc::Device::open(None).unwrap();
-    let al_ctx = al_device.create_context(&[]).unwrap();
-    al_ctx.make_current();
+    info!("loading soundtrack {:?}", track_path.as_ref());
 
-    // create the required objects to play the soundtrack
-    let al_buffer = al::Buffer::gen();
-    let al_source = al::Source::gen();
-
+    // FIXME: stream the file instead?
     // load PCM data from the file
     let vorbis_decoder = Decoder::new(File::open(track_path).unwrap()).unwrap();
     let mut pcm_buffer = Vec::new();
@@ -41,63 +43,121 @@ impl Device {
       pcm_buffer.extend(packet.data);
     }
 
-    // fill the OpenAL buffers with the PCM data
-    unsafe { al_buffer.buffer_data(al::Format::Stereo16, &pcm_buffer, 44100) };
-    al_source.queue_buffer(&al_buffer);
+    // create a channel to send requests to / retrieve them from the audio thread
+    let (req_sx, req_rx) = sync_channel(0);
+    // create a channel to receive responses / to send responses from the audio thread
+    let (mut resp_sx, resp_rx) = sync_channel(0);
 
-    // compute the length of soundtrack
-    let l = (al_buffer.get_size() * 8 / (al_buffer.get_channels() * al_buffer.get_bits())) as f32 / al_buffer.get_frequency() as f32;
+    info!("starting audio thread");
+
+    let _ = spawn(move || {
+      deb!("initializing OpenAL");
+
+      let alto = alto::Alto::load_default().unwrap();
+      let al_device = alto.open(None).unwrap();
+      let al_ctx = al_device.new_context(None).unwrap();
+
+      // create the required objects to play the soundtrack
+      let mut al_buffer = al_ctx.new_buffer().unwrap();
+      let mut al_source = al_ctx.new_streaming_source().unwrap();
+
+      // compute the length of soundtrack
+      let l = (al_buffer.size().unwrap() * 8 / (al_buffer.channels().unwrap() * al_buffer.bits().unwrap())) as f32 / al_buffer.frequency().unwrap() as f32;
+
+      // fill the OpenAL buffers with the PCM data
+      let _ = al_buffer.set_data::<alto::Stereo<_>, _>(&pcm_buffer[..], 44100);
+      let _ = al_source.queue_buffer(al_buffer);
+
+      loop {
+        match req_rx.recv() {
+          Ok(req) => dispatch_request(&mut al_source, l, req, &mut resp_sx),
+          Err(_) => break
+        }
+      }
+
+      info!("leaving the audio thread");
+    });
+
+    // get the length
+    let _ = req_sx.send(Request::PlaybackLength);
+    
+    let len = match resp_rx.recv() {
+      Ok(Response::PlaybackLength(len)) => len,
+      _ => unimplemented!()
+    };
+
     Device {
-      length: l,
-      al_device: al_device,
-      al_ctx: al_ctx,
-      al_buffer: al_buffer,
-      al_source: al_source
+      len: len,
+      req_sx: req_sx,
+      resp_rx: resp_rx
     }
   }
 
-  /// Playback cursor in seconds.
+  pub fn toggle(&self) {
+    let _ = self.req_sx.send(Request::Toggle);
+  }
+
+  pub fn playback_len(&self) -> f32 {
+    self.len
+  }
+
   pub fn playback_cursor(&self) -> f32 {
-    let cursor = self.al_source.get_sec_offset();
-
-    // loop the device if we hit the end of the demo
-    if cursor > self.length {
-      self.al_source.rewind();
-      0.
-    } else {
-      cursor
+    let _ = self.req_sx.send(Request::PlaybackCursor);
+    
+    match self.resp_rx.recv() {
+      Ok(Response::PlaybackCursor(c)) => c,
+      _ => unimplemented!()
     }
   }
 
-  // FIXME: [debug]
-  /// [debug] Move the cursor around. Expect the input to be normalized.
-  pub fn set_cursor(&mut self, t: f32) {
-    assert!(t >= 0. && t <= 1.);
-    self.al_source.set_sec_offset(t * self.length);
+  pub fn set_playback_cursor(&self, t: f32) {
+    let _ = self.req_sx.send(Request::SetCursor(t));
   }
+}
 
-  pub fn playback_length(&self) -> f32 {
-    self.length
-  }
+fn dispatch_request(source: &mut alto::StreamingSource, len: f32, req: Request, resp_sx: &mut SyncSender<Response>) {
+  match req {
+    Request::Toggle => {
+      toggle_source(source);
+    },
 
-  pub fn toggle(&mut self) {
-    if self.al_source.is_playing() {
-      // pause the OpenAL source
-      self.al_source.pause();
-    } else {
-      // unpause the OpenAL source
-      self.al_source.play();
+    Request::PlaybackLength => {
+      let _ = resp_sx.send(Response::PlaybackLength(len));
+    },
+
+    Request::PlaybackCursor => {
+      let _ = resp_sx.send(Response::PlaybackCursor(playback_cursor_source(source, len)));
+    },
+
+    Request::SetCursor(t) => {
+      set_playback_cursor_source(source, t, len);
     }
   }
 }
 
-impl Drop for Device {
-  fn drop(&mut self) {
-    drop(&mut self.al_buffer);
-    drop(&mut self.al_source);
-    drop(&mut self.al_ctx);
-
-    let dummy = unsafe { mem::uninitialized() };
-    let _ = mem::replace(&mut self.al_device, dummy).close();
+fn toggle_source(source: &mut alto::StreamingSource) {
+  if source.state().unwrap() == alto::SourceState::Playing {
+    // pause the OpenAL source
+    let _ = source.pause();
+  } else {
+    // unpause the OpenAL source
+    let _ = source.play();
   }
+}
+
+fn playback_cursor_source(source: &mut alto::StreamingSource, len: f32) -> f32 {
+  let cursor = source.sec_offset().unwrap();
+
+  // loop the device if we hit the end of the demo
+  if cursor > len {
+    let _ = source.rewind();
+    0.
+  } else {
+    cursor
+  }
+}
+
+pub fn set_playback_cursor_source(source: &mut alto::StreamingSource, t: f32, len: f32) {
+  assert!(t >= 0. && t <= 1.);
+  let _ = source.set_sec_offset(t * len);
 }
