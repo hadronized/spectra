@@ -69,11 +69,8 @@ impl Device {
 
       let _ = al_source.queue_buffer(al_buffer);
 
-      loop {
-        match req_rx.recv() {
-          Ok(req) => dispatch_request(&mut al_source, l, req, &mut resp_sx),
-          Err(_) => break
-        }
+      while let Ok(req) = req_rx.recv() {
+        dispatch_request(&mut al_source, l, req, &mut resp_sx);
       }
 
       info!("leaving the audio thread");
