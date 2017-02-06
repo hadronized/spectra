@@ -28,12 +28,12 @@ pub mod resource;
 pub mod scene;
 
 pub mod anim;
+pub mod audio;
 pub mod app;
 pub mod bootstrap;
 pub mod camera;
 pub mod compositor;
 pub mod color;
-pub mod device;
 pub mod extra;
 pub mod gui;
 pub mod id;
@@ -48,12 +48,12 @@ pub mod texture;
 pub mod transform;
 
 pub use anim::Cont;
+pub use audio::Device;
 pub use app::App;
 pub use bootstrap::{LuminanceBackend, Keyboard, Mouse, MouseMove, Scroll, WindowDim, bootstrap};
 pub use camera::{Camera, Freefly};
 pub use color::{Color, ColorAlpha};
 pub use compositor::{Compositor, Screen};
-pub use device::Device;
 pub use id::Id;
 pub use linear::{Matrix4};
 pub use model::{Model, ModelError, Part};
