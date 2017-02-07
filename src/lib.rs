@@ -48,7 +48,7 @@ pub mod texture;
 pub mod transform;
 
 pub use anim::Cont;
-pub use audio::Device;
+pub use audio::Audio;
 pub use app::App;
 pub use bootstrap::{LuminanceBackend, Keyboard, Mouse, MouseMove, Scroll, WindowDim, bootstrap};
 pub use camera::{Camera, Freefly};
