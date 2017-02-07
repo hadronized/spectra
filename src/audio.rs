@@ -35,6 +35,14 @@ impl<'a, 'b, 'c> Audio<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
     let _ = self.source.set_sec_offset(t * self.len);
   }
 
+  pub fn play(&mut self) {
+    let _ = self.source.play();
+  }
+
+  pub fn pause(&mut self) {
+    let _ = self.source.pause();
+  }
+
   pub fn toggle(&mut self) -> bool {
     let source = &mut self.source;
 
