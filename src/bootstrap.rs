@@ -1,21 +1,9 @@
 use gl;
-use std::default::Default;
 use std::os::raw::c_void;
 use std::sync::mpsc;
 use std::thread;
 
 pub use glfw::{self, Action, Context, CursorMode, Key, MouseButton, Window};
-
-#[derive(Clone, Copy, Debug)]
-pub enum LuminanceBackend {
-  GL33
-}
-
-impl Default for LuminanceBackend {
-  fn default() -> Self {
-    LuminanceBackend::GL33
-  }
-}
 
 #[derive(Clone, Copy, Debug)]
 pub enum WindowDim {
@@ -29,21 +17,16 @@ pub type Mouse = mpsc::Receiver<(MouseButton, Action)>;
 pub type MouseMove = mpsc::Receiver<[f64; 2]>;
 pub type Scroll = mpsc::Receiver<[f64; 2]>;
 
-pub fn bootstrap(dim: WindowDim, title: &'static str, backend: LuminanceBackend) -> (u32, u32, Keyboard, Mouse, MouseMove, Scroll, Window) {
+pub fn bootstrap(dim: WindowDim, title: &'static str) -> (u32, u32, Keyboard, Mouse, MouseMove, Scroll, Window) {
   info!("{} starting", title);
   info!("window mode: {:?}", dim);
-  info!("luminance backend: {:?}", backend);
 
   let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
-  match backend {
-    LuminanceBackend::GL33 => {
-      // OpenGL hints; implements luminance-gl’s core contexts creation
-      glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
-      glfw.window_hint(glfw::WindowHint::ContextVersionMajor(3));
-      glfw.window_hint(glfw::WindowHint::ContextVersionMinor(3));
-    }
-  }
+  // OpenGL hints
+  glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
+  glfw.window_hint(glfw::WindowHint::ContextVersionMajor(3));
+  glfw.window_hint(glfw::WindowHint::ContextVersionMinor(3));
 
   // open a window in windowed or fullscreen mode
   let (mut window, events, w, h) = match dim {
