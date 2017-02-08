@@ -44,9 +44,9 @@ impl<'a, 'b> Compositor<'a, 'b, &'a Texture2D<RGBA32F>> for Forward<'b> {
     let tess_render = TessRender::one_whole(&self.quad);
 
     Pipeline::new(&back_fb, [0., 0., 0., 0.], textures, &[], vec![
-      Pipe::new(|_| {}, ShadingCommand::new(&program, vec![
-        Pipe::new(|_| {}, RenderCommand::new(None, true, vec![
-          Pipe::new(|_|{}, tess_render)]))
+      Pipe::new(ShadingCommand::new(&program, vec![
+        Pipe::new(RenderCommand::new(None, true, vec![
+          Pipe::new(tess_render)]))
         ]))
     ]).run();
 
