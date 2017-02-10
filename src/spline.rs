@@ -307,40 +307,6 @@ pub fn normalize_time<T>(t: Time, cp: &Key<T>, cp1: &Key<T>) -> Time {
   (t - cp.t) / (cp1.t - cp.t)
 }
 
-// Find the lower control point corresponding to a given time. Random version.
-fn binary_search_lower_cp<T>(cps: &[Key<T>], t: Time) -> Option<usize> {
-  let len = cps.len() as i32;
-  if len < 2 {
-    return None;
-  }
-
-  let mut down = 0;
-  let mut up = len - 1;
-
-  while down <= up {
-    let m = (up + down) / 2;
-    if m < 0 || m >= len - 1 {
-      return None;
-    }
-
-    let cp0 = &cps[m as usize];
-
-    if cp0.t > t {
-      up = m-1;
-    } else {
-      let cp1 = &cps[(m+1) as usize];
-
-      if t >= cp1.t {
-        down = m+1;
-      } else {
-        return Some(m as usize)
-      }
-    }
-  }
-
-  None
-}
-
 // Find the lower control point corresponding to a given time. Continuous version. `i` is the last
 // known found index.
 fn around_search_lower_cp<T>(cps: &[Key<T>], mut i: usize, t: Time) -> Option<usize> {
