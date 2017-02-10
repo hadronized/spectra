@@ -82,6 +82,11 @@ impl<T> Spline<T> {
       keys: keys 
     }
   }
+
+  /// Create a sampler from a spline by borrowing it.
+  pub fn sampler(&self) -> Sampler<T> {
+    Sampler::new(self)
+  }
 }
 
 impl<'a, T> Load<'a> for Spline<T> where T: Deserialize {
