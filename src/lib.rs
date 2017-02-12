@@ -41,6 +41,7 @@ pub mod id;
 pub mod linear;
 pub mod model;
 pub mod object;
+pub mod overlay;
 pub mod projection;
 pub mod renderer;
 pub mod shader;

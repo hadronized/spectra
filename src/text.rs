@@ -39,7 +39,7 @@ impl<'a> Rasterizer<'a> {
 
     {
       let mut fh = File::open(font_path).map_err(|_| FontError::IncorrectPath(font_path.to_owned()))?;
-      fh.read_to_end(&mut data);
+      let _ = fh.read_to_end(&mut data);
     }
 
     let font = FontCollection::from_bytes(data).into_font().ok_or(FontError::MultipleFonts)?;
@@ -82,7 +82,7 @@ impl<'a> Rasterizer<'a> {
 
     // create the texture from the buffer
     let sampler = Sampler::default();
-    let mut texture = Texture::new((width as u32, px_height as u32), 4, &sampler).map_err(|e|
+    let texture = Texture::new((width as u32, px_height as u32), 4, &sampler).map_err(|e|
       FontError::RasterizationFailed(format!("{:?}", e)))?;
     texture.upload(true, &texels);
 
