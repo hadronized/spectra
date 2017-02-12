@@ -96,13 +96,13 @@ impl<'a> Renderer<'a> {
   pub fn new(w: u32, h: u32, max_tris: usize, max_discs: usize, scene: &mut Scene<'a>) -> Self {
     let fb = Framebuffer::new((w, h), 0).unwrap();
 
-    let tri_program = scene.get_id("overlay/triangle.glsl", vec![]).unwrap();
+    let tri_program = scene.get_id("spectra/overlay/triangle.glsl", vec![]).unwrap();
     let tris = Tess::new(Mode::Triangle, TessVertices::Reserve::<Vert>(max_tris * 3), None);
 
-    let disc_program = scene.get_id("overlay/disc.glsl", vec![DISC_SCREEN_RATIO.sem("ratio")]).unwrap();
+    let disc_program = scene.get_id("spectra/overlay/disc.glsl", vec![DISC_SCREEN_RATIO.sem("ratio")]).unwrap();
     let discs = Tess::new(Mode::Point, TessVertices::Reserve::<Disc>(max_discs), None);
 
-    let text_program = scene.get_id("overlay/text.glsl", vec![
+    let text_program = scene.get_id("spectra/overlay/text.glsl", vec![
       TEXT_SAMPLER.sem("text_texture"),
       TEXT_POS.sem("pos"),
       TEXT_SIZE.sem("size"),
