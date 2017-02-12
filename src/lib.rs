@@ -10,6 +10,7 @@ extern crate nalgebra;
 #[cfg(feature = "hot-resource")]
 extern crate notify;
 extern crate num;
+extern crate rusttype;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -44,6 +45,7 @@ pub mod projection;
 pub mod renderer;
 pub mod shader;
 pub mod spline;
+pub mod text;
 pub mod texture;
 pub mod transform;
 
