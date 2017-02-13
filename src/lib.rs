@@ -35,6 +35,7 @@ pub mod bootstrap;
 pub mod camera;
 pub mod compositor;
 pub mod color;
+pub mod edit;
 pub mod extra;
 pub mod gui;
 pub mod id;
