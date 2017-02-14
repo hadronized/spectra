@@ -67,19 +67,21 @@ impl<'a, 'b> From<&'b [Cut<'a>]> for Track<'a> {
 #[derive(Clone)]
 pub struct Timeline<'a> {
   tracks: Vec<Track<'a>>,
-  cross_list: CrossList<'a>
 }
 
 impl<'a> Timeline<'a> {
   pub fn new() -> Self {
     Timeline {
       tracks: Vec::new(),
-      cross_list: CrossList::new()
     }
   }
 
   pub fn add_track(&mut self, track: Track<'a>) {
     self.tracks.push(track);
+  }
+  
+  fn cross_list(&self) -> CrossList<'a> {
+    unimplemented!();
   }
 }
 
@@ -87,7 +89,6 @@ impl<'a, 'b> From<&'b [Track<'a>]> for Timeline<'a> {
   fn from(tracks: &'b [Track<'a>]) -> Self {
     Timeline {
       tracks: tracks.to_vec(),
-      cross_list: CrossList::new()
     }
   }
 }
@@ -130,7 +131,7 @@ impl<'a> TrackCross<'a> {
   }
 }
 
-/// A list of cut cross optimized for forward playing.
+/// A list of track crosses optimized for forward playing.
 #[derive(Clone)]
 struct CrossList<'a> {
   track_cross: Vec<TrackCross<'a>>,
