@@ -86,6 +86,19 @@ impl<'a> Timeline<'a> {
   pub fn add_track(&mut self, track: Track<'a>) {
     self.tracks.push(track);
   }
+
+  // TODO: currently, we play the first track we find; add transition support
+  pub fn play(&self, t: Time) -> Option<&'a Texture<Flat, Dim2, RGBA32F>> {
+    for track in &self.tracks {
+      for cut in &track.cuts {
+        if cut.inst_time <= t && t <= cut.inst_time + cut.dur() {
+          return Some((cut.clip.act)(t));
+        }
+      }
+    }
+
+    None
+  }
 }
 
 impl<'a, 'b> From<&'b [Track<'a>]> for Timeline<'a> {
