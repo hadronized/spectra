@@ -14,6 +14,7 @@ documentation = "http://phaazon.github.io/spectra"
 [[bin]]
 name = "spectra"
 path = "spectra/src/main.rs"
+doc = false
 
 [features]
 default = ["debug"]
