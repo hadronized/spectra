@@ -67,14 +67,14 @@ impl<'a, 'b> From<&'b [Cut<'a>]> for Track<'a> {
 #[derive(Clone)]
 pub struct Timeline<'a> {
   tracks: Vec<Track<'a>>,
-  crosses: Vec<TrackCross<'a>>
+  cross_list: CrossList<'a>
 }
 
 impl<'a> Timeline<'a> {
   pub fn new() -> Self {
     Timeline {
       tracks: Vec::new(),
-      crosses: Vec::new()
+      cross_list: CrossList::new()
     }
   }
 
@@ -87,7 +87,7 @@ impl<'a, 'b> From<&'b [Track<'a>]> for Timeline<'a> {
   fn from(tracks: &'b [Track<'a>]) -> Self {
     Timeline {
       tracks: tracks.to_vec(),
-      crosses: Vec::new()
+      cross_list: CrossList::new()
     }
   }
 }
@@ -100,8 +100,48 @@ impl<'a, 'b> From<&'b [Track<'a>]> for Timeline<'a> {
 struct TrackCross<'a> {
   /// Time at which the track cross begins.
   in_time: Time,
-  /// Time at which the track cross ends.
+  /// Duration.
   out_time: Time,
   /// List of cuts that are active at the given time.
   cuts: Vec<&'a Cut<'a>>
+}
+
+impl<'a> TrackCross<'a> {
+  pub fn new(in_time: Time, out_time: Time, cuts: &'a [&'a Cut<'a>]) -> Self {
+    TrackCross {
+      in_time: in_time,
+      out_time: out_time,
+      cuts: cuts.to_vec()
+    }
+  }
+
+  // TODO
+  /// Perform a cross track cut act.
+  pub fn cross_act(&self, t: Time) -> &'a Texture<Flat, Dim2, RGBA32F> {
+    if self.cuts.len() != 1 {
+      unimplemented!();
+    }
+
+    // convert t into the clip’s time space
+    let cut = self.cuts[0];
+    let clip_t = t - cut.inst_time;
+
+    (cut.clip.act)(clip_t)
+  }
+}
+
+/// A list of cut cross optimized for forward playing.
+#[derive(Clone)]
+struct CrossList<'a> {
+  track_cross: Vec<TrackCross<'a>>,
+  current: usize
+}
+
+impl<'a> CrossList<'a> {
+  fn new() -> Self {
+    CrossList {
+      track_cross: Vec::new(),
+      current: 0
+    }
+  }
 }
