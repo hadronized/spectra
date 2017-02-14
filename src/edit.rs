@@ -41,6 +41,12 @@ pub struct Track<'a> {
   cuts: Vec<Cut<'a>>
 }
 
+impl<'a> Track<'a> {
+  pub fn add_cut(&mut self, cut: Cut<'a>) {
+    self.cuts.push(cut);
+  }
+}
+
 /// A timeline gathers tracks used to build up the visual aspect of the demo.
 pub struct Timeline<'a> {
   tracks: Vec<Track<'a>>,

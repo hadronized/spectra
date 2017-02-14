@@ -8,7 +8,7 @@ use shader::Program;
 
 pub type Texture2D<A> = Texture<Flat, Dim2, A>;
 
-const FORWARD_SOURCE: Uniform<Unit> = Uniform::new(0);
+const FORWARD_SOURCE: &'static Uniform<Unit> = &Uniform::new(0);
 
 pub struct Forward<'a> {
   program: Id<'a, Program>,
@@ -20,12 +20,6 @@ pub struct Forward<'a> {
 impl<'a> Forward<'a> {
   pub fn new(w: u32, h: u32, scene: &mut Scene<'a>) -> Self {
     let program = get_id!(scene, "spectra/compositors/forward.glsl", vec![FORWARD_SOURCE.sem("source")]).unwrap();
-
-    // update the texture uniform once and for all
-    {
-      let program: &Program = &scene.get_by_id(&program).unwrap();
-      program.update(&FORWARD_SOURCE, Unit::new(0));
-    }
 
     Forward {
       program: program,
@@ -44,10 +38,12 @@ impl<'a, 'b> Compositor<'a, 'b, &'a Texture2D<RGBA32F>> for Forward<'b> {
     let tess_render = TessRender::one_whole(&self.quad);
 
     Pipeline::new(&back_fb, [0., 0., 0., 0.], textures, &[], vec![
-      Pipe::new(ShadingCommand::new(&program, vec![
-        Pipe::new(RenderCommand::new(None, true, vec![
-          Pipe::new(tess_render)]))
-        ]))
+      Pipe::empty()
+        .uniforms(&[FORWARD_SOURCE.alter(Unit::new(0))])
+        .unwrap(ShadingCommand::new(&program, vec![
+          Pipe::new(RenderCommand::new(None, true, vec![
+            Pipe::new(tess_render)]))
+          ]))
     ]).run();
 
     Screen::Display
