@@ -28,12 +28,19 @@ pub struct Cut<'a> {
 
 impl<'a> Cut<'a> {
   pub fn new(in_time: Time, out_time: Time, inst_time: Time, clip: &'a Clip<'a>) -> Self {
+    assert!(in_time <= out_time);
+
     Cut {
       in_time: in_time,
       out_time: out_time,
       inst_time: inst_time,
       clip: clip
     }
+  }
+
+  /// Duration of the cut.
+  pub fn dur(&self) -> Time {
+    self.out_time - self.in_time
   }
 }
 
@@ -79,70 +86,12 @@ impl<'a> Timeline<'a> {
   pub fn add_track(&mut self, track: Track<'a>) {
     self.tracks.push(track);
   }
-  
-  fn cross_list(&self) -> CrossList<'a> {
-    unimplemented!();
-  }
 }
 
 impl<'a, 'b> From<&'b [Track<'a>]> for Timeline<'a> {
   fn from(tracks: &'b [Track<'a>]) -> Self {
     Timeline {
       tracks: tracks.to_vec(),
-    }
-  }
-}
-
-/// An optimized structure used to put spanning regions over cuts of several tracks in a timeline in
-/// order to know which cuts of which tracks are active at any time in O(1). A track cross
-/// represents such a single region, and a list of ascending-ordered track cross can be used to
-/// render the demo in an optimized way.
-#[derive(Clone)]
-struct TrackCross<'a> {
-  /// Time at which the track cross begins.
-  in_time: Time,
-  /// Duration.
-  out_time: Time,
-  /// List of cuts that are active at the given time.
-  cuts: Vec<&'a Cut<'a>>
-}
-
-impl<'a> TrackCross<'a> {
-  pub fn new(in_time: Time, out_time: Time, cuts: &'a [&'a Cut<'a>]) -> Self {
-    TrackCross {
-      in_time: in_time,
-      out_time: out_time,
-      cuts: cuts.to_vec()
-    }
-  }
-
-  // TODO
-  /// Perform a cross track cut act.
-  pub fn cross_act(&self, t: Time) -> &'a Texture<Flat, Dim2, RGBA32F> {
-    if self.cuts.len() != 1 {
-      unimplemented!();
-    }
-
-    // convert t into the clip’s time space
-    let cut = self.cuts[0];
-    let clip_t = t - cut.inst_time;
-
-    (cut.clip.act)(clip_t)
-  }
-}
-
-/// A list of track crosses optimized for forward playing.
-#[derive(Clone)]
-struct CrossList<'a> {
-  track_cross: Vec<TrackCross<'a>>,
-  current: usize
-}
-
-impl<'a> CrossList<'a> {
-  fn new() -> Self {
-    CrossList {
-      track_cross: Vec::new(),
-      current: 0
     }
   }
 }
