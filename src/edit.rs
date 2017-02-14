@@ -67,12 +67,14 @@ impl<'a, 'b> From<&'b [Cut<'a>]> for Track<'a> {
 #[derive(Clone)]
 pub struct Timeline<'a> {
   tracks: Vec<Track<'a>>,
+  crosses: Vec<TrackCross<'a>>
 }
 
 impl<'a> Timeline<'a> {
   pub fn new() -> Self {
     Timeline {
-      tracks: Vec::new()
+      tracks: Vec::new(),
+      crosses: Vec::new()
     }
   }
 
@@ -84,8 +86,22 @@ impl<'a> Timeline<'a> {
 impl<'a, 'b> From<&'b [Track<'a>]> for Timeline<'a> {
   fn from(tracks: &'b [Track<'a>]) -> Self {
     Timeline {
-      tracks: tracks.to_vec()
+      tracks: tracks.to_vec(),
+      crosses: Vec::new()
     }
   }
 }
 
+/// An optimized structure used to put spanning regions over cuts of several tracks in a timeline in
+/// order to know which cuts of which tracks are active at any time in O(1). A track cross
+/// represents such a single region, and a list of ascending-ordered track cross can be used to
+/// render the demo in an optimized way.
+#[derive(Clone)]
+struct TrackCross<'a> {
+  /// Time at which the track cross begins.
+  in_time: Time,
+  /// Time at which the track cross ends.
+  out_time: Time,
+  /// List of cuts that are active at the given time.
+  cuts: Vec<&'a Cut<'a>>
+}
