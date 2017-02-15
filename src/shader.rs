@@ -7,7 +7,7 @@ use std::path::Path;
 
 pub use luminance::{ProgramError, Sem, Uniform, UniformWarning, Uniformable};
 
-use resource::{Cache, Load, LoadError, Reload};
+use resource::{Load, LoadError, Reload, ResCache};
 
 #[derive(Debug)]
 pub enum ShaderError {
@@ -83,10 +83,12 @@ impl Deref for Program {
   }
 }
 
-impl<'a> Load<'a> for Program {
+impl Load for Program {
   type Args = Vec<Sem>;
 
-  fn load<P>(path: P, _: &mut Cache<'a>, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  const TY_STR: &'static str = "shaders";
+
+  fn load<P>(path: P, _: &mut ResCache, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     info!("loading shader: {:?}", path);
@@ -209,7 +211,7 @@ impl<'a> Load<'a> for Program {
   }
 }
 
-impl<'a> Reload<'a> for Program {
+impl Reload for Program {
   fn reload_args(&self) -> Self::Args {
     self.sem_map.clone()
   }

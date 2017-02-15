@@ -7,7 +7,7 @@ use std::path::Path;
 
 use linear::{Matrix4, Quaternion, Rotate, ToHomogeneous, Unit, UnitQuaternion, Vector3};
 use projection::{Projectable, perspective};
-use resource::{Cache, Load, LoadError};
+use resource::{Load, LoadError, ResCache};
 use transform::{Axis, Orientation, Position, Transformable, Translation, X_AXIS, Y_AXIS, Z_AXIS,
                 translation_matrix};
 
@@ -50,10 +50,12 @@ struct Manifest<P> {
   properties: P
 }
 
-impl<'a, A> Load<'a> for Camera<A> where A: Default + Deserialize {
+impl<A> Load for Camera<A> where A: Default + Deserialize {
   type Args = ();
 
-  fn load<P>(path: P, _: &mut Cache<'a>, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  const TY_STR: &'static str = "cameras";
+
+  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     info!("loading camera {:?}", path);

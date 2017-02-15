@@ -1,6 +1,6 @@
 use luminance::{Dim2, Equation, Factor, Flat, Framebuffer, Mode, Pipe, Pipeline, RenderCommand, ShadingCommand, Tess, TessRender, TessVertices, Uniform, Unit, Vertex, VertexFormat};
 
-use id::Id;
+use resource::Res;
 use scene::Scene;
 use shader::Program;
 use text::TextTexture;
@@ -78,31 +78,31 @@ const TEXT_SCALE: &'static Uniform<f32> = &Uniform::new(3);
 const TEXT_COLOR: &'static Uniform<[f32; 4]> = &Uniform::new(4);
 
 /// A renderer responsible of rendering shapes.
-pub struct Renderer<'a> {
+pub struct Renderer {
   framebuffer: Framebuffer<Flat, Dim2, Texture2D, ()>,
   ratio: f32,
-  tri_program: Id<'a, Program>,
+  tri_program: Res<Program>,
   tris: Tess,
   tri_vert_nb: usize,
-  disc_program: Id<'a, Program>,
+  disc_program: Res<Program>,
   discs: Tess,
   disc_vert_nb: usize,
-  text_program: Id<'a, Program>,
+  text_program: Res<Program>,
   text_quad: Tess,
   overlay_unit: OverlayUnit,
 }
 
-impl<'a> Renderer<'a> {
-  pub fn new(w: u32, h: u32, max_tris: usize, max_discs: usize, scene: &mut Scene<'a>) -> Self {
+impl Renderer {
+  pub fn new(w: u32, h: u32, max_tris: usize, max_discs: usize, scene: &mut Scene) -> Self {
     let fb = Framebuffer::new((w, h), 0).unwrap();
 
-    let tri_program = scene.get_id("spectra/overlay/triangle.glsl", vec![]).unwrap();
+    let tri_program = scene.get("spectra/overlay/triangle.glsl", vec![]).unwrap();
     let tris = Tess::new(Mode::Triangle, TessVertices::Reserve::<Vert>(max_tris * 3), None);
 
-    let disc_program = scene.get_id("spectra/overlay/disc.glsl", vec![DISC_SCREEN_RATIO.sem("ratio")]).unwrap();
+    let disc_program = scene.get("spectra/overlay/disc.glsl", vec![DISC_SCREEN_RATIO.sem("ratio")]).unwrap();
     let discs = Tess::new(Mode::Point, TessVertices::Reserve::<Disc>(max_discs), None);
 
-    let text_program = scene.get_id("spectra/overlay/text.glsl", vec![
+    let text_program = scene.get("spectra/overlay/text.glsl", vec![
       TEXT_SAMPLER.sem("text_texture"),
       TEXT_POS.sem("pos"),
       TEXT_SIZE.sem("size"),
@@ -153,12 +153,8 @@ impl<'a> Renderer<'a> {
     self.disc_vert_nb = disc_i;
   }
 
-  pub fn render(&mut self, scene: &mut Scene<'a>, input: RenderInput) -> &Texture2D {
+  pub fn render(&mut self, input: RenderInput) -> &Texture2D {
     self.dispatch(&input);
-
-    let tri_program = scene.get_by_id(&self.tri_program).unwrap();
-    let disc_program = scene.get_by_id(&self.disc_program).unwrap();
-    let text_program = scene.get_by_id(&self.text_program).unwrap();
 
     let tris = TessRender::one_sub(&self.tris, self.tri_vert_nb);
     let discs = TessRender::one_sub(&self.discs, self.disc_vert_nb);
@@ -195,7 +191,7 @@ impl<'a> Renderer<'a> {
 
     Pipeline::new(&self.framebuffer, [0., 0., 0., 0.], &[], &[], vec![
       // render triangles
-      Pipe::new(ShadingCommand::new(&tri_program, vec![
+      Pipe::new(ShadingCommand::new(&self.tri_program, vec![
         Pipe::new(RenderCommand::new(None, true, vec![
           Pipe::new(tris)
         ]))
@@ -203,13 +199,13 @@ impl<'a> Renderer<'a> {
       // render discs
       Pipe::empty()
         .uniforms(&disc_uniforms)
-        .unwrap(ShadingCommand::new(&disc_program, vec![
+        .unwrap(ShadingCommand::new(&self.disc_program, vec![
           Pipe::new(RenderCommand::new(None, true, vec![
             Pipe::new(discs)
           ]))
         ])),
       // render texts
-      Pipe::new(ShadingCommand::new(&text_program, text_render_cmds))
+      Pipe::new(ShadingCommand::new(&self.text_program, text_render_cmds))
     ]).run();
 
     &self.framebuffer.color_slot

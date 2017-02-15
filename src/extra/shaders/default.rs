@@ -3,8 +3,8 @@
 use luminance::{M44, Uniform};
 use std::ops::Deref;
 
-use id::Id;
 use shader::Program;
+use resource::Res;
 use scene::Scene;
 
 pub type ColorUniform = Uniform<[f32; 3]>;
@@ -12,19 +12,19 @@ pub type Mat44Uniform = Uniform<M44>;
 
 pub const DEFAULT_2D_COLOR: ColorUniform = Uniform::new(0);
 
-pub struct DefaultProgram2D<'a>(Id<'a, Program>);
+pub struct DefaultProgram2D(Res<Program>);
 
-impl<'a> Deref for DefaultProgram2D<'a> {
-  type Target = Id<'a, Program>;
+impl Deref for DefaultProgram2D {
+  type Target = Res<Program>;
 
   fn deref(&self) -> &Self::Target {
     &self.0
   }
 }
 
-impl<'a> DefaultProgram2D<'a> {
-  pub fn new(scene: &mut Scene<'a>) -> Option<Self> {
-    get_id!(scene, "spectra/default_2d.glsl", vec![DEFAULT_2D_COLOR.sem("color")]).map(DefaultProgram2D)
+impl DefaultProgram2D {
+  pub fn new(scene: &mut Scene) -> Option<Self> {
+    scene.get("spectra/default_2d.glsl", vec![DEFAULT_2D_COLOR.sem("color")]).map(DefaultProgram2D)
   }
 }
 
@@ -46,19 +46,19 @@ uniforms!{
   DEFAULT_3D_INST: M44
 }
 
-pub struct DefaultProgram3D<'a>(Id<'a, Program>);
+pub struct DefaultProgram3D(Res<Program>);
 
-impl<'a> Deref for DefaultProgram3D<'a> {
-  type Target = Id<'a, Program>;
+impl Deref for DefaultProgram3D {
+  type Target = Res<Program>;
 
   fn deref(&self) -> &Self::Target {
     &self.0
   }
 }
 
-impl<'a> DefaultProgram3D<'a> {
-  pub fn new(scene: &mut Scene<'a>) -> Option<Self> {
-    get_id!(scene, "spectra/default_3d.glsl", vec![
+impl DefaultProgram3D {
+  pub fn new(scene: &mut Scene) -> Option<Self> {
+    scene.get("spectra/default_3d.glsl", vec![
               DEFAULT_3D_PROJ.sem("proj"),
               DEFAULT_3D_VIEW.sem("view"),
               DEFAULT_3D_INST.sem("inst")])

@@ -1,10 +1,11 @@
 // FIXME: add the support of transient objects
 
-use any_cache::{self, HashCache};
+use any_cache::{self, Cache, HashCache};
 use notify::{self, RecommendedWatcher, Watcher};
+use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
@@ -12,7 +13,6 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread;
 use time::precise_time_s;
 
-use id::Id;
 use model::Model;
 use object::Object;
 use shader::Program;
@@ -22,12 +22,12 @@ use texture::TextureImage;
 /// Class of types that can be loaded.
 pub trait Load: Sized {
   /// Arguments passed at loading.
-  type Args;
+  type Args: Clone;
 
   /// Static string representing the name of the type (used in filesystem caching).
   const TY_STR: &'static str;
 
-  fn load<P>(path: P, cache: &mut Cache, args: Self::Args) -> Result<Self> where P: AsRef<Path>;
+  fn load<P>(path: P, cache: &mut ResCache, args: Self::Args) -> Result<Self> where P: AsRef<Path>;
 }
 
 /// Class of types that can be reloaded.
@@ -54,13 +54,26 @@ pub enum LoadError {
 pub type Result<T> = ::std::result::Result<T, LoadError>;
 
 /// Resources are wrapped in this type.
+#[derive(Debug)]
 pub struct Res<T>(Rc<RefCell<T>>);
 
+impl<T> Clone for Res<T> {
+  fn clone(&self) -> Self {
+    Res(self.0.clone())
+  }
+}
+
 impl<T> Deref for Res<T> {
-  type Target = Rc<RefCell<T>>;
+  type Target = T;
 
   fn deref(&self) -> &Self::Target {
-    &self.0
+    &self.0.borrow()
+  }
+}
+
+impl<T> DerefMut for Res<T> {
+  fn deref_mut(&mut self) -> &mut Self::Target {
+    &mut self.0.borrow_mut()
   }
 }
 
@@ -70,23 +83,24 @@ type Timestamp = f64;
 const UPDATE_AWAIT_TIME: Timestamp = 1.; // 1s
 
 /// Resource cache. Responsible for caching resource.
-pub struct Cache {
-  cache: HashCache,
+pub struct ResCache {
+  cache: HashCache<PathBuf>,
   // vector of pair (path, timestamp) giving indication on resources to reload
-  dirty: Arc<Mutex<Vec<(PathBuf, Timestamp)>>,
+  dirty: Arc<Mutex<Vec<(PathBuf, Timestamp)>>>,
   watcher_thread: thread::JoinHandle<()>
 }
 
 /// Entry in the resource cache corresponding to a given resource which type is `T`.
-struct CacheEntry {
-  on_reload: Box<for<'a> Fn(&'a mut Cache)>,
+struct ResCacheEntry {
+  resource: Box<Any>,
+  on_reload: Box<Fn(&ResCache)>,
   last_update_timestamp: Timestamp // timestamp of the last update
 }
 
-impl Cache {
+impl ResCache {
   /// Create a new cache.
   pub fn new<P>(root: P) -> Self where P: AsRef<Path> {
-    let dirty: Arc<Mutex<Vec<(PathBuf, Timestamp>>> = Arc::new(Mutex::new(Vec::new()));
+    let dirty: Arc<Mutex<Vec<(PathBuf, Timestamp)>>> = Arc::new(Mutex::new(Vec::new()));
     let dirty_ = dirty.clone();
 
     let root = root.as_ref().to_owned();
@@ -98,14 +112,14 @@ impl Cache {
 
       for event in wrx.iter() {
         if let notify::Event { path: Some(path), op: Ok(notify::op::WRITE) } = event {
-          dirty.lock().unwrap().push((path.clone(), precise_time_s()));
+          dirty_.lock().unwrap().push((path.clone(), precise_time_s()));
         }
       }
     });
 
-    Cache {
+    ResCache {
       cache: HashCache::new(),
-      dirty: dirty
+      dirty: dirty,
       watcher_thread: join_handle
     }
   }
@@ -114,11 +128,19 @@ impl Cache {
   pub fn get<T>(&mut self, key: &str, args: T::Args) -> Option<Res<T>> where T: 'static + Any + Reload {
     let path_str = format!("data/{}/{}", T::TY_STR, key);
     let path = Path::new(&path_str);
+    let path_buf = path.to_owned();
 
-    match self.cache.get::<CacheEntry<T>>(key) {
+    match self.cache.get::<ResCacheEntry>(&path_buf) {
       Some(entry) => {
         deb!("cache hit for {} ({})", key, path_str);
-        entry.resource.clone()
+
+        match entry.resource.downcast_ref::<Res<T>>() {
+          Some(res) => Some(res.clone()),
+          None => {
+            deb!("cannot get {} ({}) because of a type mismtach", key, path_str);
+            None
+          }
+        }
       },
       None => {
         deb!("cache miss for {} ({})", key, path_str);
@@ -127,28 +149,28 @@ impl Cache {
         if path.exists() {
           match T::load(&path, self, args) {
             Ok(resource) => {
-              let path_buf = path.to_owned();
-
               let res = Res(Rc::new(RefCell::new(resource)));
               let res_ = res.clone();
 
               let path_buf_ = path_buf.clone();
+              let args_ = args.clone();
               // closure used to reload the object when needed
-              let on_reload = Box::new(move |cache| {
-                match T::load(&path_buf_, cache, args) {
+              let on_reload = Box::new(move |cache_| {
+                match T::load(&path_buf_, cache_, args_) {
                   Ok(new_resource) => {
                     // replace the current resource with the freshly loaded one
-                    *res_.borrow_mut() = resource;
-                    deb!("reloaded resource from {:?}", path_buf);
+                    *res_ = new_resource;
+                    deb!("reloaded resource from {:?}", path_buf_);
                   },
                   Err(e) => {
-                    warn!("reloading resource from {:?} has failed:\n{:#?}", path, e);
+                    warn!("reloading resource from {:?} has failed:\n{:#?}", path_buf_, e);
                   }
                 }
               });
 
               // cache entry
-              let entry = CacheEntry {
+              let entry = ResCacheEntry {
+                resource: Box::new(res),
                 on_reload: on_reload,
                 last_update_timestamp: precise_time_s()
               };
@@ -170,20 +192,22 @@ impl Cache {
     }
   }
 
-  // TODO: maybe we should have a Cache::update() instead of get() + save()?
+  // TODO: maybe we should have a ResCache::update() instead of get() + save()?
   /// Synchronize the cache by updating the resource that ought to.
   pub fn sync(&mut self) {
-    for (path, timestamp) in self.dirty.lock().unwrap().iter() {
-      let mut cache_entry = self.cache.get(&path).cloned().unwrap();
+    let mut dirty = self.dirty.lock().unwrap();
+
+    for &(ref path, ref timestamp) in dirty.iter() {
+      let mut cache_entry = self.cache.get::<ResCacheEntry>(&path).cloned().unwrap();
 
       if timestamp - cache_entry.last_update_timestamp >= UPDATE_AWAIT_TIME {
         cache_entry.on_reload();
       }
 
-      new_cache_entry.last_update_timestamp = timestamp;
-      self.cache.save(&path, new_cache_entry);
+      cache_entry.last_update_timestamp = timestamp;
+      self.cache.save(path.clone(), cache_entry);
     }
 
-    self.dirty.clear();
+    dirty.clear();
   }
 }

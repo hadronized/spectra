@@ -6,7 +6,7 @@ use std::ops::{Add, Div, Mul, Sub};
 use std::path::Path;
 
 use linear::{UnitQuaternion, Vector2, Vector3, Vector4};
-use resource::{Cache, Load, LoadError};
+use resource::{Load, LoadError, ResCache};
 
 /// Time used as sampling type in splines.
 pub type Time = f32;
@@ -89,10 +89,12 @@ impl<T> Spline<T> {
   }
 }
 
-impl<'a, T> Load<'a> for Spline<T> where T: Deserialize {
+impl<T> Load for Spline<T> where T: Deserialize {
   type Args = ();
 
-  fn load<P>(path: P, _: &mut Cache<'a>, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  const TY_STR: &'static str = "splines";
+
+  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     info!("loading spline: {:?}", path);

@@ -2,22 +2,21 @@ use serde_json::from_reader;
 use std::path::Path;
 use std::fs::File;
 
-use id::Id;
 use linear::{Matrix4, Quaternion, ToHomogeneous, Unit};
 use model::Model;
-use resource::{Cache, Get, Load, LoadError};
+use resource::{Load, LoadError, Res, ResCache};
 use transform::{Orientation, Position, Scale, Transformable, translation_matrix};
 
 #[derive(Clone, Debug)]
-pub struct Object<'a> {
-  pub model: Id<'a, Model>,
+pub struct Object {
+  pub model: Res<Model>,
   pub position: Position,
   pub orientation: Orientation,
   pub scale: Scale
 }
 
-impl<'a> Object<'a> {
-  pub fn new(model: Id<'a, Model>, position: Position, orientation: Orientation, scale: Scale) -> Self {
+impl Object {
+  pub fn new(model: Res<Model>, position: Position, orientation: Orientation, scale: Scale) -> Self {
     Object {
       model: model,
       position: position,
@@ -27,7 +26,7 @@ impl<'a> Object<'a> {
   }
 }
 
-impl<'a> Transformable for Object<'a> {
+impl Transformable for Object {
   fn transform(&self) -> Matrix4<f32> {
     translation_matrix(-self.position) * self.scale.to_mat() * self.orientation.to_rotation_matrix().to_homogeneous()
   }
@@ -44,10 +43,12 @@ pub struct ObjectManifest {
   scale: [f32; 3]
 }
 
-impl<'a> Load<'a> for Object<'a> {
+impl Load for Object {
   type Args = ();
 
-  fn load<P>(path: P, cache: &mut Cache<'a>, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  const TY_STR: &'static str = "objects";
+
+  fn load<P>(path: P, cache: &mut ResCache, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     info!("loading object {:?}", path);
@@ -58,11 +59,10 @@ impl<'a> Load<'a> for Object<'a> {
       from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?
     };
 
-    // get the model id
-    let model_id = cache.get_id(&manifest.model, ()).ok_or(LoadError::ConversionFailed(format!("unable to find model {} for object at {:?}", manifest.model, path)))?;
+    let model = cache.get(&manifest.model, ()).ok_or(LoadError::ConversionFailed(format!("unable to find model {} for object at {:?}", manifest.model, path)))?;
 
     Ok(Object {
-      model: model_id,
+      model: model,
       position: (&manifest.position).into(),
       orientation: Unit::new(&Quaternion::from(&manifest.orientation)),
       scale: (&manifest.scale).into()

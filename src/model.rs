@@ -1,5 +1,6 @@
 use luminance::{Mode, Tess, TessVertices};
 use std::collections::BTreeMap;
+use std::fmt::{self, Debug, Formatter};
 use std::fs::File;
 use std::io::Read;
 use std::iter::IntoIterator;
@@ -7,13 +8,14 @@ use std::path::Path;
 use std::vec;
 use wavefront_obj::obj;
 
-use resource::{Cache, Load, LoadError};
+use resource::{Load, LoadError, ResCache};
 
 pub type Vertex = (VertexPos, VertexNor, VertexTexCoord);
 pub type VertexPos = [f32; 3];
 pub type VertexNor = [f32; 3];
 pub type VertexTexCoord = [f32; 2];
 
+#[derive(Debug)]
 pub struct Model {
   pub parts: Vec<Part>
 }
@@ -48,10 +50,18 @@ impl Part {
   }
 }
 
-impl<'a> Load<'a> for Model {
+impl Debug for Part {
+  fn fmt(&self, fmt: &mut Formatter) -> Result<(), fmt::Error> {
+    fmt.write_str("Part { ... }")
+  }
+}
+
+impl Load for Model {
   type Args = ();
 
-  fn load<P>(path: P, _: &mut Cache<'a>, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  const TY_STR: &'static str = "models";
+
+  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     info!("loading model: {:?}", path);

@@ -3,7 +3,7 @@ use image;
 use std::ops::Deref;
 use std::path::Path;
 
-use resource::{Cache, Load, LoadError, Reload, Result};
+use resource::{Load, LoadError, Reload, ResCache, Result};
 
 /// Load an RGBA texture from an image at a path.
 pub fn load_rgba_texture<P>(path: P, sampler: &Sampler, linear: bool) -> Result<Texture<Flat, Dim2, RGBA32F>> where P: AsRef<Path> {
@@ -56,10 +56,12 @@ impl Deref for TextureImage {
   }
 }
 
-impl<'a> Load<'a> for TextureImage {
+impl Load for TextureImage {
   type Args = (Sampler, bool);
 
-  fn load<P>(path: P, _: &mut Cache<'a>, (sampler, linear): Self::Args) -> Result<Self> where P: AsRef<Path> {
+  const TY_STR: &'static str = "textures";
+
+  fn load<P>(path: P, _: &mut ResCache, (sampler, linear): Self::Args) -> Result<Self> where P: AsRef<Path> {
     load_rgba_texture(path, &sampler, linear)
       .map(|tex| TextureImage {
         texture: tex,
@@ -69,7 +71,7 @@ impl<'a> Load<'a> for TextureImage {
   }
 }
 
-impl<'a> Reload<'a> for TextureImage {
+impl Reload for TextureImage {
   fn reload_args(&self) -> Self::Args {
     (self.sampler, self.linear)
   }
