@@ -84,16 +84,17 @@ const UPDATE_AWAIT_TIME: Timestamp = 1.; // 1s
 
 /// Resource cache. Responsible for caching resource.
 pub struct ResCache {
+  // contains all the typed-erased Rc<RefCell<T>>
   cache: HashCache<PathBuf>,
+  // contains all metadata on resources
+  metadata: HashMap<PathBuf, ResMetaData>,
   // vector of pair (path, timestamp) giving indication on resources to reload
   dirty: Arc<Mutex<Vec<(PathBuf, Timestamp)>>>,
   watcher_thread: thread::JoinHandle<()>
 }
 
-/// Entry in the resource cache corresponding to a given resource which type is `T`.
-struct ResCacheEntry {
-  resource: Box<Any>,
-  on_reload: Box<Fn(&ResCache)>,
+struct ResMetaData {
+  on_reload: Box<Fn(&mut ResCache)>,
   last_update_timestamp: Timestamp // timestamp of the last update
 }
 
@@ -119,6 +120,7 @@ impl ResCache {
 
     ResCache {
       cache: HashCache::new(),
+      metadata: HashMap::new(),
       dirty: dirty,
       watcher_thread: join_handle
     }
@@ -130,17 +132,10 @@ impl ResCache {
     let path = Path::new(&path_str);
     let path_buf = path.to_owned();
 
-    match self.cache.get::<ResCacheEntry>(&path_buf) {
-      Some(entry) => {
+    match self.cache.get::<Res<T>>(&path_buf) {
+      Some(res) => {
         deb!("cache hit for {} ({})", key, path_str);
-
-        match entry.resource.downcast_ref::<Res<T>>() {
-          Some(res) => Some(res.clone()),
-          None => {
-            deb!("cannot get {} ({}) because of a type mismtach", key, path_str);
-            None
-          }
-        }
+        Some(res.clone())
       },
       None => {
         deb!("cache miss for {} ({})", key, path_str);
@@ -168,15 +163,15 @@ impl ResCache {
                 }
               });
 
-              // cache entry
-              let entry = ResCacheEntry {
-                resource: Box::new(res),
+              let metadata = ResMetaData {
                 on_reload: on_reload,
                 last_update_timestamp: precise_time_s()
               };
 
-              // cache the resource and return it
-              self.cache.save(path_buf, entry);
+              // cache the resource and its meta data
+              self.cache.save(path_buf.clone(), res);
+              self.metadata.insert(path_buf, metadata);
+
               Some(res)
             },
             Err(e) => {
@@ -193,21 +188,21 @@ impl ResCache {
   }
 
   // TODO: maybe we should have a ResCache::update() instead of get() + save()?
-  /// Synchronize the cache by updating the resource that ought to.
-  pub fn sync(&mut self) {
-    let mut dirty = self.dirty.lock().unwrap();
+  ///// Synchronize the cache by updating the resource that ought to.
+  //pub fn sync(&mut self) {
+  //  let mut dirty = self.dirty.lock().unwrap();
 
-    for &(ref path, ref timestamp) in dirty.iter() {
-      let mut cache_entry = self.cache.get::<ResCacheEntry>(&path).cloned().unwrap();
+  //  for &(ref path, ref timestamp) in dirty.iter() {
+  //    let mut cache_entry = self.cache.get::<ResCacheEntry>(&path).cloned().unwrap();
 
-      if timestamp - cache_entry.last_update_timestamp >= UPDATE_AWAIT_TIME {
-        cache_entry.on_reload();
-      }
+  //    if timestamp - cache_entry.last_update_timestamp >= UPDATE_AWAIT_TIME {
+  //      cache_entry.on_reload();
+  //    }
 
-      cache_entry.last_update_timestamp = timestamp;
-      self.cache.save(path.clone(), cache_entry);
-    }
+  //    cache_entry.last_update_timestamp = timestamp;
+  //    self.cache.save(path.clone(), cache_entry);
+  //  }
 
-    dirty.clear();
-  }
+  //  dirty.clear();
+  //}
 }

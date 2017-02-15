@@ -19,7 +19,7 @@ impl Scene {
     }
   }
 
-  pub fn get<T>(&mut self, key: &str, args: T::Args) -> Option<Res<T>> where T: Reload {
+  pub fn get<T>(&mut self, key: &str, args: T::Args) -> Option<Res<T>> where T: 'static + Reload {
     self.cache.get(key, args)
   }
 }
