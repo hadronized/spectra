@@ -1,5 +1,5 @@
 use scene::Scene;
 
-pub trait Renderer<Input, Output> {
-  fn render(&self, Input) -> Output;
+pub trait Renderer<'a, Input, Output> {
+  fn render(&'a self, Input) -> Output;
 }
