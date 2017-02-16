@@ -1,5 +1,6 @@
 use luminance::{Dim2, Flat, RGBA32F, Texture};
 use serde_json::from_reader;
+use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 
@@ -86,6 +87,29 @@ impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
     Timeline {
       tracks: Vec::new(),
     }
+  }
+
+  /// Turn a TimelineManifest into a Timeline by providing a mapping between clips’ names and real
+  /// clips.
+  pub fn from_manifest(manifest: &TimelineManifest, mapping: HashMap<String, &'c Clip<'a, 'b>>) -> Self {
+    let mut timeline = Self::new();
+
+    for track_manifest in &manifest.tracks {
+      let mut track = Track::new();
+
+      for cut_manifest in &track_manifest.cuts {
+        let in_time = cut_manifest.in_time;
+        let out_time = cut_manifest.out_time;
+        let inst_time = cut_manifest.inst_time;
+        let clip = mapping.get(&cut_manifest.clip).cloned().unwrap();
+
+        track.add_cut(Cut::new(in_time, out_time, inst_time, clip));
+      }
+
+      timeline.add_track(track);
+    }
+
+    timeline
   }
 
   pub fn add_track(&mut self, track: Track<'a, 'b, 'c>) {
