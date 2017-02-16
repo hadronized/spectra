@@ -5,11 +5,11 @@ pub type Time = f32;
 
 /// A clip is an object that implements a visual sequence.
 pub struct Clip<'a> {
-  act: Box<Fn(Time) -> &'a Texture<Flat, Dim2, RGBA32F> + 'a>
+  act: Box<Fn(Time) -> &'a Texture<Flat, Dim2, RGBA32F>>
 }
 
 impl<'a> Clip<'a> {
-  pub fn new<F>(act: F) -> Self where F: 'a + Fn(Time) -> &'a Texture<Flat, Dim2, RGBA32F> {
+  pub fn new<F>(act: F) -> Self where F: 'static + Fn(Time) -> &'a Texture<Flat, Dim2, RGBA32F> {
     Clip {
       act: Box::new(act)
     }
