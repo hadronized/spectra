@@ -1,4 +1,9 @@
 use luminance::{Dim2, Flat, RGBA32F, Texture};
+use serde_json::from_reader;
+use std::fs::File;
+use std::path::Path;
+
+use resource::{Load, LoadError, Result, ResCache};
 
 /// Time.
 pub type Time = f32;
@@ -106,5 +111,76 @@ impl<'a, 'b, 'c, 'd> From<&'d [Track<'a, 'b, 'c>]> for Timeline<'a, 'b, 'c> {
     Timeline {
       tracks: tracks.to_vec(),
     }
+  }
+}
+
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
+pub struct TimelineManifest {
+  pub tracks: Vec<TrackManifest>
+}
+
+impl Load for TimelineManifest {
+  type Args = ();
+
+  const TY_STR: &'static str = "edit/timelines";
+
+  fn load<P>(path: P, cache: &mut ResCache, args: Self::Args) -> Result<Self> where P: AsRef<Path> {
+    let path = path.as_ref();
+
+    info!("loading timeline: {:?}", path);
+
+    let file = File::open(path).map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e)))?;
+    let tracks = from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?;
+
+    Ok(TimelineManifest {
+      tracks: tracks
+    })
+  }
+}
+
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
+pub struct TrackManifest {
+  pub cuts: Vec<CutManifest>
+}
+
+impl Load for TrackManifest {
+  type Args = ();
+
+  const TY_STR: &'static str = "edit/tracks";
+
+  fn load<P>(path: P, cache: &mut ResCache, args: Self::Args) -> Result<Self> where P: AsRef<Path> {
+    let path = path.as_ref();
+
+    info!("loading track: {:?}", path);
+
+    let file = File::open(path).map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e)))?;
+    let cuts = from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?;
+
+    Ok(TrackManifest {
+      cuts: cuts
+    })
+  }
+}
+
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
+pub struct CutManifest {
+  pub in_time: Time,
+  pub out_time: Time,
+  pub inst_time: Time,
+  pub clip: String
+}
+
+impl Load for CutManifest {
+  type Args = ();
+
+  const TY_STR: &'static str = "edit/cuts";
+
+  fn load<P>(path: P, cache: &mut ResCache, args: Self::Args) -> Result<Self> where P: AsRef<Path> {
+    let path = path.as_ref();
+
+    info!("loading cut: {:?}", path);
+
+    let file = File::open(path).map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e)))?;
+    from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))
   }
 }
