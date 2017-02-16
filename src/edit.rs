@@ -130,11 +130,7 @@ impl Load for TimelineManifest {
     info!("loading timeline: {:?}", path);
 
     let file = File::open(path).map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e)))?;
-    let tracks = from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?;
-
-    Ok(TimelineManifest {
-      tracks: tracks
-    })
+    from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))
   }
 }
 
@@ -154,11 +150,7 @@ impl Load for TrackManifest {
     info!("loading track: {:?}", path);
 
     let file = File::open(path).map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e)))?;
-    let cuts = from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?;
-
-    Ok(TrackManifest {
-      cuts: cuts
-    })
+    from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))
   }
 }
 
