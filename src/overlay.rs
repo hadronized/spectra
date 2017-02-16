@@ -1,4 +1,5 @@
 use luminance::{Dim2, Equation, Factor, Flat, Framebuffer, Mode, Pipe, Pipeline, RenderCommand, ShadingCommand, Tess, TessRender, TessVertices, Uniform, Unit, Vertex, VertexFormat};
+use std::cell::RefCell;
 
 use resource::Res;
 use scene::Scene;
@@ -82,11 +83,11 @@ pub struct Renderer {
   framebuffer: Framebuffer<Flat, Dim2, Texture2D, ()>,
   ratio: f32,
   tri_program: Res<Program>,
-  tris: Tess,
-  tri_vert_nb: usize,
+  tris: RefCell<Tess>,
+  tri_vert_nb: RefCell<usize>,
   disc_program: Res<Program>,
-  discs: Tess,
-  disc_vert_nb: usize,
+  discs: RefCell<Tess>,
+  disc_vert_nb: RefCell<usize>,
   text_program: Res<Program>,
   text_quad: Tess,
   overlay_unit: OverlayUnit,
@@ -116,21 +117,21 @@ impl Renderer {
       framebuffer: fb,
       ratio: w as f32 / h as f32,
       tri_program: tri_program,
-      tris: tris,
-      tri_vert_nb: 0,
+      tris: RefCell::new(tris),
+      tri_vert_nb: RefCell::new(0),
       disc_program: disc_program,
-      discs: discs,
-      disc_vert_nb: 0,
+      discs: RefCell::new(discs),
+      disc_vert_nb: RefCell::new(0),
       text_program: text_program,
       text_quad: text_quad,
       overlay_unit: OverlayUnit::new(w, h)
     }
   }
 
-  fn dispatch(&mut self, input: &RenderInput) {
-    let mut tris = self.tris.as_slice_mut().unwrap();
+  fn dispatch(&self, tris: &mut Tess, discs: &mut Tess, input: &RenderInput) {
+    let mut tris = tris.as_slice_mut().unwrap();
     let mut tri_i = 0;
-    let mut discs = self.discs.as_slice_mut().unwrap();
+    let mut discs = discs.as_slice_mut().unwrap();
     let mut disc_i = 0;
 
     for &Triangle(a, b, c) in input.triangles {
@@ -149,15 +150,17 @@ impl Renderer {
       disc_i += 1;
     }
 
-    self.tri_vert_nb = tri_i;
-    self.disc_vert_nb = disc_i;
+    *self.tri_vert_nb.borrow_mut() = tri_i;
+    *self.disc_vert_nb.borrow_mut() = disc_i;
   }
 
-  pub fn render(&mut self, input: RenderInput) -> &Texture2D {
-    self.dispatch(&input);
+  pub fn render(&self, input: RenderInput) -> &Texture2D {
+    self.dispatch(&mut self.tris.borrow_mut(), &mut self.discs.borrow_mut(), &input);
 
-    let tris = TessRender::one_sub(&self.tris, self.tri_vert_nb);
-    let discs = TessRender::one_sub(&self.discs, self.disc_vert_nb);
+    let tris_ref = self.tris.borrow();
+    let tris = TessRender::one_sub(&tris_ref, *self.tri_vert_nb.borrow());
+    let discs_ref = self.discs.borrow();
+    let discs = TessRender::one_sub(&discs_ref, *self.disc_vert_nb.borrow());
     let text_quad = TessRender::one_whole(&self.text_quad);
 
     // FIXME: no alloc?
