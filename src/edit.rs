@@ -4,12 +4,12 @@ use luminance::{Dim2, Flat, RGBA32F, Texture};
 pub type Time = f32;
 
 /// A clip is an object that implements a visual sequence.
-pub struct Clip<'a> {
-  act: Box<Fn(Time) -> &'a Texture<Flat, Dim2, RGBA32F> + 'a>
+pub struct Clip<'a, 'b> where 'a: 'b {
+  act: Box<Fn(Time) -> &'a Texture<Flat, Dim2, RGBA32F> + 'b>
 }
 
-impl<'a> Clip<'a> {
-  pub fn new<F>(act: F) -> Self where F: 'a + Fn(Time) -> &'a Texture<Flat, Dim2, RGBA32F> {
+impl<'a, 'b> Clip<'a, 'b> {
+  pub fn new<F>(act: F) -> Self where F: 'b + Fn(Time) -> &'a Texture<Flat, Dim2, RGBA32F> {
     Clip {
       act: Box::new(act)
     }
@@ -19,15 +19,15 @@ impl<'a> Clip<'a> {
 /// A cut is an object that slices a `Clip` at an *input time* and *output time*. It is instantiated
 /// in a `Track` at a given *instance time*.
 #[derive(Clone)]
-pub struct Cut<'a> {
+pub struct Cut<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
   pub in_time: Time,
   pub out_time: Time,
   pub inst_time: Time,
-  pub clip: &'a Clip<'a>
+  pub clip: &'c Clip<'a, 'b>
 }
 
-impl<'a> Cut<'a> {
-  pub fn new(in_time: Time, out_time: Time, inst_time: Time, clip: &'a Clip<'a>) -> Self {
+impl<'a, 'b, 'c> Cut<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
+  pub fn new(in_time: Time, out_time: Time, inst_time: Time, clip: &'c Clip<'a, 'b>) -> Self {
     assert!(in_time <= out_time);
 
     Cut {
@@ -46,24 +46,24 @@ impl<'a> Cut<'a> {
 
 /// A track gathers `Cut`s and its purpose is to be used inside a `Timeline`.
 #[derive(Clone)]
-pub struct Track<'a> {
-  cuts: Vec<Cut<'a>>
+pub struct Track<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
+  cuts: Vec<Cut<'a, 'b, 'c>>
 }
 
-impl<'a> Track<'a> {
+impl<'a, 'b, 'c> Track<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
   pub fn new() -> Self {
     Track {
       cuts: Vec::new()
     }
   }
 
-  pub fn add_cut(&mut self, cut: Cut<'a>) {
+  pub fn add_cut(&mut self, cut: Cut<'a, 'b, 'c>) {
     self.cuts.push(cut);
   }
 }
 
-impl<'a, 'b> From<&'b [Cut<'a>]> for Track<'a> {
-  fn from(cuts: &'b [Cut<'a>]) -> Self {
+impl<'a, 'b, 'c, 'd> From<&'d [Cut<'a, 'b, 'c>]> for Track<'a, 'b, 'c> {
+  fn from(cuts: &'d [Cut<'a, 'b, 'c>]) -> Self {
     Track {
       cuts: cuts.to_vec()
     }
@@ -72,18 +72,18 @@ impl<'a, 'b> From<&'b [Cut<'a>]> for Track<'a> {
 
 /// A timeline gathers tracks used to build up the visual aspect of the demo.
 #[derive(Clone)]
-pub struct Timeline<'a> {
-  tracks: Vec<Track<'a>>,
+pub struct Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
+  tracks: Vec<Track<'a, 'b, 'c>>,
 }
 
-impl<'a> Timeline<'a> {
+impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
   pub fn new() -> Self {
     Timeline {
       tracks: Vec::new(),
     }
   }
 
-  pub fn add_track(&mut self, track: Track<'a>) {
+  pub fn add_track(&mut self, track: Track<'a, 'b, 'c>) {
     self.tracks.push(track);
   }
 
@@ -101,8 +101,8 @@ impl<'a> Timeline<'a> {
   }
 }
 
-impl<'a, 'b> From<&'b [Track<'a>]> for Timeline<'a> {
-  fn from(tracks: &'b [Track<'a>]) -> Self {
+impl<'a, 'b, 'c, 'd> From<&'d [Track<'a, 'b, 'c>]> for Timeline<'a, 'b, 'c> {
+  fn from(tracks: &'d [Track<'a, 'b, 'c>]) -> Self {
     Timeline {
       tracks: tracks.to_vec(),
     }
