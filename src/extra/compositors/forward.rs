@@ -29,7 +29,7 @@ impl Forward {
     }
   }
 
-  fn to_screen(&self, source: &Texture2D<RGBA32F>) {
+  pub fn to_screen(&self, source: &Texture2D<RGBA32F>) {
     let back_fb = Framebuffer::default((self.w, self.h));
     let textures: &[&RawTexture] = &[source];
     let tess_render = TessRender::one_whole(&self.quad);
