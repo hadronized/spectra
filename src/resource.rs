@@ -64,16 +64,10 @@ impl<T> Clone for Res<T> {
 }
 
 impl<T> Deref for Res<T> {
-  type Target = T;
+  type Target = RefCell<T>;
 
   fn deref(&self) -> &Self::Target {
-    &self.0.borrow()
-  }
-}
-
-impl<T> DerefMut for Res<T> {
-  fn deref_mut(&mut self) -> &mut Self::Target {
-    &mut self.0.borrow_mut()
+    &self.0
   }
 }
 
@@ -153,7 +147,7 @@ impl ResCache {
                 match T::load(&path_buf_, cache_, args.clone()) {
                   Ok(new_resource) => {
                     // replace the current resource with the freshly loaded one
-                    *res_ = new_resource;
+                    *res_.borrow_mut() = new_resource;
                     deb!("reloaded resource from {:?}", path_buf_);
                   },
                   Err(e) => {

@@ -191,7 +191,7 @@ impl Renderer {
 
     Pipeline::new(&self.framebuffer, [0., 0., 0., 0.], &[], &[], vec![
       // render triangles
-      Pipe::new(ShadingCommand::new(&self.tri_program, vec![
+      Pipe::new(ShadingCommand::new(&self.tri_program.borrow(), vec![
         Pipe::new(RenderCommand::new(None, true, vec![
           Pipe::new(tris)
         ]))
@@ -199,13 +199,13 @@ impl Renderer {
       // render discs
       Pipe::empty()
         .uniforms(&disc_uniforms)
-        .unwrap(ShadingCommand::new(&self.disc_program, vec![
+        .unwrap(ShadingCommand::new(&self.disc_program.borrow(), vec![
           Pipe::new(RenderCommand::new(None, true, vec![
             Pipe::new(discs)
           ]))
         ])),
       // render texts
-      Pipe::new(ShadingCommand::new(&self.text_program, text_render_cmds))
+      Pipe::new(ShadingCommand::new(&self.text_program.borrow(), text_render_cmds))
     ]).run();
 
     &self.framebuffer.color_slot
