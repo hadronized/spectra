@@ -219,7 +219,7 @@ pub struct RenderInput<'a, 'b> where 'b: 'a {
   texts: Option<(&'a [Text<'b>], f32)>
 }
 
-impl<'a, 'b> RenderInput<'a, 'b> {
+impl<'a, 'b> RenderInput<'a, 'b> where 'b: 'a {
   pub fn new() -> Self {
     RenderInput {
       triangles: &[],
