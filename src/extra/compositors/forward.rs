@@ -43,4 +43,9 @@ impl Forward {
           ]))
     ]).run();
   }
+
+  pub fn black_screen(&self) {
+    let back_fb = Framebuffer::default((self.w, self.h));
+    Pipeline::new(&back_fb, [0., 0., 0., 0.], &[], &[], vec![]).run();
+  }
 }
