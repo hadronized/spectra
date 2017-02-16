@@ -22,4 +22,8 @@ impl Scene {
   pub fn get<T>(&mut self, key: &str, args: T::Args) -> Option<Res<T>> where T: 'static + Reload {
     self.cache.get(key, args)
   }
+
+  pub fn sync(&mut self) {
+    self.cache.sync();
+  }
 }
