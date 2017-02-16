@@ -84,6 +84,7 @@ pub struct ResCache {
   metadata: HashMap<PathBuf, ResMetaData>,
   // vector of pair (path, timestamp) giving indication on resources to reload
   dirty: Arc<Mutex<Vec<(PathBuf, Timestamp)>>>,
+  #[allow(dead_code)]
   watcher_thread: thread::JoinHandle<()>
 }
 
@@ -180,22 +181,22 @@ impl ResCache {
     }
   }
 
-  // TODO: maybe we should have a ResCache::update() instead of get() + save()?
-  ///// Synchronize the cache by updating the resource that ought to.
-  //pub fn sync(&mut self) {
-  //  let mut dirty = self.dirty.lock().unwrap();
+  /// Synchronize the cache by updating the resource that ought to.
+  pub fn sync(&mut self) {
+    let dirty = self.dirty.clone();
+    let mut dirty_ = dirty.lock().unwrap();
 
-  //  for &(ref path, ref timestamp) in dirty.iter() {
-  //    let mut cache_entry = self.cache.get::<ResCacheEntry>(&path).cloned().unwrap();
+    for &(ref path, ref timestamp) in dirty_.iter() {
+      let mut metadata = self.metadata.remove(path).unwrap();
 
-  //    if timestamp - cache_entry.last_update_timestamp >= UPDATE_AWAIT_TIME {
-  //      cache_entry.on_reload();
-  //    }
+      if timestamp - metadata.last_update_timestamp >= UPDATE_AWAIT_TIME {
+        (metadata.on_reload)(self);
+      }
 
-  //    cache_entry.last_update_timestamp = timestamp;
-  //    self.cache.save(path.clone(), cache_entry);
-  //  }
+      metadata.last_update_timestamp = *timestamp;
+      self.metadata.insert(path.clone(), metadata);
+    }
 
-  //  dirty.clear();
-  //}
+    dirty_.clear();
+  }
 }
