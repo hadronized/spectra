@@ -31,7 +31,7 @@ impl Forward {
 }
 
 impl Compositor<Res<Texture2D<RGBA32F>>> for Forward {
-  fn composite(&self, scene: &mut Scene, source: Res<Texture2D<RGBA32F>>) -> Screen {
+  fn composite(&self, source: Res<Texture2D<RGBA32F>>) -> Screen {
     let back_fb = Framebuffer::default((self.w, self.h));
     let textures: &[&RawTexture] = &[&source.borrow()];
     let tess_render = TessRender::one_whole(&self.quad);

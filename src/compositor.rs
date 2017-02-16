@@ -2,7 +2,6 @@ use luminance::{Dim2, Flat, RGBA32F, Texture};
 use std::marker::PhantomData;
 
 use resource::Res;
-use scene::Scene;
 
 pub enum Screen {
   /// Screen display.
@@ -19,5 +18,5 @@ pub enum Screen {
 }
 
 pub trait Compositor<Input> {
-  fn composite(&self, &mut Scene, Input) -> Screen;
+  fn composite(&self, Input) -> Screen;
 }
