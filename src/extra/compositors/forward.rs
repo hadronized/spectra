@@ -28,12 +28,10 @@ impl Forward {
       h: h
     }
   }
-}
 
-impl Compositor<Res<Texture2D<RGBA32F>>> for Forward {
-  fn composite(&self, source: Res<Texture2D<RGBA32F>>) -> Screen {
+  fn to_screen(&self, source: &Texture2D<RGBA32F>) {
     let back_fb = Framebuffer::default((self.w, self.h));
-    let textures: &[&RawTexture] = &[&source.borrow()];
+    let textures: &[&RawTexture] = &[source];
     let tess_render = TessRender::one_whole(&self.quad);
 
     Pipeline::new(&back_fb, [0., 0., 0., 0.], textures, &[], vec![
@@ -44,7 +42,5 @@ impl Compositor<Res<Texture2D<RGBA32F>>> for Forward {
             Pipe::new(tess_render)]))
           ]))
     ]).run();
-
-    Screen::Display
   }
 }
