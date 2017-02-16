@@ -91,7 +91,7 @@ impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
 
   /// Turn a TimelineManifest into a Timeline by providing a mapping between clips’ names and real
   /// clips.
-  pub fn from_manifest(manifest: &TimelineManifest, mapping: HashMap<String, &'c Clip<'a, 'b>>) -> Self {
+  pub fn from_manifest(manifest: &TimelineManifest, mapping: &HashMap<String, &'c Clip<'a, 'b>>) -> Self {
     let mut timeline = Self::new();
 
     for track_manifest in &manifest.tracks {
