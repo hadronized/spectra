@@ -212,6 +212,7 @@ impl Renderer {
   }
 }
 
+#[derive(Clone)]
 pub struct RenderInput<'a, 'b> where 'b: 'a {
   triangles: &'a [Triangle],
   discs: &'a [Disc],
