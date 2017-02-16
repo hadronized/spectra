@@ -132,26 +132,25 @@ impl ResCache {
     let path = Path::new(&path_str);
     let path_buf = path.to_owned();
 
-    match self.cache.get::<Res<T>>(&path_buf) {
-      Some(res) => {
+    match self.cache.get::<Res<T>>(&path_buf).cloned() {
+      r@Some(..) => {
         deb!("cache hit for {} ({})", key, path_str);
-        Some(res.clone())
+        r
       },
       None => {
         deb!("cache miss for {} ({})", key, path_str);
 
         // specific loading
         if path.exists() {
-          match T::load(&path, self, args) {
+          match T::load(&path, self, args.clone()) {
             Ok(resource) => {
               let res = Res(Rc::new(RefCell::new(resource)));
               let res_ = res.clone();
 
               let path_buf_ = path_buf.clone();
-              let args_ = args.clone();
               // closure used to reload the object when needed
-              let on_reload = Box::new(move |cache_| {
-                match T::load(&path_buf_, cache_, args_) {
+              let on_reload: Box<for<'a> Fn(&'a mut ResCache)> = Box::new(move |cache_| {
+                match T::load(&path_buf_, cache_, args.clone()) {
                   Ok(new_resource) => {
                     // replace the current resource with the freshly loaded one
                     *res_ = new_resource;
@@ -169,7 +168,7 @@ impl ResCache {
               };
 
               // cache the resource and its meta data
-              self.cache.save(path_buf.clone(), res);
+              self.cache.save(path_buf.clone(), res.clone());
               self.metadata.insert(path_buf, metadata);
 
               Some(res)
