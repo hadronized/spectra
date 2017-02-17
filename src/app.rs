@@ -78,35 +78,28 @@ impl App {
     (precise_time_ns() - self.start_time) as f32 * 1e-9
   }
 
-  pub fn dispatch_events<K, MB, MM, S>(&self,
-                                       keyboard_handler: &mut K,
-                                       mouse_button_handler: &mut MB,
-                                       cursor_handler: &mut MM,
-                                       scroll_handler: &mut S) -> bool
-      where K: KeyboardHandler,
-            MB: MouseButtonHandler,
-            MM: CursorHandler,
-            S: ScrollHandler {
+  pub fn dispatch_events<H>(&self, handler: &mut H) -> bool
+      where H: KeyboardHandler + MouseButtonHandler + CursorHandler + ScrollHandler {
     while let Ok((key, action)) = self.kbd.try_recv() {
-      if !keyboard_handler.on_key(key, action) {
+      if !handler.on_key(key, action) {
         return false;
       }
     }
 
     while let Ok((button, action)) = self.mouse.try_recv() {
-      if !mouse_button_handler.on_mouse_button(button, action) {
+      if !handler.on_mouse_button(button, action) {
         return false;
       }
     }
 
     while let Ok(xy) = self.cursor.try_recv() {
-      if !cursor_handler.on_cursor_move(xy) {
+      if !handler.on_cursor_move(xy) {
         return false;
       }
     }
 
     while let Ok(xy) = self.scroll.try_recv() {
-      if !scroll_handler.on_scroll(xy) {
+      if !handler.on_scroll(xy) {
         return false;
       }
     }
