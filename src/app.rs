@@ -30,11 +30,11 @@ impl MouseButtonHandler for Unhandled {
 
 /// Class of mouse move handlers.
 pub trait CursorHandler {
-  fn on_mouse_move(&mut self, cursor_pos: [f64; 2]) -> bool;
+  fn on_cursor_move(&mut self, cursor_pos: [f64; 2]) -> bool;
 }
 
 impl CursorHandler for Unhandled {
-  fn on_mouse_move(&mut self, _: [f64; 2]) -> bool { true }
+  fn on_cursor_move(&mut self, _: [f64; 2]) -> bool { true }
 }
 
 /// Class of scroll handlers.
@@ -100,7 +100,7 @@ impl App {
     }
 
     while let Ok(xy) = self.cursor.try_recv() {
-      if !cursor_handler.on_mouse_move(xy) {
+      if !cursor_handler.on_cursor_move(xy) {
         return false;
       }
     }
