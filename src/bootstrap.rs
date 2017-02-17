@@ -58,6 +58,7 @@ pub fn bootstrap(dim: WindowDim, title: &'static str) -> (u32, u32, Keyboard, Mo
 
   window.make_current();
 
+  // FIXME: use a target instead
   if cfg!(feature = "release") {
     deb!("hiding cursor");
     window.set_cursor_mode(CursorMode::Disabled);
