@@ -2,9 +2,49 @@ use std::thread;
 use std::time::Duration;
 use time::precise_time_ns;
 
-use bootstrap::{Action, Context, Key, Keyboard, Mouse, MouseButton, MouseMove, Scroll, Window};
+use bootstrap::{Context, Keyboard, Mouse, MouseMove, Scroll, Window};
+pub use bootstrap::{Action, Key, MouseButton};
 use camera::{Camera, Freefly};
 use transform::Translation;
+
+#[derive(Clone, Copy, Eq, Debug, PartialEq)]
+pub struct Unhandled;
+
+/// Class of keyboard handlers.
+pub trait KeyboardHandler {
+  fn on_key(&mut self, key: Key, action: Action) -> bool;
+}
+
+impl KeyboardHandler for Unhandled {
+  fn on_key(&mut self, _: Key, _: Action) -> bool { true }
+}
+
+/// Class of mouse button handlers.
+pub trait MouseButtonHandler {
+  fn on_mouse_button(&mut self, button: MouseButton, action: Action) -> bool;
+}
+
+impl MouseButtonHandler for Unhandled {
+  fn on_mouse_button(&mut self, _: MouseButton, _: Action) -> bool { true }
+}
+
+/// Class of mouse move handlers.
+pub trait CursorHandler {
+  fn on_mouse_move(&mut self, cursor_pos: [f64; 2]) -> bool;
+}
+
+impl CursorHandler for Unhandled {
+  fn on_mouse_move(&mut self, _: [f64; 2]) -> bool { true }
+}
+
+/// Class of scroll handlers.
+pub trait ScrollHandler {
+  fn on_scroll(&mut self, scroll_dir: [f64; 2]) -> bool;
+}
+
+impl ScrollHandler for Unhandled {
+  fn on_scroll(&mut self, _: [f64; 2]) -> bool { true }
+}
 
 /// All common stuff goes here.
 pub struct App {
@@ -20,12 +60,6 @@ pub struct App {
   scroll: Scroll,
   /// Window.
   window: Window,
-  /// Last known cursor position.
-  last_cursor: [f64; 2],
-  /// Is the mouse’s left button pressed down?
-  left_down: bool,
-  /// Is the mouse’s right button pressed down?
-  right_down: bool,
 }
 
 impl App {
@@ -36,10 +70,7 @@ impl App {
       mouse: mouse,
       cursor: cursor,
       scroll: scroll,
-      window: window,
-      last_cursor: [0., 0.],
-      left_down: false,
-      right_down: false,
+      window: window
     }
   }
 
@@ -47,51 +78,37 @@ impl App {
     (precise_time_ns() - self.start_time) as f32 * 1e-9
   }
 
-  pub fn handle_events(&mut self, camera: &mut Camera<Freefly>) -> bool {
+  pub fn dispatch_events<K, MB, MM, S>(&self,
+                                       keyboard_handler: &mut K,
+                                       mouse_button_handler: &mut MB,
+                                       cursor_handler: &mut MM,
+                                       scroll_handler: &mut S) -> bool
+      where K: KeyboardHandler,
+            MB: MouseButtonHandler,
+            MM: CursorHandler,
+            S: ScrollHandler {
     while let Ok((key, action)) = self.kbd.try_recv() {
-      if action == Action::Release && key == Key::Escape{
+      if !keyboard_handler.on_key(key, action) {
         return false;
-      } else {
-        match key {
-          Key::W => camera.mv(Translation::new(0., 0., 1.)),
-          Key::S => camera.mv(Translation::new(0., 0., -1.)),
-          Key::A => camera.mv(Translation::new(1., 0., 0.)),
-          Key::D => camera.mv(Translation::new(-1., 0., 0.)),
-          Key::Q => camera.mv(Translation::new(0., -1., 0.)),
-          Key::E => camera.mv(Translation::new(0., 1., 0.)),
-          _ => {}
-        }
       }
     }
 
     while let Ok((button, action)) = self.mouse.try_recv() {
-      match (button, action) {
-        (MouseButton::Button1, Action::Press) => {
-          self.left_down = true;
-        },
-        (MouseButton::Button1, Action::Release) => {
-          self.left_down = false;
-        },
-        (MouseButton::Button2, Action::Press) => {
-          self.right_down = true;
-        },
-        (MouseButton::Button2, Action::Release) => {
-          self.right_down = false;
-        },
-        _ => {}
+      if !mouse_button_handler.on_mouse_button(button, action) {
+        return false;
       }
     }
 
     while let Ok(xy) = self.cursor.try_recv() {
-      if self.left_down {
-        let (dx, dy) = (xy[0] - self.last_cursor[0], xy[1] - self.last_cursor[1]);
-        camera.look_around(Translation::new(dy as f32, dx as f32, 0.));
-      } else if self.right_down {
-        let (dx, _) = (xy[0] - self.last_cursor[0], xy[1] - self.last_cursor[1]);
-        camera.look_around(Translation::new(0., 0., dx as f32));
+      if !cursor_handler.on_mouse_move(xy) {
+        return false;
       }
+    }
 
-      self.last_cursor = xy;
+    while let Ok(xy) = self.scroll.try_recv() {
+      if !scroll_handler.on_scroll(xy) {
+        return false;
+      }
     }
 
     true
