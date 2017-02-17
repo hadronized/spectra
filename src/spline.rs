@@ -92,8 +92,7 @@ impl<T> Spline<T> {
   /// sampling impossible. For instance, `Interpolate::CatmullRom` requires *four* keys. If you’re
   /// near the beginning of the spline or its end, ensure you have enough keys around to make the
   /// sampling.
-  pub fn sample(&self, t: Time) -> Option<T>
-      where T: Interpolate {
+  pub fn sample(&self, t: Time) -> Option<T> where T: Interpolate {
     let keys = &self.keys;
     let i = search_lower_cp(keys, t);
 
@@ -138,6 +137,29 @@ impl<T> Spline<T> {
         }
       }
     }
+  }
+
+  /// Sample a spline at a given time with clamping.
+  ///
+  /// # Return
+  ///
+  /// If you sample before the first key or after the last one,
+  /// return the first key or the last one, respectively.
+  ///
+  /// # Panic
+  ///
+  /// This function panics if you have no key.
+  pub fn clamped_sample(&self, t: Time) -> T where T: Interpolate {
+    let first = self.keys.first().unwrap();
+    let last = self.keys.last().unwrap();
+
+    if t <= first.t {
+      return first.value;
+    } else if t >= last.t {
+      return last.value;
+    }
+
+    self.sample(t).unwrap()
   }
 }
 
