@@ -83,9 +83,61 @@ impl<T> Spline<T> {
     }
   }
 
-  /// Create a sampler from a spline by borrowing it.
-  pub fn sampler(&self) -> Sampler<T> {
-    Sampler::new(self)
+  /// Sample a spline at a given time.
+  ///
+  /// # Return
+  ///
+  /// `None` if you try to sample a value at a time that has no key associated with. That can also
+  /// happen if you try to sample between two keys with a specific interpolation mode that make the
+  /// sampling impossible. For instance, `Interpolate::CatmullRom` requires *four* keys. If you’re
+  /// near the beginning of the spline or its end, ensure you have enough keys around to make the
+  /// sampling.
+  pub fn sample(&self, t: Time) -> Option<T>
+      where T: Interpolate {
+    let keys = &self.keys;
+    let i = search_lower_cp(keys, t);
+
+    let i = match i {
+      Some(i) => i,
+      None => return None
+    };
+
+    let cp0 = &keys[i];
+
+    match cp0.interpolation {
+      Interpolation::Step(threshold) => {
+        let cp1 = &keys[i+1];
+        let nt = normalize_time(t, cp0, cp1);
+        Some(if nt < threshold { cp0.value } else { cp1.value })
+      },
+      Interpolation::Linear => {
+        let cp1 = &keys[i+1];
+        let nt = normalize_time(t, cp0, cp1);
+
+        Some(Interpolate::lerp(cp0.value, cp1.value, nt))
+      },
+      Interpolation::Cosine => {
+        let cp1 = &keys[i+1];
+        let nt = normalize_time(t, cp0, cp1);
+        let cos_nt = (1. - f32::cos(nt * consts::PI)) * 0.5;
+
+        Some(Interpolate::lerp(cp0.value, cp1.value, cos_nt))
+      },
+      Interpolation::CatmullRom => {
+        // We need at least four points for Catmull Rom; ensure we have them, otherwise, return
+        // None.
+        if i == 0 || i >= keys.len() - 2 {
+          None
+        } else {
+          let cp1 = &keys[i+1];
+          let cpm0 = &keys[i-1];
+          let cpm1 = &keys[i+2];
+          let nt = normalize_time(t, cp0, cp1);
+
+          Some(Interpolate::cubic_hermite((cpm0.value, cpm0.t), (cp0.value, cp0.t), (cp1.value, cp1.t), (cpm1.value, cpm1.t), nt))
+        }
+      }
+    }
   }
 }
 
@@ -218,105 +270,14 @@ pub fn cubic_hermite<T>(x: (T, Time), a: (T, Time), b: (T, Time), y: (T, Time), 
   a.0 * (two_t3 - three_t2 + 1.) + m0 * (t3 - 2. * t2 + t) + b.0 * (-two_t3 + three_t2) + m1 * (t3 - t2)
 }
 
-/// Samplers can sample a spline by providing time. They should be mutable so that they can maintain
-/// an internal state for optimization purposes.
-#[derive(Copy, Clone)]
-pub struct Sampler<'a, T> where T: 'a {
-  /// Borrowed spline.
-  spline: &'a Spline<T>,
-  /// Playback cursor – gives the lower control point index of the current portion of the curve
-  /// we’re sampling at.
-  cursor: usize
-}
-
-impl<'a, T> Sampler<'a, T> where T: 'a {
-  pub fn new(spline: &'a Spline<T>) -> Self {
-    Sampler {
-      spline: spline,
-      cursor: 0
-    }
-  }
-
-  /// Sample a spline at a given time.
-  ///
-  /// The spline might be altered for optimization purpose, in a way so that next calls to this
-  /// function have few work to do.
-  ///
-  /// # Return
-  ///
-  /// `None` if you try to sample a value at a time that has no key associated with. That can also
-  /// happen if you try to sample between two keys with a specific interpolation mode that make the
-  /// sampling impossible. For instance, `Interpolate::CatmullRom` requires *four* keys. If you’re
-  /// near the beginning of the spline or its end, ensure you have enough keys around to make the
-  /// sampling.
-  ///
-  /// # Complexity
-  ///
-  /// The idea is that if you pass in a continuous ascending time, this function gives a response in
-  /// a constant time – *O(1)*. If you pass a stochastic or arbitrary time (for instance for
-  /// debugging or for editing purposes), the complexity is linear – *O(N)* on the number of keys.
-  pub fn sample(&mut self, t: Time) -> Option<T>
-      where T: Interpolate {
-    let keys = &self.spline.keys;
-    let i = around_search_lower_cp(keys, self.cursor, t);
-
-    // if we’ve found the index, replace the cursor to speed up next searches
-    if let Some(cursor) = i {
-      self.cursor = cursor;
-    }
-
-    let i = match i {
-      Some(i) => i,
-      None => return None
-    };
-
-    let cp0 = &keys[i];
-
-    match cp0.interpolation {
-      Interpolation::Step(threshold) => {
-        let cp1 = &keys[i+1];
-        let nt = normalize_time(t, cp0, cp1);
-        Some(if nt < threshold { cp0.value } else { cp1.value })
-      },
-      Interpolation::Linear => {
-        let cp1 = &keys[i+1];
-        let nt = normalize_time(t, cp0, cp1);
-
-        Some(Interpolate::lerp(cp0.value, cp1.value, nt))
-      },
-      Interpolation::Cosine => {
-        let cp1 = &keys[i+1];
-        let nt = normalize_time(t, cp0, cp1);
-        let cos_nt = (1. - f32::cos(nt * consts::PI)) * 0.5;
-
-        Some(Interpolate::lerp(cp0.value, cp1.value, cos_nt))
-      },
-      Interpolation::CatmullRom => {
-        // We need at least four points for Catmull Rom; ensure we have them, otherwise, return
-        // None.
-        if i == 0 || i >= keys.len() - 2 {
-          None
-        } else {
-          let cp1 = &keys[i+1];
-          let cpm0 = &keys[i-1];
-          let cpm1 = &keys[i+2];
-          let nt = normalize_time(t, cp0, cp1);
-
-          Some(Interpolate::cubic_hermite((cpm0.value, cpm0.t), (cp0.value, cp0.t), (cp1.value, cp1.t), (cpm1.value, cpm1.t), nt))
-        }
-      }
-    }
-  }
-}
-
 // Normalize a time ([0;1]) given two control points.
 pub fn normalize_time<T>(t: Time, cp: &Key<T>, cp1: &Key<T>) -> Time {
   (t - cp.t) / (cp1.t - cp.t)
 }
 
-// Find the lower control point corresponding to a given time. Continuous version. `i` is the last
-// known found index.
-fn around_search_lower_cp<T>(cps: &[Key<T>], mut i: usize, t: Time) -> Option<usize> {
+// Find the lower control point corresponding to a given time.
+fn search_lower_cp<T>(cps: &[Key<T>], t: Time) -> Option<usize> {
+  let mut i = 0;
   let len = cps.len();
 
   if len < 2 {

@@ -1,4 +1,4 @@
-use spline::{Spline, Key, Interpolation, Sampler};
+use spline::{Spline, Key, Interpolation};
 use luminance::{Mode, Tess, TessVertices};
 
 // Build a curve connected by segments.
@@ -8,11 +8,10 @@ pub fn new_curve_2d(gap: f32, interpolation: Interpolation, points: &[(f32, f32)
   let spline = Spline::from_keys(cps);
 
   let mut t = 0.;
-  let mut sampler = Sampler::new(&spline);
   let mut vertices = Vec::new(); // FIXME: with_capacity ?
 
   // sample the curve
-  while let Some(y) = sampler.sample(t) {
+  while let Some(y) = spline.sample(t) {
     vertices.push([t, y]);
     t += gap;
   }

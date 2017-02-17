@@ -6,36 +6,34 @@ use spectra::linear::{UnitQuaternion, Quaternion};
 use spectra::spline::*;
 
 #[test]
-fn sampler_hold() {
+fn hold() {
   let spline = Spline::from_keys(vec![
     Key::new(0., 10., Interpolation::Step(1.)),
     Key::new(24., 100., Interpolation::Step(1.)),
     Key::new(45., -3.34, Interpolation::Step(1.))
   ]);
-  let mut sampler = Sampler::new(&spline);
 
-  assert_eq!(sampler.sample(0.), Some(10.));
-  assert_eq!(sampler.sample(2.), Some(10.));
-  assert_eq!(sampler.sample(23.), Some(10.));
-  assert_eq!(sampler.sample(24.), Some(100.));
-  assert_eq!(sampler.sample(44.), Some(100.));
-  assert_eq!(sampler.sample(44.), Some(100.));
-  assert_eq!(sampler.sample(45.), None);
-  assert_eq!(sampler.sample(45347.,), None);
-  assert_eq!(sampler.sample(45347.,), None);
+  assert_eq!(spline.sample(0.), Some(10.));
+  assert_eq!(spline.sample(2.), Some(10.));
+  assert_eq!(spline.sample(23.), Some(10.));
+  assert_eq!(spline.sample(24.), Some(100.));
+  assert_eq!(spline.sample(44.), Some(100.));
+  assert_eq!(spline.sample(44.), Some(100.));
+  assert_eq!(spline.sample(45.), None);
+  assert_eq!(spline.sample(45347.,), None);
+  assert_eq!(spline.sample(45347.,), None);
 }
 
 #[test]
-fn sampler_linear() {
+fn linear() {
   let spline = Spline::from_keys(vec![
     Key::new(0., 10., Interpolation::Linear),
     Key::new(10., 20., Interpolation::Linear)
   ]);
-  let mut sampler = Sampler::new(&spline);
 
-  assert_eq!(sampler.sample(0.), Some(10.));
-  assert_eq!(sampler.sample(10.), None);
-  assert_eq!(sampler.sample(5.), Some(15.));
+  assert_eq!(spline.sample(0.), Some(10.));
+  assert_eq!(spline.sample(10.), None);
+  assert_eq!(spline.sample(5.), Some(15.));
 }
 
 #[test]
