@@ -1,4 +1,6 @@
 use std::thread;
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::time::Duration;
 use time::precise_time_ns;
 
@@ -133,4 +135,95 @@ impl App {
 
     true
   }
+}
+
+/// Debug handler.
+pub struct DebugHandler {
+  camera: Rc<RefCell<Camera<Freefly>>>,
+  left_down: bool,
+  right_down: bool,
+  last_cursor: [f64; 2]
+}
+
+impl DebugHandler {
+  pub fn new(camera: Rc<RefCell<Camera<Freefly>>>) -> Self {
+    DebugHandler {
+      camera: camera,
+      left_down: false,
+      right_down: false,
+      last_cursor: [0., 0.]
+    }
+  }
+
+  fn move_camera_on_event(&mut self, key: Key) {
+    let camera = &mut self.camera.borrow_mut();
+
+    match key {
+      Key::W => camera.mv(Translation::new(0., 0., 1.)),
+      Key::S => camera.mv(Translation::new(0., 0., -1.)),
+      Key::A => camera.mv(Translation::new(1., 0., 0.)),
+      Key::D => camera.mv(Translation::new(-1., 0., 0.)),
+      Key::Q => camera.mv(Translation::new(0., -1., 0.)),
+      Key::E => camera.mv(Translation::new(0., 1., 0.)),
+      _ => ()
+    }
+  }
+
+  fn orient_camera_on_event(&mut self, cursor: [f64; 2]) {
+    let camera = &mut self.camera.borrow_mut();
+
+    if self.left_down {
+      let (dx, dy) = (cursor[0] - self.last_cursor[0], cursor[1] - self.last_cursor[1]);
+      camera.look_around(Translation::new(dy as f32, dx as f32, 0.));
+    } else if self.right_down {
+      let (dx, _) = (cursor[0] - self.last_cursor[0], cursor[1] - self.last_cursor[1]);
+      camera.look_around(Translation::new(0., 0., dx as f32));
+    }
+
+    self.last_cursor = cursor;
+  }
+}
+
+impl KeyboardHandler for DebugHandler {
+  fn on_key(&mut self, key: Key, action: Action) -> bool {
+    match action {
+      Action::Press | Action::Repeat => self.move_camera_on_event(key),
+      Action::Release => if key == Key::Escape { return false }
+    }
+
+    true
+  }
+}
+
+impl MouseButtonHandler for DebugHandler {
+  fn on_mouse_button(&mut self, button: MouseButton, action: Action) -> bool {
+    match (button, action) {
+      (MouseButton::Button1, Action::Press) => {
+        self.left_down = true;
+      },
+      (MouseButton::Button1, Action::Release) => {
+        self.left_down = false;
+      },
+      (MouseButton::Button2, Action::Press) => {
+        self.right_down = true;
+      },
+      (MouseButton::Button2, Action::Release) => {
+        self.right_down = false;
+      },
+      _ => ()
+    }
+
+    true
+  }
+}
+
+impl CursorHandler for DebugHandler {
+  fn on_cursor_move(&mut self, dir: [f64; 2]) -> bool {
+    self.orient_camera_on_event(dir);
+    true
+  }
+}
+
+impl ScrollHandler for DebugHandler {
+  fn on_scroll(&mut self, _: [f64; 2]) -> bool { true }
 }
