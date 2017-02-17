@@ -148,7 +148,7 @@ impl Load for TimelineManifest {
 
   const TY_STR: &'static str = "edit";
 
-  fn load<P>(path: P, cache: &mut ResCache, args: Self::Args) -> Result<Self> where P: AsRef<Path> {
+  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<Self> where P: AsRef<Path> {
     let path = path.as_ref();
 
     info!("loading timeline: {:?}", path);

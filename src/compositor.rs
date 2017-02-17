@@ -1,5 +1,4 @@
 use luminance::{Dim2, Flat, RGBA32F, Texture};
-use std::marker::PhantomData;
 
 use resource::Res;
 

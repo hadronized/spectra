@@ -1,7 +1,6 @@
 use std::path::Path;
-use std::rc::Rc;
 
-use resource::{ResCache, Load, Reload, Res};
+use resource::{ResCache, Reload, Res};
 
 /// The scene type.
 ///

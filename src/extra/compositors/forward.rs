@@ -1,7 +1,6 @@
 use luminance::{Dim2, Flat, Framebuffer, Mode, Pipe, Pipeline, RGBA32F, RawTexture, RenderCommand,
                 ShadingCommand, Tess, TessRender, Texture, Unit, Uniform};
 
-use compositor::{Compositor, Screen};
 use resource::Res;
 use scene::Scene;
 use shader::Program;

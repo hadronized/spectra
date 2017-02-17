@@ -1,23 +1,17 @@
 // FIXME: add the support of transient objects
 
-use any_cache::{self, Cache, HashCache};
+use any_cache::{Cache, HashCache};
 use notify::{self, RecommendedWatcher, Watcher};
 use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::mpsc::channel;
 use std::thread;
 use time::precise_time_s;
-
-use model::Model;
-use object::Object;
-use shader::Program;
-use spline::Spline;
-use texture::TextureImage;
 
 /// Class of types that can be loaded.
 pub trait Load: Sized {
