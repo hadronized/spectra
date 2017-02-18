@@ -31,7 +31,10 @@ impl Vertex for Vert {
   }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Triangle(pub Vert, pub Vert, pub Vert);
+
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Quad(pub Vert, pub Vert, pub Vert, pub Vert);
 
 #[derive(Copy, Clone, Debug, PartialEq)]
