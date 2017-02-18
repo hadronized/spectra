@@ -32,6 +32,7 @@ impl Vertex for Vert {
 }
 
 pub struct Triangle(pub Vert, pub Vert, pub Vert);
+pub struct Quad(pub Vert, pub Vert, pub Vert, pub Vert);
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Disc {
@@ -85,6 +86,8 @@ pub struct Renderer {
   tri_program: Res<Program>,
   tris: RefCell<Tess>,
   tri_vert_nb: RefCell<usize>,
+  quads: RefCell<Tess>,
+  quad_vert_nb: RefCell<usize>,
   disc_program: Res<Program>,
   discs: RefCell<Tess>,
   disc_vert_nb: RefCell<usize>,
@@ -94,11 +97,13 @@ pub struct Renderer {
 }
 
 impl Renderer {
-  pub fn new(w: u32, h: u32, max_tris: usize, max_discs: usize, scene: &mut Scene) -> Self {
+  pub fn new(w: u32, h: u32, max_tris: usize, max_quads: usize, max_discs: usize, scene: &mut Scene) -> Self {
     let fb = Framebuffer::new((w, h), 0).unwrap();
 
     let tri_program = scene.get("spectra/overlay/triangle.glsl", vec![]).unwrap();
     let tris = Tess::new(Mode::Triangle, TessVertices::Reserve::<Vert>(max_tris * 3), None);
+
+    let quads = Tess::new(Mode::TriangleStrip, TessVertices::Reserve::<Vert>(max_quads * 4), None);
 
     let disc_program = scene.get("spectra/overlay/disc.glsl", vec![DISC_SCREEN_RATIO.sem("ratio")]).unwrap();
     let discs = Tess::new(Mode::Point, TessVertices::Reserve::<Disc>(max_discs), None);
@@ -119,6 +124,8 @@ impl Renderer {
       tri_program: tri_program,
       tris: RefCell::new(tris),
       tri_vert_nb: RefCell::new(0),
+      quads: RefCell::new(quads),
+      quad_vert_nb: RefCell::new(0),
       disc_program: disc_program,
       discs: RefCell::new(discs),
       disc_vert_nb: RefCell::new(0),
@@ -128,21 +135,30 @@ impl Renderer {
     }
   }
 
-  fn dispatch(&self, tris: &mut Tess, discs: &mut Tess, input: &RenderInput) {
+  fn dispatch(&self, tris: &mut Tess, quads: &mut Tess, discs: &mut Tess, input: &RenderInput) {
     let mut tris = tris.as_slice_mut().unwrap();
     let mut tri_i = 0;
+    let mut quads = quads.as_slice_mut().unwrap();
+    let mut quad_i = 0;
     let mut discs = discs.as_slice_mut().unwrap();
     let mut disc_i = 0;
 
     for &Triangle(a, b, c) in input.triangles {
-      tris[tri_i] = a;
-      tri_i += 1;
+      let abc = [a, b, c];
 
-      tris[tri_i] = b;
-      tri_i += 1;
+      for &v in &abc {
+        tris[tri_i] = v;
+        tri_i += 1;
+      }
+    }
 
-      tris[tri_i] = c;
-      tri_i += 1;
+    for &Quad(a, b, c, d) in input.quads {
+      let abcd = [a, b, c, d];
+
+      for &v in &abcd {
+        quads[quad_i] = v;
+        quad_i += 1;
+      }
     }
 
     for disc in input.discs {
@@ -151,11 +167,12 @@ impl Renderer {
     }
 
     *self.tri_vert_nb.borrow_mut() = tri_i;
+    *self.quad_vert_nb.borrow_mut() = quad_i;
     *self.disc_vert_nb.borrow_mut() = disc_i;
   }
 
   pub fn render(&self, input: RenderInput) -> &Texture2D {
-    self.dispatch(&mut self.tris.borrow_mut(), &mut self.discs.borrow_mut(), &input);
+    self.dispatch(&mut self.tris.borrow_mut(), &mut self.quads.borrow_mut(), &mut self.discs.borrow_mut(), &input);
 
     let tris_ref = self.tris.borrow();
     let tris = TessRender::one_sub(&tris_ref, *self.tri_vert_nb.borrow());
@@ -218,6 +235,7 @@ impl Renderer {
 #[derive(Clone)]
 pub struct RenderInput<'a, 'b> where 'b: 'a {
   triangles: &'a [Triangle],
+  quads: &'a [Quad],
   discs: &'a [Disc],
   texts: Option<(&'a [Text<'b>], f32)>
 }
@@ -226,6 +244,7 @@ impl<'a, 'b> RenderInput<'a, 'b> where 'b: 'a {
   pub fn new() -> Self {
     RenderInput {
       triangles: &[],
+      quads: &[],
       discs: &[],
       texts: None,
     }
@@ -233,7 +252,15 @@ impl<'a, 'b> RenderInput<'a, 'b> where 'b: 'a {
 
   pub fn triangles(self, triangles: &'a [Triangle]) -> Self {
     RenderInput {
-      triangles: triangles, ..self
+      triangles: triangles,
+      ..self
+    }
+  }
+
+  pub fn quads(self, quads: &'a [Quad]) -> Self {
+    RenderInput {
+      quads: quads,
+      ..self
     }
   }
 
