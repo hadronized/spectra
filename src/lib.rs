@@ -39,7 +39,6 @@ pub mod compositor;
 pub mod color;
 pub mod edit;
 pub mod extra;
-//pub mod gui;
 pub mod linear;
 pub mod model;
 pub mod object;
