@@ -7,7 +7,7 @@ use shader::Program;
 use text::TextTexture;
 use texture::{RGBA32F, Texture};
 
-/// Vertex used in overlay’s objects.
+/// Vertex used in overlay’s objects. Position coordinates are in *window space*.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Vert {
   /// Position.
@@ -21,6 +21,19 @@ impl Vert {
     Vert {
       pos: pos,
       color: color
+    }
+  }
+
+  /// Convert the vertex’ position to *clip space*.
+  ///
+  /// > Note: the depth coordinate is not affected.
+  fn to_clip_space(&self, converter: &UnitConverter) -> Self {
+    let converted = converter.from_window(self.pos[0], self.pos[1]);
+    let pos_ = [converted[0], converted[1], self.pos[2]];
+
+    Vert {
+      pos: pos_,
+      color: self.color
     }
   }
 }
@@ -48,6 +61,13 @@ impl Disc {
     Disc {
       center: center,
       radius: radius
+    }
+  }
+
+  fn to_clip_space(&self, converter: &UnitConverter) -> Self {
+    Disc {
+      center: self.center.to_clip_space(converter),
+      radius: self.radius
     }
   }
 }
@@ -96,7 +116,7 @@ pub struct Renderer {
   disc_vert_nb: RefCell<usize>,
   text_program: Res<Program>,
   text_quad: Tess,
-  overlay_unit: OverlayUnit,
+  unit_converter: UnitConverter,
 }
 
 impl Renderer {
@@ -134,10 +154,11 @@ impl Renderer {
       disc_vert_nb: RefCell::new(0),
       text_program: text_program,
       text_quad: text_quad,
-      overlay_unit: OverlayUnit::new(w, h)
+      unit_converter: UnitConverter::new(w, h)
     }
   }
 
+  // Dispatch the supported shape.
   fn dispatch(&self, tris: &mut Tess, quads: &mut Tess, discs: &mut Tess, input: &RenderInput) {
     let mut tris = tris.as_slice_mut().unwrap();
     let mut tri_i = 0;
@@ -150,7 +171,7 @@ impl Renderer {
       let abc = [a, b, c];
 
       for &v in &abc {
-        tris[tri_i] = v;
+        tris[tri_i] = v.to_clip_space(&self.unit_converter);
         tri_i += 1;
       }
     }
@@ -159,13 +180,13 @@ impl Renderer {
       let abcd = [a, b, c, d];
 
       for &v in &abcd {
-        quads[quad_i] = v;
+        quads[quad_i] = v.to_clip_space(&self.unit_converter);
         quad_i += 1;
       }
     }
 
     for disc in input.discs {
-      discs[disc_i] = *disc;
+      discs[disc_i] = disc.to_clip_space(&self.unit_converter);
       disc_i += 1;
     }
 
@@ -190,7 +211,7 @@ impl Renderer {
       [
         TEXT_SAMPLER.alter(Unit::new(0)),
         TEXT_POS.alter(text.left_upper.pos),
-        TEXT_SIZE.alter(self.overlay_unit.from_window(tex_w, tex_h)),
+        TEXT_SIZE.alter(self.unit_converter.from_window(tex_w as f32, tex_h as f32)),
         TEXT_SCALE.alter(text_scale),
         TEXT_COLOR.alter(text.left_upper.color),
       ]
@@ -282,35 +303,47 @@ impl<'a, 'b> RenderInput<'a, 'b> where 'b: 'a {
   }
 }
 
-/// Overlay units are used to position stuff in overlay in a universal way and screen independent
-/// way. The screen uses normalized coordinates with the origin at lower left as the following
-/// diagram:
+/// A *unit converter* is used to position stuff in overlay in a universal and screen independent
+/// way.
 ///
-/// ^ y (1)
+/// The idea is that you provide should handle *window space* coordinates only. This type will then
+/// help compute normalized coordinates the renderer can understand.
+///
+/// For the record, *window space* coordinates are defined as below – given a viewport size of
+/// *w × h*:
+///
+/// ^ y = h
 /// |
 /// |
-/// |
-/// O------> x (1)
+/// |    x = w
+/// O------>
+///
+/// The formula used to convert from *window space* to what we call *clip space* is:
+///
+/// > x' = 2x / w - 1
+/// > y' = 2y / h - 1
 #[derive(Copy, Clone, Debug, PartialEq)]
-struct OverlayUnit {
-  rw: f32,
-  rh: f32
+struct UnitConverter {
+  twice_rw: f32,
+  twice_rh: f32
 }
 
-impl OverlayUnit {
+impl UnitConverter {
+  /// Build a unit converter by giving it the size of the viewport.
   pub fn new(w: u32, h: u32) -> Self {
-    OverlayUnit {
-      rw: 1. / (w as f32),
-      rh: 1. / (h as f32)
+    UnitConverter {
+      twice_rw: 2. / (w as f32),
+      twice_rh: 2. / (h as f32)
     }
   }
 
-  pub fn from_window(&self, x: u32, y: u32) -> [f32; 2] {
-    let x_ = x as f32 * self.rw;
-    assert!(x_ >= 0. && x_ <= 1., "x={}", x_);
+  /// Convert from *window space* coordinates.
+  pub fn from_window(&self, x: f32, y: f32) -> [f32; 2] {
+    let x_ = x * self.twice_rw - 1.;
+    assert!(x_ >= -1. && x_ <= 1., "x={}", x_);
 
-    let y_ = y as f32 * self.rh;
-    assert!(y_ >= 0. && y_ <= 1., "y={}", y_);
+    let y_ = y * self.twice_rh;
+    assert!(y_ >= -1. && y_ <= 1., "y={}", y_);
 
     [x_, y_]
   }
