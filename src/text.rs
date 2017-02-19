@@ -73,7 +73,7 @@ impl<'a> Rasterizer<'a> {
           // clipping test
           if x > 0 && x < width as i32 && y > 0 && y < height as i32 {
             let x = x as usize;
-            let y = y as usize;
+            let y = height.ceil() as usize - y as usize;
             texels[x + y * width] = v;
           }
         });

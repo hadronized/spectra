@@ -28,7 +28,7 @@ impl Vert {
   ///
   /// > Note: the depth coordinate is not affected.
   fn to_clip_space(&self, converter: &UnitConverter) -> Self {
-    let converted = converter.from_window(self.pos[0], self.pos[1]);
+    let converted = converter.from_win_coord(self.pos[0], self.pos[1]);
     let pos_ = [converted[0], converted[1], self.pos[2]];
 
     Vert {
@@ -82,14 +82,14 @@ pub type Texture2D = Texture<Flat, Dim2, RGBA32F>;
 
 pub struct Text<'a> {
   text_texture: &'a TextTexture,
-  left_upper: Vert
+  left_lower: Vert
 }
 
 impl<'a> Text<'a> {
-  pub fn new(text_texture: &'a TextTexture, left_upper: Vert) -> Self {
+  pub fn new(text_texture: &'a TextTexture, left_lower: Vert) -> Self {
     Text {
       text_texture: text_texture,
-      left_upper: left_upper
+      left_lower: left_lower
     }
   }
 }
@@ -210,10 +210,10 @@ impl Renderer {
       
       [
         TEXT_SAMPLER.alter(Unit::new(0)),
-        TEXT_POS.alter(text.left_upper.pos),
-        TEXT_SIZE.alter(self.unit_converter.from_window(tex_w as f32, tex_h as f32)),
+        TEXT_POS.alter(text.left_lower.to_clip_space(&self.unit_converter).pos),
+        TEXT_SIZE.alter(self.unit_converter.from_win_dim(tex_w as f32, tex_h as f32)),
         TEXT_SCALE.alter(text_scale),
-        TEXT_COLOR.alter(text.left_upper.color),
+        TEXT_COLOR.alter(text.left_lower.color),
       ]
     }).collect()).unwrap_or(Vec::new());
 
@@ -325,6 +325,7 @@ impl<'a, 'b> RenderInput<'a, 'b> where 'b: 'a {
 #[derive(Copy, Clone, Debug, PartialEq)]
 struct UnitConverter {
   rw: f32,
+  rh: f32,
   twice_rw: f32,
   twice_rh: f32
 }
@@ -333,16 +334,18 @@ impl UnitConverter {
   /// Build a unit converter by giving it the size of the viewport.
   pub fn new(w: u32, h: u32) -> Self {
     let rw = 1. / (w as f32);
+    let rh = 1. / (h as f32);
 
     UnitConverter {
       rw: rw,
+      rh: rh,
       twice_rw: 2. * rw,
-      twice_rh: 2. / (h as f32)
+      twice_rh: 2. * rh
     }
   }
 
-  /// Convert from *window space* coordinates.
-  pub fn from_window(&self, x: f32, y: f32) -> [f32; 2] {
+  /// Convert from *window space* coordinates to clip space* ones.
+  pub fn from_win_coord(&self, x: f32, y: f32) -> [f32; 2] {
     let x_ = x * self.twice_rw - 1.;
     assert!(x_ >= -1. && x_ <= 1., "x={}", x_);
 
@@ -350,5 +353,16 @@ impl UnitConverter {
     assert!(y_ >= -1. && y_ <= 1., "y={}", y_);
 
     [x_, y_]
+  }
+
+  /// Convert from *window space* dimensions to clip space* ones.
+  pub fn from_win_dim(&self, w: f32, h: f32) -> [f32; 2] {
+    let w_ = w * self.rw;
+    assert!(w_ >= 0. && w_ <= 1., "w={}", w_);
+
+    let h_ = h * self.rh;
+    assert!(h_ >= 0. && h_ <= 1., "h={}", h_);
+
+    [w_, h_]
   }
 }

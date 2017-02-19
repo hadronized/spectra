@@ -7,10 +7,10 @@ uniform vec2 size;
 uniform float scale;
 
 const vec2[4] UV = vec2[](
-  vec2(1., 1.),
   vec2(1., 0.),
-  vec2(0., 1.),
-  vec2(0., 0.)
+  vec2(1., 1.),
+  vec2(0., 0.),
+  vec2(0., 1.)
 );
 
 void main() {
@@ -22,9 +22,7 @@ void main() {
     vec2(-size.x, size.y)
   );
 
-  // convert pos into screenspace coordinates
-  vec2 screen_pos = pos.xy * 2. - 1.;
-  vec4 p = vec4((verts[gl_VertexID] + size) * scale + screen_pos, pos.z, 1.);
+  vec4 p = vec4((verts[gl_VertexID] + size) * scale + pos.xy, pos.z, 1.);
   gl_Position = p;
 
   v_uv = UV[gl_VertexID];
