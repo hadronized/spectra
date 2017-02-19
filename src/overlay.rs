@@ -67,7 +67,7 @@ impl Disc {
   fn to_clip_space(&self, converter: &UnitConverter) -> Self {
     Disc {
       center: self.center.to_clip_space(converter),
-      radius: self.radius
+      radius: self.radius * converter.rw
     }
   }
 }
@@ -324,6 +324,7 @@ impl<'a, 'b> RenderInput<'a, 'b> where 'b: 'a {
 /// > y' = 2y / h - 1
 #[derive(Copy, Clone, Debug, PartialEq)]
 struct UnitConverter {
+  rw: f32,
   twice_rw: f32,
   twice_rh: f32
 }
@@ -331,9 +332,12 @@ struct UnitConverter {
 impl UnitConverter {
   /// Build a unit converter by giving it the size of the viewport.
   pub fn new(w: u32, h: u32) -> Self {
+    let rw = 1. / (w as f32);
+
     UnitConverter {
-      twice_rw: 2. / (w as f32),
-      twice_rh: 2. / (h as f32)
+      rw: rw,
+      twice_rw: rw * 0.5,
+      twice_rh: h as f32 * 0.5
     }
   }
 
@@ -342,7 +346,7 @@ impl UnitConverter {
     let x_ = x * self.twice_rw - 1.;
     assert!(x_ >= -1. && x_ <= 1., "x={}", x_);
 
-    let y_ = y * self.twice_rh;
+    let y_ = y * self.twice_rh - 1.;
     assert!(y_ >= -1. && y_ <= 1., "y={}", y_);
 
     [x_, y_]
