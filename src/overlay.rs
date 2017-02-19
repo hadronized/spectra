@@ -336,8 +336,8 @@ impl UnitConverter {
 
     UnitConverter {
       rw: rw,
-      twice_rw: rw * 0.5,
-      twice_rh: h as f32 * 0.5
+      twice_rw: 2. * rw,
+      twice_rh: 2. / (h as f32)
     }
   }
 
