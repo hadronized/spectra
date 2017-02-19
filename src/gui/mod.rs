@@ -109,7 +109,7 @@ impl Timeline {
 
   /// Set the cursor (seconds).
   pub fn set(&mut self, cursor: f32) {
-    let c = cursor * self.recip_dur_sec;
+    let c = cursor * self.recip_dur_sec * self.viewport.w;
 
     // update the quads
     self.progress_quad.0.pos[0] = c;
