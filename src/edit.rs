@@ -101,9 +101,12 @@ impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
         let in_time = cut_manifest.in_time;
         let out_time = cut_manifest.out_time;
         let inst_time = cut_manifest.inst_time;
-        let clip = mapping.get(&cut_manifest.clip).cloned().unwrap();
 
-        track.add_cut(Cut::new(in_time, out_time, inst_time, clip));
+        if let Some(clip) = mapping.get(&cut_manifest.clip).cloned() {
+          track.add_cut(Cut::new(in_time, out_time, inst_time, clip));
+        } else {
+          warn!("the clip {:?} doesn’t exist", cut_manifest.clip);
+        }
       }
 
       timeline.add_track(track);
