@@ -84,15 +84,15 @@ impl Timeline {
 
     let progress_quad = Quad(
       Vert::new([0., 0., 0.], pcol),
-      Vert::new([0., 0., 0.], pcol),
       Vert::new([0., h, 0.], pcol),
+      Vert::new([0., 0., 0.], pcol),
       Vert::new([0., h, 0.], pcol)
     );
 
     let inactive_quad = Quad(
-      Vert::new([0., 0., 0.], icol),
       Vert::new([w, 0., 0.], icol),
       Vert::new([w, h, 0.], icol),
+      Vert::new([0., 0., 0.], icol),
       Vert::new([0., h, 0.], icol)
     );
 
@@ -112,9 +112,9 @@ impl Timeline {
     let c = cursor * self.recip_dur_sec;
 
     // update the quads
+    self.progress_quad.0.pos[0] = c;
     self.progress_quad.1.pos[0] = c;
-    self.progress_quad.2.pos[0] = c;
-    self.inactive_quad.0.pos[0] = c;
+    self.inactive_quad.2.pos[0] = c;
     self.inactive_quad.3.pos[0] = c;
 
     for l in &self.listeners {

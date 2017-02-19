@@ -109,8 +109,6 @@ pub struct Renderer {
   tri_program: Res<Program>,
   tris: RefCell<Tess>,
   tri_vert_nb: RefCell<usize>,
-  quads: RefCell<Tess>,
-  quad_vert_nb: RefCell<usize>,
   disc_program: Res<Program>,
   discs: RefCell<Tess>,
   disc_vert_nb: RefCell<usize>,
@@ -124,9 +122,7 @@ impl Renderer {
     let fb = Framebuffer::new((w, h), 0).unwrap();
 
     let tri_program = scene.get("spectra/overlay/triangle.glsl", vec![]).unwrap();
-    let tris = Tess::new(Mode::Triangle, TessVertices::Reserve::<Vert>(max_tris * 3), None);
-
-    let quads = Tess::new(Mode::TriangleStrip, TessVertices::Reserve::<Vert>(max_quads * 4), None);
+    let tris = Tess::new(Mode::Triangle, TessVertices::Reserve::<Vert>(max_tris * 3 + max_quads * 4), None);
 
     let disc_program = scene.get("spectra/overlay/disc.glsl", vec![DISC_SCREEN_RATIO.sem("ratio")]).unwrap();
     let discs = Tess::new(Mode::Point, TessVertices::Reserve::<Disc>(max_discs), None);
@@ -147,8 +143,6 @@ impl Renderer {
       tri_program: tri_program,
       tris: RefCell::new(tris),
       tri_vert_nb: RefCell::new(0),
-      quads: RefCell::new(quads),
-      quad_vert_nb: RefCell::new(0),
       disc_program: disc_program,
       discs: RefCell::new(discs),
       disc_vert_nb: RefCell::new(0),
@@ -159,11 +153,9 @@ impl Renderer {
   }
 
   // Dispatch the supported shape.
-  fn dispatch(&self, tris: &mut Tess, quads: &mut Tess, discs: &mut Tess, input: &RenderInput) {
+  fn dispatch(&self, tris: &mut Tess, discs: &mut Tess, input: &RenderInput) {
     let mut tris = tris.as_slice_mut().unwrap();
     let mut tri_i = 0;
-    let mut quads = quads.as_slice_mut().unwrap();
-    let mut quad_i = 0;
     let mut discs = discs.as_slice_mut().unwrap();
     let mut disc_i = 0;
 
@@ -177,11 +169,11 @@ impl Renderer {
     }
 
     for &Quad(a, b, c, d) in input.quads {
-      let abcd = [a, b, c, d];
+      let abcd = [a, b, c, c, b, d];
 
       for &v in &abcd {
-        quads[quad_i] = v.to_clip_space(&self.unit_converter);
-        quad_i += 1;
+        tris[tri_i] = v.to_clip_space(&self.unit_converter);
+        tri_i += 1;
       }
     }
 
@@ -191,12 +183,11 @@ impl Renderer {
     }
 
     *self.tri_vert_nb.borrow_mut() = tri_i;
-    *self.quad_vert_nb.borrow_mut() = quad_i;
     *self.disc_vert_nb.borrow_mut() = disc_i;
   }
 
   pub fn render(&self, input: RenderInput) -> &Texture2D {
-    self.dispatch(&mut self.tris.borrow_mut(), &mut self.quads.borrow_mut(), &mut self.discs.borrow_mut(), &input);
+    self.dispatch(&mut self.tris.borrow_mut(), &mut self.discs.borrow_mut(), &input);
 
     let tris_ref = self.tris.borrow();
     let tris = TessRender::one_sub(&tris_ref, *self.tri_vert_nb.borrow());
