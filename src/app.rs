@@ -1,8 +1,7 @@
 use std::thread;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::time::Duration;
-use time::precise_time_ns;
+use time::{Duration, SteadyTime};
 
 use bootstrap::{Context, Keyboard, Mouse, MouseMove, Scroll, Window};
 pub use bootstrap::{Action, Key, MouseButton};
@@ -51,7 +50,7 @@ impl ScrollHandler for Unhandled {
 /// All common stuff goes here.
 pub struct App {
   /// Some kind of epoch start the application started at.
-  start_time: u64,
+  start_time: SteadyTime,
   /// Keyboard receiver.
   kbd: Keyboard,
   /// Mouse receiver.
@@ -67,7 +66,7 @@ pub struct App {
 impl App {
   pub fn init(kbd: Keyboard, mouse: Mouse, cursor: MouseMove, scroll: Scroll, window: Window) -> Self {
     App {
-      start_time: precise_time_ns(),
+      start_time: SteadyTime::now(),
       kbd: kbd,
       mouse: mouse,
       cursor: cursor,
@@ -76,8 +75,8 @@ impl App {
     }
   }
 
-  pub fn time(&self) -> f32 {
-    (precise_time_ns() - self.start_time) as f32 * 1e-9
+  pub fn time(&self) -> f64 {
+    (SteadyTime::now() - self.start_time).num_nanoseconds().unwrap() as f64 * 1e-9
   }
 
   pub fn dispatch_events<H>(&self, handler: &mut H) -> bool
@@ -109,8 +108,8 @@ impl App {
     true
   }
 
-  pub fn step<R>(&mut self, fps: Option<u32>, mut draw_frame: R) -> bool where R: FnMut(f32) {
-    let loop_start_time = precise_time_ns();
+  pub fn step<R>(&mut self, fps: Option<u32>, mut draw_frame: R) -> bool where R: FnMut(f64) {
+    let loop_start_time = SteadyTime::now();
 
     if self.window.should_close() {
       return false;
@@ -125,11 +124,12 @@ impl App {
     // wait for next frame according to the wished FPS
     if let Some(fps) = fps {
       let fps = fps as f32;
-      let elapsed_time_ms = ((precise_time_ns() - loop_start_time) as f64 * 1e-6) as i64;
-      let sleep_time_ms = (1. / fps * 1e3) as i64 - elapsed_time_ms;
+      let elapsed_time = SteadyTime::now() - loop_start_time;
+      let max_time = Duration::nanoseconds((1. / (fps as f64) * 1e9) as i64);
 
-      if sleep_time_ms > 0 {
-        thread::sleep(Duration::from_millis(sleep_time_ms as u64));
+      if elapsed_time > max_time {
+        let sleep_time = max_time - elapsed_time;
+        thread::sleep(sleep_time.to_std().unwrap());
       }
     }
 
