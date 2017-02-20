@@ -1,9 +1,10 @@
 use gl;
+use glfw::{self, SwapInterval};
 use std::os::raw::c_void;
 use std::sync::mpsc;
 use std::thread;
 
-pub use glfw::{self, Action, Context, CursorMode, Key, MouseButton, Window};
+pub use glfw::{Action, Context, CursorMode, Key, MouseButton, Window};
 
 #[derive(Clone, Copy, Debug)]
 pub enum WindowDim {
@@ -68,6 +69,7 @@ pub fn bootstrap(dim: WindowDim, title: &'static str) -> (u32, u32, Keyboard, Mo
   window.set_cursor_pos_polling(true);
   window.set_mouse_button_polling(true);
   window.set_scroll_polling(true);
+  glfw.set_swap_interval(SwapInterval::Sync(1));
 
   deb!("initializing OpenGL pointers");
 
