@@ -80,6 +80,7 @@ impl Vertex for Disc {
 
 pub type Texture2D = Texture<Flat, Dim2, RGBA32F>;
 
+#[derive(Copy, Clone)]
 pub struct Text<'a> {
   text_texture: &'a TextTexture,
   left_lower: Vert
@@ -210,7 +211,8 @@ impl Renderer {
 
     let text_textures: Vec<_> = input.texts.map(|(texts, _)| texts.iter().map(|text| [&***text.text_texture]).collect()).unwrap_or(Vec::new());
 
-    let text_render_cmds: Vec<_> = input.texts.iter().enumerate().map(|(i, _)| {
+    let text_nb = input.texts.map(|(texts, _)| texts.len()).unwrap_or(0);
+    let text_render_cmds: Vec<_> = (0..text_nb).map(|i| {
         let blending = (Equation::Additive, Factor::One, Factor::SrcAlphaComplement);
         Pipe::empty()
           .uniforms(&text_uniforms[i])
