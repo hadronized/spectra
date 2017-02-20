@@ -4,12 +4,12 @@
 
 extern crate alto;
 extern crate any_cache;
-extern crate chrono;
 extern crate gl;
 pub extern crate glfw;
 extern crate image;
 pub extern crate luminance;
 extern crate nalgebra;
+#[cfg(feature = "hot-resource")]
 extern crate notify;
 extern crate num;
 extern crate rusttype;
@@ -17,6 +17,8 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
+#[cfg(feature = "hot-resource")]
+extern crate time;
 extern crate vorbis;
 extern crate wavefront_obj;
 

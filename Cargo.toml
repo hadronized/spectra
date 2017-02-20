@@ -16,17 +16,20 @@ name = "spectra"
 path = "spectra/src/main.rs"
 doc = false
 
+[features]
+default = ["debug"]
+debug = ["hot-resource"]
+hot-resource = ["notify", "time"]
+
 [dependencies]
 alto = "1.0.5"
 any-cache = { git = "https://github.com/phaazon/any-cache.git" }
-chrono = "0.3.0"
 clap = "2.19.0"
 luminance = { git = "https://github.com/phaazon/luminance-rs" }
 gl = "0.5.2"
 glfw = "0.13.0"
 image = "0.10.1"
 nalgebra = "0.10.0"
-notify = "2.6.3"
 num = "0.1.36"
 rusttype = "0.2.1"
 serde = "0.8.16"
@@ -34,6 +37,10 @@ serde_derive = "0.8.16"
 serde_json = "0.8.3"
 vorbis = "0.0.14"
 wavefront_obj = "5.0.0"
+
+# optional dependencies (used in conjunction with features)
+notify = { version = "2.6.3", optional = true }
+time = { version = "0.1.35", optional = true }
 
 [dev-dependencies]
 rand = "0.3.14" # for unit tests
