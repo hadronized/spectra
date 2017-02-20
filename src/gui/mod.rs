@@ -20,7 +20,7 @@ pub struct GUI<'a> {
   // common
   renderer: Renderer,
 
-  widgets: HashMap<String, Rc<RefCell<Widget<'a>>>>,
+  widgets: HashMap<String, Box<Widget<'a> + 'a>>,
 }
 
 impl<'a> GUI<'a> {
@@ -31,20 +31,13 @@ impl<'a> GUI<'a> {
     }
   }
 
-  pub fn add_widget(&mut self, id: &str, widget: &Rc<RefCell<Widget<'a>>>) {
-    self.widgets.insert(id.to_owned(), widget.clone());
+  pub fn add_widget<W>(&mut self, id: &str, widget: &W) where W: 'a + Clone + Widget<'a> {
+    self.widgets.insert(id.to_owned(), Box::new(widget.clone()));
   }
 
-  pub fn remove_widget(&mut self, id: &str) -> Option<Rc<RefCell<Widget<'a>>>> {
-    self.widgets.remove(id)
+  pub fn remove_widget(&mut self, id: &str) {
+    self.widgets.remove(id);
   }
-
-  //pub fn new_timeline(&mut self, h: f32, progress_color: ColorAlpha, inactive_color: ColorAlpha, dur_sec: f32) -> Rc<RefCell<Timeline>> {
-  //  let timeline = Rc::new(RefCell::new(Timeline::new(self.viewport, h, progress_color, inactive_color, dur_sec)));
-
-  //  self.timeline = Some(timeline.clone());
-  //  timeline
-  //}
 
   pub fn render(&self) -> &Texture2D {
     let mut tris = Vec::new();
@@ -53,12 +46,12 @@ impl<'a> GUI<'a> {
     let mut texts = Vec::new();
 
     for widget in self.widgets.values() {
-      for prim in &widget.borrow().unwidget() {
+      for prim in (*widget).unwidget() {
         match prim {
-          &WidgetPrim::Triangle(ref tri) => tris.push(*tri),
-          &WidgetPrim::Quad(ref quad) => quads.push(*quad),
-          &WidgetPrim::Disc(ref disc) => discs.push(*disc),
-          &WidgetPrim::Text(ref text) => texts.push(*text)
+          WidgetPrim::Triangle(ref tri) => tris.push(*tri),
+          WidgetPrim::Quad(ref quad) => quads.push(*quad),
+          WidgetPrim::Disc(ref disc) => discs.push(*disc),
+          WidgetPrim::Text(ref text) => texts.push(*text)
         }
       }
     }
@@ -155,8 +148,9 @@ impl ProgressBar {
   }
 }
 
-impl<'a> Widget<'a> for ProgressBar {
+impl<'a> Widget<'a> for Rc<RefCell<ProgressBar>> {
   fn unwidget(&self) -> Vec<WidgetPrim<'a>> {
-    vec![WidgetPrim::Quad(self.progress_quad), WidgetPrim::Quad(self.inactive_quad)]
+    let bar = &self.borrow();
+    vec![WidgetPrim::Quad(bar.progress_quad), WidgetPrim::Quad(bar.inactive_quad)]
   }
 }
