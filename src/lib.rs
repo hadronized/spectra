@@ -53,7 +53,7 @@ pub mod transform;
 
 pub use anim::Cont;
 pub use audio::Audio;
-pub use bootstrap::{Keyboard, Mouse, MouseMove, Scroll, WindowDim, bootstrap};
+pub use bootstrap::{Device, WindowDim};
 pub use camera::{Camera, Freefly};
 pub use color::{Color, ColorAlpha};
 pub use compositor::{Compositor, Screen};
