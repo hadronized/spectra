@@ -5,7 +5,7 @@ use std::os::raw::c_void;
 use std::rc::Rc;
 use std::sync::mpsc;
 use std::thread;
-use time::{Duration, SteadyTime};
+use std::time::{Duration, Instant};
 
 use camera::{Camera, Freefly};
 use transform::Translation;
@@ -55,7 +55,7 @@ pub struct Device {
   /// Height of the window.
   h: u32,
   /// Some kind of epoch start the application started at.
-  start_time: SteadyTime,
+  start_time: Instant,
   /// Keyboard receiver.
   kbd: Keyboard,
   /// Mouse receiver.
@@ -174,7 +174,7 @@ impl Device {
     Device {
       w: w,
       h: h,
-      start_time: SteadyTime::now(),
+      start_time: Instant::now(),
       kbd: kbd_rcv,
       mouse: mouse_rcv,
       cursor: cursor_rcv,
@@ -198,7 +198,8 @@ impl Device {
 
   /// Current time, starting from the beginning of the creation of that object.
   pub fn time(&self) -> f64 {
-    (SteadyTime::now() - self.start_time).num_nanoseconds().unwrap() as f64 * 1e-9
+    let elapsed = Instant::now() - self.start_time;
+    elapsed.as_secs() as f64 + elapsed.subsec_nanos() as f64 * 1e-9
   }
 
   /// Dispatch events to a handler.
@@ -244,8 +245,6 @@ impl Device {
   /// > Note: if you pass `None`, no idleing will take place. However, you might be blocked by the
   /// *VSync* if enabled in your driver.
   pub fn step<FPS, R>(&mut self, fps: FPS, mut draw_frame: R) -> bool where FPS: Into<Option<u32>>, R: FnMut(f64) {
-    let loop_start_time = SteadyTime::now();
-
     if self.window.should_close() {
       return false;
     }
@@ -253,18 +252,17 @@ impl Device {
     let t = self.time();
 
     draw_frame(t);
-
     self.window.swap_buffers();
 
     // wait for next frame according to the wished FPS
     if let Some(fps) = fps.into() {
-      let fps = fps as f32;
-      let elapsed_time = SteadyTime::now() - loop_start_time;
-      let max_time = Duration::nanoseconds((1. / (fps as f64) * 1e9) as i64);
+      let fps = fps as f64;
+      let max_time = 1. / fps;
+      let elapsed_time = self.time() - t;
 
-      if elapsed_time > max_time {
+      if elapsed_time < max_time {
         let sleep_time = max_time - elapsed_time;
-        thread::sleep(sleep_time.to_std().unwrap());
+        thread::sleep(Duration::from_millis((sleep_time * 1e3) as u64));
       }
     }
 
