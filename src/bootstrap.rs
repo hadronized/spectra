@@ -24,44 +24,27 @@ type Mouse = mpsc::Receiver<(MouseButton, Action)>;
 type MouseMove = mpsc::Receiver<[f64; 2]>;
 type Scroll = mpsc::Receiver<[f64; 2]>;
 
+/// Empty handler.
+///
+/// This handler will just let pass all events without doing anything. It’s only useful for debug
+/// purposes when you don’t want to bother with interaction – it doesn’t even let you close the
+/// application!
 #[derive(Clone, Copy, Eq, Debug, PartialEq)]
 pub struct Unhandled;
 
-/// Class of keyboard handlers.
-pub trait KeyboardHandler {
-  fn on_key(&mut self, key: Key, action: Action) -> bool;
-}
-
-impl KeyboardHandler for Unhandled {
+/// Class of event handlers.
+pub trait EventHandler {
+  /// Implement this function if you want to react to key strokes.
   fn on_key(&mut self, _: Key, _: Action) -> bool { true }
-}
-
-/// Class of mouse button handlers.
-pub trait MouseButtonHandler {
-  fn on_mouse_button(&mut self, button: MouseButton, action: Action) -> bool;
-}
-
-impl MouseButtonHandler for Unhandled {
+  /// Implement this function if you want to react to mouse button events.
   fn on_mouse_button(&mut self, _: MouseButton, _: Action) -> bool { true }
-}
-
-/// Class of mouse move handlers.
-pub trait CursorHandler {
-  fn on_cursor_move(&mut self, cursor_pos: [f64; 2]) -> bool;
-}
-
-impl CursorHandler for Unhandled {
+  /// Implement this function if you want to react to cursor moves.
   fn on_cursor_move(&mut self, _: [f64; 2]) -> bool { true }
-}
-
-/// Class of scroll handlers.
-pub trait ScrollHandler {
-  fn on_scroll(&mut self, scroll_dir: [f64; 2]) -> bool;
-}
-
-impl ScrollHandler for Unhandled {
+  /// Implement this function if you want to react to scroll events.
   fn on_scroll(&mut self, _: [f64; 2]) -> bool { true }
 }
+
+impl EventHandler for Unhandled {}
 
 /// Device object.
 ///
@@ -89,7 +72,15 @@ pub struct Device {
 }
 
 impl Device {
-  pub fn bootstrap(dim: WindowDim, title: &'static str) -> Device {
+  /// Entry point.
+  ///
+  /// This function is the first one you have to call before anything else related to this crate.
+  /// 
+  /// # Arguments
+  ///
+  /// - `dim`: dimension of the window to create
+  /// - `title`: title to give to the window
+  pub fn bootstrap(dim: WindowDim, title: &'static str) -> Self {
     info!("{} starting", title);
     info!("window mode: {:?}", dim);
 
@@ -193,22 +184,25 @@ impl Device {
     }
   }
 
+  /// Width of the attached window.
   #[inline]
   pub fn width(&self) -> u32 {
     self.w
   }
 
+  /// Height of the attached window.
   #[inline]
   pub fn height(&self) -> u32 {
     self.h
   }
 
+  /// Current time, starting from the beginning of the creation of that object.
   pub fn time(&self) -> f64 {
     (SteadyTime::now() - self.start_time).num_nanoseconds().unwrap() as f64 * 1e-9
   }
 
-  pub fn dispatch_events<H>(&self, handler: &mut H) -> bool
-      where H: KeyboardHandler + MouseButtonHandler + CursorHandler + ScrollHandler {
+  /// Dispatch events to a handler.
+  pub fn dispatch_events<H>(&self, handler: &mut H) -> bool where H: EventHandler {
     while let Ok((key, action)) = self.kbd.try_recv() {
       if !handler.on_key(key, action) {
         return false;
@@ -236,7 +230,20 @@ impl Device {
     true
   }
 
-  pub fn step<R>(&mut self, fps: Option<u32>, mut draw_frame: R) -> bool where R: FnMut(f64) {
+  /// Step function.
+  ///
+  /// This function provides two features:
+  ///
+  /// - it runs a *drawer* function, responsible of rendering a single frame, by passing it the
+  ///   current time
+  /// - it performs process idleing if you have requested a certain *framerate* – frame per second.
+  ///
+  /// The second feature is very neat because it lets you handle the scheduler off your application
+  /// and then contribute to better CPU usage.
+  ///
+  /// > Note: if you pass `None`, no idleing will take place. However, you might be blocked by the
+  /// *VSync* if enabled in your driver.
+  pub fn step<FPS, R>(&mut self, fps: FPS, mut draw_frame: R) -> bool where FPS: Into<Option<u32>>, R: FnMut(f64) {
     let loop_start_time = SteadyTime::now();
 
     if self.window.should_close() {
@@ -250,7 +257,7 @@ impl Device {
     self.window.swap_buffers();
 
     // wait for next frame according to the wished FPS
-    if let Some(fps) = fps {
+    if let Some(fps) = fps.into() {
       let fps = fps as f32;
       let elapsed_time = SteadyTime::now() - loop_start_time;
       let max_time = Duration::nanoseconds((1. / (fps as f64) * 1e9) as i64);
@@ -265,17 +272,19 @@ impl Device {
   }
 }
 
-/// Debug handler.
-pub struct DebugHandler {
+/// Freefly handler.
+///
+/// This handler is very neat as it provides freefly interaction.
+pub struct FreeflyHandler {
   camera: Rc<RefCell<Camera<Freefly>>>,
   left_down: bool,
   right_down: bool,
   last_cursor: [f64; 2]
 }
 
-impl DebugHandler {
+impl FreeflyHandler {
   pub fn new(camera: Rc<RefCell<Camera<Freefly>>>) -> Self {
-    DebugHandler {
+    FreeflyHandler {
       camera: camera,
       left_down: false,
       right_down: false,
@@ -312,7 +321,7 @@ impl DebugHandler {
   }
 }
 
-impl KeyboardHandler for DebugHandler {
+impl EventHandler for FreeflyHandler {
   fn on_key(&mut self, key: Key, action: Action) -> bool {
     match action {
       Action::Press | Action::Repeat => self.move_camera_on_event(key),
@@ -321,9 +330,7 @@ impl KeyboardHandler for DebugHandler {
 
     true
   }
-}
 
-impl MouseButtonHandler for DebugHandler {
   fn on_mouse_button(&mut self, button: MouseButton, action: Action) -> bool {
     match (button, action) {
       (MouseButton::Button1, Action::Press) => {
@@ -343,15 +350,9 @@ impl MouseButtonHandler for DebugHandler {
 
     true
   }
-}
 
-impl CursorHandler for DebugHandler {
   fn on_cursor_move(&mut self, dir: [f64; 2]) -> bool {
     self.orient_camera_on_event(dir);
     true
   }
-}
-
-impl ScrollHandler for DebugHandler {
-  fn on_scroll(&mut self, _: [f64; 2]) -> bool { true }
 }
