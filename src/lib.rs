@@ -32,7 +32,6 @@ pub mod scene;
 
 pub mod anim;
 pub mod audio;
-pub mod app;
 pub mod bootstrap;
 pub mod camera;
 pub mod compositor;
@@ -54,7 +53,6 @@ pub mod transform;
 
 pub use anim::Cont;
 pub use audio::Audio;
-pub use app::App;
 pub use bootstrap::{Keyboard, Mouse, MouseMove, Scroll, WindowDim, bootstrap};
 pub use camera::{Camera, Freefly};
 pub use color::{Color, ColorAlpha};
