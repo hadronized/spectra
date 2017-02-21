@@ -1,5 +1,6 @@
 use gl;
-use glfw::{self, Action, Context, CursorMode, Key, MouseButton, SwapInterval, Window};
+use glfw::{self, Context, CursorMode, SwapInterval, Window};
+pub use glfw::{Action, Key, MouseButton};
 use std::cell::RefCell;
 use std::os::raw::c_void;
 use std::rc::Rc;
@@ -9,7 +10,6 @@ use std::time::{Duration, Instant};
 
 use camera::{Camera, Freefly};
 use transform::Translation;
-
 
 /// Dimension of the window to create.
 #[derive(Clone, Copy, Debug)]
@@ -24,15 +24,10 @@ type Mouse = mpsc::Receiver<(MouseButton, Action)>;
 type MouseMove = mpsc::Receiver<[f64; 2]>;
 type Scroll = mpsc::Receiver<[f64; 2]>;
 
-/// Empty handler.
-///
-/// This handler will just let pass all events without doing anything. It’s only useful for debug
-/// purposes when you don’t want to bother with interaction – it doesn’t even let you close the
-/// application!
-#[derive(Clone, Copy, Eq, Debug, PartialEq)]
-pub struct Unhandled;
-
 /// Class of event handlers.
+///
+/// All functions return a special object of type `EventReport`. An event report gives information
+/// about how a handler has handled the event.
 pub trait EventHandler {
   /// Implement this function if you want to react to key strokes.
   fn on_key(&mut self, _: Key, _: Action) -> bool { true }
@@ -43,6 +38,14 @@ pub trait EventHandler {
   /// Implement this function if you want to react to scroll events.
   fn on_scroll(&mut self, _: [f64; 2]) -> bool { true }
 }
+
+/// Empty handler.
+///
+/// This handler will just let pass all events without doing anything. It’s only useful for debug
+/// purposes when you don’t want to bother with interaction – it doesn’t even let you close the
+/// application!
+#[derive(Clone, Copy, Eq, Debug, PartialEq)]
+pub struct Unhandled;
 
 impl EventHandler for Unhandled {}
 

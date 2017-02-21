@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use bootstrap::{Action, EventHandler, MouseButton};
 use color::ColorAlpha;
 use overlay::{Disc, Quad, Renderer, RenderInput, Text, Texture2D, Triangle, Vert};
 use scene::Scene;
@@ -21,13 +22,17 @@ pub struct GUI<'a> {
   renderer: Renderer,
 
   widgets: HashMap<String, Box<Widget<'a> + 'a>>,
+
+  // event stuff
+  last_cursor: [f64; 2]
 }
 
 impl<'a> GUI<'a> {
   pub fn new(viewport: Viewport, scene: &mut Scene) -> Self {
     GUI {
       renderer: Renderer::new(viewport.w.ceil() as u32, viewport.h.ceil() as u32, 1024, 1024, 1024, scene),
-      widgets: HashMap::new()
+      widgets: HashMap::new(),
+      last_cursor: [0., 0.]
     }
   }
 
@@ -63,6 +68,18 @@ impl<'a> GUI<'a> {
       .texts(&texts, 1.);
 
     self.renderer.render(render_input)
+  }
+}
+
+impl<'a> EventHandler for GUI<'a> {
+  fn on_mouse_button(&mut self, button: MouseButton, action: Action) -> bool {
+    true
+  }
+
+  // TODO: change the implementation to take into account widget focus
+  fn on_cursor_move(&mut self, cursor: [f64; 2]) -> bool {
+    self.last_cursor = cursor;
+    true
   }
 }
 
