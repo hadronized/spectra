@@ -162,6 +162,7 @@ pub trait Widget<'a>: EventHandler {
 }
 
 pub struct ProgressBar {
+  x: f32,
   w: f32,
   progress_quad: Quad,
   inactive_quad: Quad,
@@ -170,29 +171,30 @@ pub struct ProgressBar {
 }
 
 pub trait ProgressBarListener {
-  fn on_set(&mut self, t: Time) -> bool;
+  fn on_set(&mut self, t: Time);
 }
 
 impl ProgressBar {
-  pub fn new(w: f32, h: f32, progress_color: ColorAlpha, inactive_color: ColorAlpha, dur_sec: f32) -> Rc<RefCell<Self>> {
+  pub fn new(x: f32, y: f32, w: f32, h: f32, progress_color: ColorAlpha, inactive_color: ColorAlpha, dur_sec: Time) -> Rc<RefCell<Self>> {
     let pcol = *progress_color.as_ref();
     let icol = *inactive_color.as_ref();
 
     let progress_quad = Quad(
-      Vert::new([0., 0., 0.], pcol),
-      Vert::new([0., h, 0.], pcol),
-      Vert::new([0., 0., 0.], pcol),
-      Vert::new([0., h, 0.], pcol)
+      Vert::new([x, y, 0.], pcol),
+      Vert::new([x, y + h, 0.], pcol),
+      Vert::new([x, y, 0.], pcol),
+      Vert::new([x, y + h, 0.], pcol)
     );
 
     let inactive_quad = Quad(
-      Vert::new([w, 0., 0.], icol),
-      Vert::new([w, h, 0.], icol),
-      Vert::new([0., 0., 0.], icol),
-      Vert::new([0., h, 0.], icol)
+      Vert::new([x + w, y, 0.], icol),
+      Vert::new([x + w, y + h, 0.], icol),
+      Vert::new([x, y, 0.], icol),
+      Vert::new([x, y + h, 0.], icol)
     );
 
     Rc::new(RefCell::new(ProgressBar {
+      x: x,
       w: w,
       progress_quad: progress_quad,
       inactive_quad: inactive_quad,
@@ -212,14 +214,15 @@ impl ProgressBar {
   }
 
   /// Set the cursor (seconds).
-  pub fn set(&mut self, cursor: f32) {
+  pub fn set(&mut self, cursor: Time) {
+    let cursor = cursor.max(0.).min(1.); // clamp
     let c = cursor * self.recip_dur_sec * self.w;
 
     // update the quads
-    self.progress_quad.0.pos[0] = c;
-    self.progress_quad.1.pos[0] = c;
-    self.inactive_quad.2.pos[0] = c;
-    self.inactive_quad.3.pos[0] = c;
+    self.progress_quad.0.pos[0] = self.x + c;
+    self.progress_quad.1.pos[0] = self.x + c;
+    self.inactive_quad.2.pos[0] = self.x + c;
+    self.inactive_quad.3.pos[0] = self.x + c;
 
     for l in self.listeners.values() {
       l.borrow_mut().on_set(cursor);
@@ -227,7 +230,7 @@ impl ProgressBar {
   }
 
   fn on_cursor_change(&mut self, cursor: [f64; 2]) {
-    let c = cursor[0] as f32;
+    let c = (cursor[0] as f32).min(self.x + self.w).max(self.x); // clamp
 
     // update the quads
     self.progress_quad.0.pos[0] = c;
@@ -235,8 +238,9 @@ impl ProgressBar {
     self.inactive_quad.2.pos[0] = c;
     self.inactive_quad.3.pos[0] = c;
 
+    let time = (c - self.x) / (self.recip_dur_sec * self.w);
     for l in self.listeners.values() {
-      l.borrow_mut().on_set(c / (self.recip_dur_sec * self.w));
+      l.borrow_mut().on_set(time);
     }
   }
 }
