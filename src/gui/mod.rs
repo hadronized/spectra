@@ -226,7 +226,7 @@ impl ProgressBar {
     }
   }
 
-  pub fn on_cursor_change(&mut self, cursor: [f64; 2]) {
+  fn on_cursor_change(&mut self, cursor: [f64; 2]) {
     let c = cursor[0] as f32;
 
     // update the quads
