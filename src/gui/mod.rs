@@ -166,7 +166,7 @@ pub struct ProgressBar {
   progress_quad: Quad,
   inactive_quad: Quad,
   recip_dur_sec: f32,
-  listeners: Vec<Rc<RefCell<ProgressBarListener>>>
+  listeners: HashMap<String, Rc<RefCell<ProgressBarListener>>>
 }
 
 pub enum ProgressBarEvent {
@@ -202,8 +202,18 @@ impl ProgressBar {
       progress_quad: progress_quad,
       inactive_quad: inactive_quad,
       recip_dur_sec: 1. / dur_sec,
-      listeners: Vec::new()
+      listeners: HashMap::new()
     }))
+  }
+
+  /// Add a listener.
+  pub fn add_listener(&mut self, key: &str, listener: &Rc<RefCell<ProgressBarListener>>) {
+    self.listeners.insert(key.to_owned(), listener.clone());
+  }
+
+  /// Remove a listener.
+  pub fn remove_listener(&mut self, key: &str) {
+    self.listeners.remove(key);
   }
 
   /// Set the cursor (seconds).
@@ -216,13 +226,13 @@ impl ProgressBar {
     self.inactive_quad.2.pos[0] = c;
     self.inactive_quad.3.pos[0] = c;
 
-    for l in &self.listeners {
+    for l in self.listeners.values() {
       l.borrow_mut().on(ProgressBarEvent::Set(cursor));
     }
   }
 
   pub fn toggle(&mut self) {
-    for l in &self.listeners {
+    for l in self.listeners.values() {
       l.borrow_mut().on(ProgressBarEvent::Toggle);
     }
   }
@@ -236,7 +246,7 @@ impl ProgressBar {
     self.inactive_quad.2.pos[0] = c;
     self.inactive_quad.3.pos[0] = c;
 
-    for l in &self.listeners {
+    for l in self.listeners.values() {
       l.borrow_mut().on(ProgressBarEvent::Set(c / (self.recip_dur_sec * self.w)));
     }
   }
