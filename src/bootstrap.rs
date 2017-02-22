@@ -34,6 +34,9 @@ type Scroll = mpsc::Receiver<[f64; 2]>;
 ///
 /// - `EventSig::Handled`: the event has been correctly handled;
 ///
+/// - `EventSig::Focused`: the event has been correctly handled, and the parent should consider that
+///    the this handler has now an exclusive focus on that event;
+///
 /// - `EventSig::Aborted`: the event has been correctly handled and the parent handler should be
 ///    aborted. This signal is typically used to kill all the handlers chain and thus quit the
 ///    application.
@@ -41,6 +44,7 @@ type Scroll = mpsc::Receiver<[f64; 2]>;
 pub enum EventSig {
   Ignored,
   Handled,
+  Focused,
   Aborted
 }
 

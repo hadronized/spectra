@@ -79,7 +79,8 @@ impl<'a> GUI<'a> {
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 enum Focus {
-  MouseButton(MouseButton, Action)
+  MouseButton(MouseButton, Action),
+  Drag
 }
 
 impl<'a> EventHandler for GUI<'a> {
@@ -91,6 +92,13 @@ impl<'a> EventHandler for GUI<'a> {
         Action::Press => {
           self.last_mouse_left_down = Some(last_cursor);
           self.last_mouse_left_up = None;
+
+          for (key, widget) in &mut self.widgets {
+            if widget.on_mouse_button(button, action) == EventSig::Focused {
+              self.focused_widgets.insert(Focus::MouseButton(button, action), key.clone());
+              break;
+            }
+          }
         },
         Action::Release => {
           // check whether it’s a click
@@ -104,6 +112,8 @@ impl<'a> EventHandler for GUI<'a> {
           self.last_mouse_left_down = None;
           self.last_mouse_left_up = Some(last_cursor);
 
+          self.focused_widgets.remove(&Focus::MouseButton(button, Action::Press));
+          self.focused_widgets.remove(&Focus::Drag);
         },
         _ => ()
       }
@@ -115,6 +125,21 @@ impl<'a> EventHandler for GUI<'a> {
   // TODO: change the implementation to take into account widget focus
   fn on_cursor_move(&mut self, cursor: [f64; 2]) -> EventSig {
     self.last_cursor = Some(cursor);
+
+    if let Some(key) = self.focused_widgets.get(&Focus::Drag).cloned() {
+      let focused = self.widgets.get(&key).unwrap();
+      let down_cursor = self.last_mouse_left_down.unwrap();
+      focused.on_drag(cursor, down_cursor);
+    } else if let Some(key) = self.focused_widgets.get(&Focus::MouseButton(MouseButton::Button1, Action::Press)).cloned() {
+      let focused = self.widgets.get(&key).unwrap();
+      let down_cursor = self.last_mouse_left_down.unwrap();
+
+      if px_dist(down_cursor, cursor) > 5. {
+        self.focused_widgets.insert(Focus::Drag, key);
+        focused.on_drag(cursor, down_cursor);
+      }
+    }
+
     EventSig::Handled
   }
 }
@@ -130,9 +155,10 @@ pub enum WidgetPrim<'a> {
   Text(Text<'a>)
 }
 
-pub trait Widget<'a> {
+pub trait Widget<'a>: EventHandler {
   fn unwidget(&self) -> Vec<WidgetPrim<'a>>;
-  fn on_click(&self, cursor: [f64; 2]);
+  fn on_click(&self, _: [f64; 2]) {}
+  fn on_drag(&self, _: [f64; 2], _: [f64; 2]) {}
 }
 
 pub struct ProgressBar {
@@ -201,7 +227,7 @@ impl ProgressBar {
     }
   }
 
-  pub fn on_click(&mut self, cursor: [f64; 2]) {
+  pub fn on_cursor_change(&mut self, cursor: [f64; 2]) {
     let c = cursor[0] as f32;
 
     // update the quads
@@ -216,6 +242,16 @@ impl ProgressBar {
   }
 }
 
+impl EventHandler for Rc<RefCell<ProgressBar>> {
+  fn on_mouse_button(&mut self, _: MouseButton, action: Action) -> EventSig {
+    if action == Action::Press {
+      EventSig::Focused
+    } else {
+      EventSig::Ignored
+    }
+  }
+}
+
 impl<'a> Widget<'a> for Rc<RefCell<ProgressBar>> {
   fn unwidget(&self) -> Vec<WidgetPrim<'a>> {
     let bar = &self.borrow();
@@ -223,7 +259,11 @@ impl<'a> Widget<'a> for Rc<RefCell<ProgressBar>> {
   }
 
   fn on_click(&self, cursor: [f64; 2]) {
-    self.borrow_mut().on_click(cursor);
+    self.borrow_mut().on_cursor_change(cursor);
+  }
+
+  fn on_drag(&self, cursor: [f64; 2], down_cursor: [f64; 2]) {
+    self.borrow_mut().on_cursor_change([cursor[0], down_cursor[1]]);
   }
 }
 

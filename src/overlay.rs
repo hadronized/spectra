@@ -340,22 +340,16 @@ impl UnitConverter {
   /// Convert from *window space* coordinates to clip space* ones.
   pub fn from_win_coord(&self, x: f32, y: f32) -> [f32; 2] {
     let x_ = x * self.twice_rw - 1.;
-    assert!(x_ >= -1. && x_ <= 1., "x={}", x_);
-
     let y_ = y * self.twice_rh - 1.;
-    assert!(y_ >= -1. && y_ <= 1., "y={}", y_);
 
-    [x_, y_]
+    [x_.min(1.).max(-1.), y_.min(1.).max(-1.)]
   }
 
   /// Convert from *window space* dimensions to clip space* ones.
   pub fn from_win_dim(&self, w: f32, h: f32) -> [f32; 2] {
     let w_ = w * self.rw;
-    assert!(w_ >= 0. && w_ <= 1., "w={}", w_);
-
     let h_ = h * self.rh;
-    assert!(h_ >= 0. && h_ <= 1., "h={}", h_);
 
-    [w_, h_]
+    [w_.min(1.).max(-1.), h_.min(1.).max(-1.)]
   }
 }
