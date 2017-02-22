@@ -169,13 +169,8 @@ pub struct ProgressBar {
   listeners: HashMap<String, Rc<RefCell<ProgressBarListener>>>
 }
 
-pub enum ProgressBarEvent {
-  Set(Time),
-  Toggle
-}
-
 pub trait ProgressBarListener {
-  fn on(&mut self, e: ProgressBarEvent) -> bool;
+  fn on_set(&mut self, t: Time) -> bool;
 }
 
 impl ProgressBar {
@@ -227,13 +222,7 @@ impl ProgressBar {
     self.inactive_quad.3.pos[0] = c;
 
     for l in self.listeners.values() {
-      l.borrow_mut().on(ProgressBarEvent::Set(cursor));
-    }
-  }
-
-  pub fn toggle(&mut self) {
-    for l in self.listeners.values() {
-      l.borrow_mut().on(ProgressBarEvent::Toggle);
+      l.borrow_mut().on_set(cursor);
     }
   }
 
@@ -247,7 +236,7 @@ impl ProgressBar {
     self.inactive_quad.3.pos[0] = c;
 
     for l in self.listeners.values() {
-      l.borrow_mut().on(ProgressBarEvent::Set(c / (self.recip_dur_sec * self.w)));
+      l.borrow_mut().on_set(c / (self.recip_dur_sec * self.w));
     }
   }
 }
