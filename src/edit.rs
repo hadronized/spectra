@@ -7,7 +7,7 @@ use std::path::Path;
 use resource::{Load, LoadError, Result, ResCache};
 
 /// Time.
-pub type Time = f32;
+pub type Time = f64;
 
 /// A clip is an object that implements a visual sequence.
 pub struct Clip<'a, 'b> where 'a: 'b {

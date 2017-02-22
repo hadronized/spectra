@@ -247,7 +247,7 @@ impl Device {
   ///
   /// > Note: if you pass `None`, no idleing will take place. However, you might be blocked by the
   /// *VSync* if enabled in your driver.
-  pub fn step<FPS, R>(&mut self, fps: FPS, mut draw_frame: R) -> bool where FPS: Into<Option<u32>>, R: FnMut(f64) {
+  pub fn step<FPS, R>(&mut self, fps: FPS, mut draw_frame: R) -> bool where FPS: Into<Option<u32>>, R: FnMut(Time) {
     if self.window.should_close() {
       return false;
     }
