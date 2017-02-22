@@ -23,8 +23,8 @@ pub enum WindowDim {
 
 type Keyboard = mpsc::Receiver<(Key, Action)>;
 type Mouse = mpsc::Receiver<(MouseButton, Action)>;
-type MouseMove = mpsc::Receiver<[f64; 2]>;
-type Scroll = mpsc::Receiver<[f64; 2]>;
+type MouseMove = mpsc::Receiver<[f32; 2]>;
+type Scroll = mpsc::Receiver<[f32; 2]>;
 
 /// Signals events can pass up back to their handlers to notify them how they have processed an
 /// event. They’re three kinds of signals:
@@ -61,9 +61,9 @@ pub trait EventHandler {
   /// Implement this function if you want to react to mouse button events.
   fn on_mouse_button(&mut self, _: MouseButton, _: Action) -> EventSig { EventSig::Ignored }
   /// Implement this function if you want to react to cursor moves.
-  fn on_cursor_move(&mut self, _: [f64; 2]) -> EventSig { EventSig::Ignored }
+  fn on_cursor_move(&mut self, _: [f32; 2]) -> EventSig { EventSig::Ignored }
   /// Implement this function if you want to react to scroll events.
-  fn on_scroll(&mut self, _: [f64; 2]) -> EventSig { EventSig::Ignored }
+  fn on_scroll(&mut self, _: [f32; 2]) -> EventSig { EventSig::Ignored }
 }
 
 /// Empty handler.
@@ -188,10 +188,10 @@ impl Device {
               let _ = mouse_snd.send((button, action));
             },
             glfw::WindowEvent::CursorPos(x, y) => {
-              let _ = cursor_snd.send([x, y]);
+              let _ = cursor_snd.send([x as f32, y as f32]);
             },
             glfw::WindowEvent::Scroll(x, y) => {
-              let _ = scroll_snd.send([x, y]);
+              let _ = scroll_snd.send([x as f32, y as f32]);
             },
             _ => {},
           }
@@ -307,7 +307,7 @@ pub struct FreeflyHandler {
   camera: Rc<RefCell<Camera<Freefly>>>,
   left_down: bool,
   right_down: bool,
-  last_cursor: [f64; 2]
+  last_cursor: [f32; 2]
 }
 
 impl FreeflyHandler {
@@ -334,15 +334,15 @@ impl FreeflyHandler {
     }
   }
 
-  fn orient_camera_on_event(&mut self, cursor: [f64; 2]) {
+  fn orient_camera_on_event(&mut self, cursor: [f32; 2]) {
     let camera = &mut self.camera.borrow_mut();
 
     if self.left_down {
       let (dx, dy) = (cursor[0] - self.last_cursor[0], cursor[1] - self.last_cursor[1]);
-      camera.look_around(Translation::new(dy as f32, dx as f32, 0.));
+      camera.look_around(Translation::new(dy, dx, 0.));
     } else if self.right_down {
       let (dx, _) = (cursor[0] - self.last_cursor[0], cursor[1] - self.last_cursor[1]);
-      camera.look_around(Translation::new(0., 0., dx as f32));
+      camera.look_around(Translation::new(0., 0., dx));
     }
 
     self.last_cursor = cursor;
@@ -379,7 +379,7 @@ impl EventHandler for FreeflyHandler {
     EventSig::Handled
   }
 
-  fn on_cursor_move(&mut self, dir: [f64; 2]) -> EventSig {
+  fn on_cursor_move(&mut self, dir: [f32; 2]) -> EventSig {
     self.orient_camera_on_event(dir);
     EventSig::Handled
   }

@@ -20,13 +20,14 @@ pub struct Viewport {
 pub struct GUI<'a> {
   // common
   renderer: Renderer,
+  h: f32,
 
   widgets: HashMap<String, Box<Widget<'a> + 'a>>,
 
   // event stuff
-  last_cursor: Option<[f64; 2]>,
-  last_mouse_left_down: Option<[f64; 2]>,
-  last_mouse_left_up: Option<[f64; 2]>,
+  last_cursor: Option<[f32; 2]>,
+  last_mouse_left_down: Option<[f32; 2]>,
+  last_mouse_left_up: Option<[f32; 2]>,
   focused_widgets: HashMap<Focus, String>
 }
 
@@ -34,6 +35,7 @@ impl<'a> GUI<'a> {
   pub fn new(viewport: Viewport, scene: &mut Scene) -> Self {
     GUI {
       renderer: Renderer::new(viewport.w.ceil() as u32, viewport.h.ceil() as u32, 1024, 1024, 1024, scene),
+      h: viewport.h,
       widgets: HashMap::new(),
       last_cursor: None,
       last_mouse_left_down: None,
@@ -57,7 +59,7 @@ impl<'a> GUI<'a> {
     let mut texts = Vec::new();
 
     for widget in self.widgets.values() {
-      for prim in widget.unwidget() {
+      for prim in widget.widget_prims() {
         match prim {
           WidgetPrim::Triangle(ref tri) => tris.push(*tri),
           WidgetPrim::Quad(ref quad) => quads.push(*quad),
@@ -94,7 +96,7 @@ impl<'a> EventHandler for GUI<'a> {
           self.last_mouse_left_up = None;
 
           for (key, widget) in &mut self.widgets {
-            if widget.on_mouse_button(button, action) == EventSig::Focused {
+            if widget.bounding_box().is_point_in(last_cursor) && widget.on_mouse_button(button, action) == EventSig::Focused {
               self.focused_widgets.insert(Focus::MouseButton(button, action), key.clone());
               break;
             }
@@ -105,7 +107,9 @@ impl<'a> EventHandler for GUI<'a> {
           if px_dist(self.last_mouse_left_down.unwrap(), last_cursor) <= 5. {
             // it’s a click
             for widget in self.widgets.values() {
-              widget.on_click(last_cursor);
+              if widget.bounding_box().is_point_in(last_cursor) {
+                widget.on_click(last_cursor);
+              }
             }
           }
 
@@ -123,8 +127,8 @@ impl<'a> EventHandler for GUI<'a> {
   }
 
   // TODO: change the implementation to take into account widget focus
-  fn on_cursor_move(&mut self, cursor: [f64; 2]) -> EventSig {
-    self.last_cursor = Some(cursor);
+  fn on_cursor_move(&mut self, cursor: [f32; 2]) -> EventSig {
+    self.last_cursor = Some([cursor[0], self.h - cursor[1]]);
 
     if let Some(key) = self.focused_widgets.get(&Focus::Drag).cloned() {
       let focused = self.widgets.get(&key).unwrap();
@@ -155,10 +159,30 @@ pub enum WidgetPrim<'a> {
   Text(Text<'a>)
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BoundingBox {
+  lower: [f32; 2],
+  upper: [f32; 2]
+}
+
+impl BoundingBox {
+  pub fn new(lower: [f32; 2], upper: [f32; 2]) -> Self {
+    BoundingBox {
+      lower: lower,
+      upper: upper
+    }
+  }
+
+  pub fn is_point_in(&self, p: [f32; 2]) -> bool {
+    self.lower[0] <= p[0] && self.upper[0] >= p[0] && self.lower[1] <= p[1] && self.upper[1] >= p[1]
+  }
+}
+
 pub trait Widget<'a>: EventHandler {
-  fn unwidget(&self) -> Vec<WidgetPrim<'a>>;
-  fn on_click(&self, _: [f64; 2]) {}
-  fn on_drag(&self, _: [f64; 2], _: [f64; 2]) {}
+  fn widget_prims(&self) -> Vec<WidgetPrim<'a>>;
+  fn bounding_box(&self) -> BoundingBox;
+  fn on_click(&self, _: [f32; 2]) {}
+  fn on_drag(&self, _: [f32; 2], _: [f32; 2]) {}
 }
 
 pub struct ProgressBar {
@@ -229,7 +253,7 @@ impl ProgressBar {
     }
   }
 
-  fn on_cursor_change(&mut self, cursor: [f64; 2]) {
+  fn on_cursor_change(&mut self, cursor: [f32; 2]) {
     let c = (cursor[0] as f32).min(self.x + self.w).max(self.x); // clamp
 
     // update the quads
@@ -256,24 +280,32 @@ impl EventHandler for Rc<RefCell<ProgressBar>> {
 }
 
 impl<'a> Widget<'a> for Rc<RefCell<ProgressBar>> {
-  fn unwidget(&self) -> Vec<WidgetPrim<'a>> {
+  fn widget_prims(&self) -> Vec<WidgetPrim<'a>> {
     let bar = &self.borrow();
     vec![WidgetPrim::Quad(bar.progress_quad), WidgetPrim::Quad(bar.inactive_quad)]
   }
 
-  fn on_click(&self, cursor: [f64; 2]) {
+  fn bounding_box(&self) -> BoundingBox {
+    let bar = &self.borrow();
+    let lower = bar.progress_quad.2.pos;
+    let upper = bar.inactive_quad.1.pos;
+
+    BoundingBox::new([lower[0], lower[1]], [upper[0], upper[1]])
+  }
+
+  fn on_click(&self, cursor: [f32; 2]) {
     self.borrow_mut().on_cursor_change(cursor);
   }
 
-  fn on_drag(&self, cursor: [f64; 2], down_cursor: [f64; 2]) {
+  fn on_drag(&self, cursor: [f32; 2], down_cursor: [f32; 2]) {
     self.borrow_mut().on_cursor_change([cursor[0], down_cursor[1]]);
   }
 }
 
 /// Pixel distance between two points.
-fn px_dist(a: [f64; 2], b: [f64; 2]) -> f64 {
+fn px_dist(a: [f32; 2], b: [f32; 2]) -> f32 {
   let x = b[0] - a[0];
   let y = b[1] - a[1];
 
-  f64::sqrt(x*x + y*y)
+  f32::sqrt(x*x + y*y)
 }
