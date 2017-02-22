@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use bootstrap::{Action, EventHandler, MouseButton};
+use bootstrap::{Action, EventHandler, EventSig, MouseButton};
 use color::ColorAlpha;
 use overlay::{Disc, Quad, Renderer, RenderInput, Text, Texture2D, Triangle, Vert};
 use scene::Scene;
@@ -26,7 +26,8 @@ pub struct GUI<'a> {
   // event stuff
   last_cursor: Option<[f64; 2]>,
   last_mouse_left_down: Option<[f64; 2]>,
-  last_mouse_left_up: Option<[f64; 2]>
+  last_mouse_left_up: Option<[f64; 2]>,
+  focused_widgets: HashMap<Focus, String>
 }
 
 impl<'a> GUI<'a> {
@@ -36,7 +37,8 @@ impl<'a> GUI<'a> {
       widgets: HashMap::new(),
       last_cursor: None,
       last_mouse_left_down: None,
-      last_mouse_left_up: None
+      last_mouse_left_up: None,
+      focused_widgets: HashMap::new(),
     }
   }
 
@@ -75,8 +77,13 @@ impl<'a> GUI<'a> {
   }
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+enum Focus {
+  MouseButton(MouseButton, Action)
+}
+
 impl<'a> EventHandler for GUI<'a> {
-  fn on_mouse_button(&mut self, button: MouseButton, action: Action) -> bool {
+  fn on_mouse_button(&mut self, button: MouseButton, action: Action) -> EventSig {
     if let MouseButton::Button1 = button {
       let last_cursor = self.last_cursor.unwrap();
 
@@ -102,13 +109,13 @@ impl<'a> EventHandler for GUI<'a> {
       }
     }
 
-    true
+    EventSig::Handled
   }
 
   // TODO: change the implementation to take into account widget focus
-  fn on_cursor_move(&mut self, cursor: [f64; 2]) -> bool {
+  fn on_cursor_move(&mut self, cursor: [f64; 2]) -> EventSig {
     self.last_cursor = Some(cursor);
-    true
+    EventSig::Handled
   }
 }
 

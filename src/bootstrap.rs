@@ -26,19 +26,40 @@ type Mouse = mpsc::Receiver<(MouseButton, Action)>;
 type MouseMove = mpsc::Receiver<[f64; 2]>;
 type Scroll = mpsc::Receiver<[f64; 2]>;
 
+/// Signals events can pass up back to their handlers to notify them how they have processed an
+/// event. They’re three kinds of signals:
+
+/// - `EventSig::Ignored`:  the event should be passed to other handlers the parents knows about –
+///    if any – because it wasn’t handled (ignored);
+///
+/// - `EventSig::Handled`: the event has been correctly handled;
+///
+/// - `EventSig::Aborted`: the event has been correctly handled and the parent handler should be
+///    aborted. This signal is typically used to kill all the handlers chain and thus quit the
+///    application.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EventSig {
+  Ignored,
+  Handled,
+  Aborted
+}
+
 /// Class of event handlers.
 ///
-/// All functions return a special object of type `EventReport`. An event report gives information
-/// about how a handler has handled the event.
+/// All functions return a special object of type `EventSig`. An event report gives information
+/// about how a handler has handled the event. See the documentation of `EventSig` for further
+/// information.
+///
+/// All functions’ implementations default to `EventSig::Ignored`.
 pub trait EventHandler {
   /// Implement this function if you want to react to key strokes.
-  fn on_key(&mut self, _: Key, _: Action) -> bool { true }
+  fn on_key(&mut self, _: Key, _: Action) -> EventSig { EventSig::Ignored }
   /// Implement this function if you want to react to mouse button events.
-  fn on_mouse_button(&mut self, _: MouseButton, _: Action) -> bool { true }
+  fn on_mouse_button(&mut self, _: MouseButton, _: Action) -> EventSig { EventSig::Ignored }
   /// Implement this function if you want to react to cursor moves.
-  fn on_cursor_move(&mut self, _: [f64; 2]) -> bool { true }
+  fn on_cursor_move(&mut self, _: [f64; 2]) -> EventSig { EventSig::Ignored }
   /// Implement this function if you want to react to scroll events.
-  fn on_scroll(&mut self, _: [f64; 2]) -> bool { true }
+  fn on_scroll(&mut self, _: [f64; 2]) -> EventSig { EventSig::Ignored }
 }
 
 /// Empty handler.
@@ -210,25 +231,25 @@ impl Device {
   /// Dispatch events to a handler.
   pub fn dispatch_events<H>(&self, handler: &mut H) -> bool where H: EventHandler {
     while let Ok((key, action)) = self.kbd.try_recv() {
-      if !handler.on_key(key, action) {
+      if handler.on_key(key, action) == EventSig::Aborted {
         return false;
       }
     }
 
     while let Ok((button, action)) = self.mouse.try_recv() {
-      if !handler.on_mouse_button(button, action) {
+      if handler.on_mouse_button(button, action) == EventSig::Aborted {
         return false;
       }
     }
 
     while let Ok(xy) = self.cursor.try_recv() {
-      if !handler.on_cursor_move(xy) {
+      if handler.on_cursor_move(xy) == EventSig::Aborted {
         return false;
       }
     }
 
     while let Ok(xy) = self.scroll.try_recv() {
-      if !handler.on_scroll(xy) {
+      if handler.on_scroll(xy) == EventSig::Aborted {
         return false;
       }
     }
@@ -325,16 +346,16 @@ impl FreeflyHandler {
 }
 
 impl EventHandler for FreeflyHandler {
-  fn on_key(&mut self, key: Key, action: Action) -> bool {
+  fn on_key(&mut self, key: Key, action: Action) -> EventSig {
     match action {
       Action::Press | Action::Repeat => self.move_camera_on_event(key),
-      Action::Release => if key == Key::Escape { return false }
+      Action::Release => if key == Key::Escape { return EventSig::Aborted }
     }
 
-    true
+    EventSig::Handled
   }
 
-  fn on_mouse_button(&mut self, button: MouseButton, action: Action) -> bool {
+  fn on_mouse_button(&mut self, button: MouseButton, action: Action) -> EventSig {
     match (button, action) {
       (MouseButton::Button1, Action::Press) => {
         self.left_down = true;
@@ -351,11 +372,11 @@ impl EventHandler for FreeflyHandler {
       _ => ()
     }
 
-    true
+    EventSig::Handled
   }
 
-  fn on_cursor_move(&mut self, dir: [f64; 2]) -> bool {
+  fn on_cursor_move(&mut self, dir: [f64; 2]) -> EventSig {
     self.orient_camera_on_event(dir);
-    true
+    EventSig::Handled
   }
 }
