@@ -11,6 +11,8 @@ use std::time::{Duration, Instant};
 use camera::{Camera, Freefly};
 use transform::Translation;
 
+type Time = f64;
+
 /// Dimension of the window to create.
 #[derive(Clone, Copy, Debug)]
 pub enum WindowDim {
