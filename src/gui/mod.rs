@@ -195,7 +195,12 @@ pub struct ProgressBar {
 }
 
 pub trait ProgressBarListener {
-  fn on_set(&mut self, t: Time);
+  /// Called whenever the value of the progress bar changes.
+  fn on_set(&mut self, t: Time) {}
+  /// Called whenever the progress bar is clicked.
+  fn on_click(&mut self, cursor: [f32; 2]) {}
+  /// Called whenever the progress bar is dragged.
+  fn on_drag(&mut self, cursor: [f32; 2], down_cursor: [f32; 2]) {}
 }
 
 impl ProgressBar {
@@ -300,10 +305,18 @@ impl<'a> Widget<'a> for Rc<RefCell<ProgressBar>> {
 
   fn on_click(&self, cursor: [f32; 2]) {
     self.borrow_mut().on_cursor_change(cursor);
+
+    for l in self.borrow().listeners.values() {
+      l.borrow_mut().on_click(cursor);
+    }
   }
 
   fn on_drag(&self, cursor: [f32; 2], down_cursor: [f32; 2]) {
     self.borrow_mut().on_cursor_change([cursor[0], down_cursor[1]]);
+
+    for l in self.borrow().listeners.values() {
+      l.borrow_mut().on_drag(cursor, down_cursor);
+    }
   }
 }
 
