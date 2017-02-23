@@ -240,17 +240,22 @@ impl ProgressBar {
   /// Set the cursor (seconds).
   pub fn set(&mut self, cursor: Time) {
     let cursor = cursor.max(0.).min(1.); // clamp
-    let c = cursor * self.recip_dur_sec * self.w;
+    let c = self.x + cursor * self.recip_dur_sec * self.w;
 
     // update the quads
-    self.progress_quad.0.pos[0] = self.x + c;
-    self.progress_quad.1.pos[0] = self.x + c;
-    self.inactive_quad.2.pos[0] = self.x + c;
-    self.inactive_quad.3.pos[0] = self.x + c;
+    self.progress_quad.0.pos[0] = c;
+    self.progress_quad.1.pos[0] = c;
+    self.inactive_quad.2.pos[0] = c;
+    self.inactive_quad.3.pos[0] = c;
 
     for l in self.listeners.values() {
       l.borrow_mut().on_set(cursor);
     }
+  }
+
+  /// Get the cursor (seconds).
+  pub fn get(&self) -> Time {
+    (self.progress_quad.0.pos[0] - self.x) / self.w
   }
 
   fn on_cursor_change(&mut self, cursor: [f32; 2]) {
