@@ -228,8 +228,8 @@ impl ProgressBar {
   }
 
   /// Add a listener.
-  pub fn add_listener(&mut self, key: &str, listener: &Rc<RefCell<ProgressBarListener>>) {
-    self.listeners.insert(key.to_owned(), listener.clone());
+  pub fn add_listener(&mut self, key: &str, listener: Rc<RefCell<ProgressBarListener>>) {
+    self.listeners.insert(key.to_owned(), listener);
   }
 
   /// Remove a listener.
@@ -239,7 +239,7 @@ impl ProgressBar {
 
   /// Set the cursor (seconds).
   pub fn set(&mut self, cursor: Time) {
-    let cursor = cursor.max(0.).min(1.); // clamp
+    let cursor = cursor.max(0.).min(1. / self.recip_dur_sec); // clamp
     let c = self.x + cursor * self.recip_dur_sec * self.w;
 
     // update the quads
