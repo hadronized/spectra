@@ -67,7 +67,7 @@ impl<'a> Mul for Node<'a> {
   type Output = Self;
 
   fn mul(self, rhs: Self) -> Self {
-    self.compose_with(rhs, Equation::Additive, Factor::One, Factor::SrcColor)
+    self.compose_with(rhs, Equation::Additive, Factor::Zero, Factor::SrcColor)
   }
 }
 
