@@ -1,4 +1,5 @@
 use luminance::{Depth32F, Dim2, Flat, Texture, RGBA32F};
+use std::ops::{Add, Sub, Mul};
 
 pub use luminance::{Equation, Factor};
 
@@ -44,4 +45,32 @@ impl<'a> From<LayerTexture<'a>> for Node<'a> {
   fn from(texture: LayerTexture<'a>) -> Self {
     Node::Texture(texture)
   }
+}
+
+impl<'a> Add for Node<'a> {
+  type Output = Self;
+
+  fn add(self, rhs: Self) -> Self {
+    self.compose_with(rhs, Equation::Additive, Factor::One, Factor::One)
+  }
+}
+
+impl<'a> Sub for Node<'a> {
+  type Output = Self;
+
+  fn sub(self, rhs: Self) -> Self {
+    self.compose_with(rhs, Equation::Subtract, Factor::One, Factor::One)
+  }
+}
+
+impl<'a> Mul for Node<'a> {
+  type Output = Self;
+
+  fn mul(self, rhs: Self) -> Self {
+    self.compose_with(rhs, Equation::Additive, Factor::One, Factor::SrcColor)
+  }
+}
+
+/// Compositor object; used to consume `Node`s and output to screen.
+pub struct Compositor {
 }
