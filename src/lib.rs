@@ -34,6 +34,7 @@ pub mod anim;
 pub mod audio;
 pub mod bootstrap;
 pub mod camera;
+pub mod compositing;
 pub mod compositor;
 pub mod color;
 pub mod edit;
