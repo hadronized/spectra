@@ -1,15 +1,19 @@
-use luminance::{Depth32F, Dim2, Flat, Texture, RGBA32F};
+use luminance::{Depth32F, Dim2, Flat, Framebuffer, Mode, RGBA32F, Tess, Texture, Uniform, Unit};
 use std::ops::{Add, Sub, Mul};
 
 pub use luminance::{Equation, Factor};
 
-/// Layer render that can be embedded into a compositing graph.
-pub type LayerRender<'a> = (ColorMap<'a>, DepthMap<'a>);
-/// Simple texture that can be embedded into a compositing graph.
-pub type LayerTexture<'a> = ColorMap<'a>;
+use resource::Res;
+use scene::Scene;
+use shader::Program;
 
-pub type ColorMap<'a> = &'a Texture<Flat, Dim2, RGBA32F>;
-pub type DepthMap<'a> = &'a Texture<Flat, Dim2, Depth32F>;
+/// Layer render that can be embedded into a compositing graph.
+pub type LayerRender<'a> = (&'a ColorMap, &'a DepthMap);
+/// Simple texture that can be embedded into a compositing graph.
+pub type LayerTexture<'a> = &'a ColorMap;
+
+pub type ColorMap = Texture<Flat, Dim2, RGBA32F>;
+pub type DepthMap = Texture<Flat, Dim2, Depth32F>;
 
 /// Compositing node.
 pub enum Node<'a> {
@@ -73,4 +77,25 @@ impl<'a> Mul for Node<'a> {
 
 /// Compositor object; used to consume `Node`s and output to screen.
 pub struct Compositor {
+  // allocated framebuffers that might contain nodes’ output
+  framebuffers: Vec<Framebuffer<Flat, Dim2, ColorMap, DepthMap>>,
+  // free list of available framebuffers
+  free_framebuffers: Vec<usize>,
+  // program used to render nodes
+  program: Res<Program>,
+  // fullscreen quad for compositing
+  quad: Tess
+}
+
+const FORWARD_SOURCE: &'static Uniform<Unit> = &Uniform::new(0);
+
+impl Compositor {
+  pub fn new(scene: &mut Scene) -> Self {
+    Compositor {
+      framebuffers: Vec::new(),
+      free_framebuffers: Vec::new(),
+      program: scene.get("spectra/compositing/forward.glsl", vec![FORWARD_SOURCE.sem("source")]).unwrap(),
+      quad: Tess::attributeless(Mode::TriangleStrip, 4)
+    }
+  }
 }
