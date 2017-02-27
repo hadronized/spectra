@@ -1,6 +1,7 @@
 use luminance::{Dim2, Flat, Framebuffer, Mode, Pipe, Pipeline, RGBA32F, RawTexture, RenderCommand,
                 ShadingCommand, Tess, TessRender, Texture, Unit, Uniform};
 
+use color::ColorAlpha;
 use resource::Res;
 use scene::Scene;
 use shader::Program;
@@ -9,6 +10,10 @@ pub type Texture2D<A> = Texture<Flat, Dim2, A>;
 
 const FORWARD_SOURCE: &'static Uniform<Unit> = &Uniform::new(0);
 
+/// The forward compositor.
+///
+/// This compositor is a very simple one: it forwards a render to the screen. It can also create an
+/// empty render – it basically cleans the screen with the color of your choice.
 pub struct Forward {
   framebuffer: Framebuffer<Flat, Dim2, (), ()>,
   program: Res<Program>,
@@ -26,7 +31,8 @@ impl Forward {
     }
   }
 
-  pub fn to_screen(&self, source: &Texture2D<RGBA32F>) {
+  /// Display a texture onto screen.
+  pub fn texture_screen(&self, source: &Texture2D<RGBA32F>) {
     let textures: &[&RawTexture] = &[source];
     let tess_render = TessRender::one_whole(&self.quad);
 
@@ -40,7 +46,8 @@ impl Forward {
     ]).run();
   }
 
-  pub fn black_screen(&self) {
-    Pipeline::new(&self.framebuffer, [0., 0., 0., 0.], &[], &[], vec![]).run();
+  /// Render a black screen to screen.
+  pub fn black_screen(&self, clear_color: ColorAlpha) {
+    Pipeline::new(&self.framebuffer, *clear_color.as_ref(), &[], &[], vec![]).run();
   }
 }
