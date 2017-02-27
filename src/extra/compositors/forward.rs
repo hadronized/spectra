@@ -46,8 +46,8 @@ impl Forward {
     ]).run();
   }
 
-  /// Render a black screen to screen.
-  pub fn black_screen(&self, clear_color: ColorAlpha) {
+  /// Render a screen to screen with a given color.
+  pub fn color_screen(&self, clear_color: ColorAlpha) {
     Pipeline::new(&self.framebuffer, *clear_color.as_ref(), &[], &[], vec![]).run();
   }
 }
