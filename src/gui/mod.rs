@@ -1,10 +1,11 @@
+use luminance::{Pipe, ShadingCommand};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
 use bootstrap::{Action, EventHandler, EventSig, MouseButton};
 use color::ColorAlpha;
-use overlay::{Disc, Quad, Renderer, RenderInput, Text, Texture2D, Triangle, Vert};
+use overlay::{Disc, Quad, Renderer, RenderInput, Text, Triangle, Vert};
 use scene::Scene;
 
 type Time = f32;
@@ -52,7 +53,7 @@ impl<'a> GUI<'a> {
     self.widgets.remove(id);
   }
 
-  pub fn render(&self) -> &Texture2D {
+  pub fn render<F, R>(&self, f: F) -> R where F: for<'b> FnOnce([Pipe<'b, ShadingCommand<'b>>; 3]) -> R {
     let mut tris = Vec::new();
     let mut quads = Vec::new();
     let mut discs = Vec::new();
@@ -75,7 +76,7 @@ impl<'a> GUI<'a> {
       .discs(&discs)
       .texts(&texts, 1.);
 
-    self.renderer.render(render_input)
+    self.renderer.render(render_input, f)
   }
 }
 
@@ -196,11 +197,11 @@ pub struct ProgressBar {
 
 pub trait ProgressBarListener {
   /// Called whenever the value of the progress bar changes.
-  fn on_set(&mut self, t: Time) {}
+  fn on_set(&mut self, _: Time) {}
   /// Called whenever the progress bar is clicked.
-  fn on_click(&mut self, cursor: [f32; 2]) {}
+  fn on_click(&mut self, _: [f32; 2]) {}
   /// Called whenever the progress bar is dragged.
-  fn on_drag(&mut self, cursor: [f32; 2], down_cursor: [f32; 2]) {}
+  fn on_drag(&mut self, _: [f32; 2], _: [f32; 2]) {}
 }
 
 impl ProgressBar {

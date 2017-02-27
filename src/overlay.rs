@@ -1,4 +1,4 @@
-use luminance::{Dim2, Equation, Factor, Flat, Framebuffer, Mode, Pipe, Pipeline, RenderCommand, ShadingCommand, Tess, TessRender, TessVertices, Uniform, Unit, Vertex, VertexFormat};
+use luminance::{Dim2, Equation, Factor, Flat, Mode, Pipe, RenderCommand, ShadingCommand, Tess, TessRender, TessVertices, Uniform, Unit, Vertex, VertexFormat};
 use std::cell::RefCell;
 
 use resource::Res;
@@ -105,7 +105,6 @@ const TEXT_COLOR: &'static Uniform<[f32; 4]> = &Uniform::new(4);
 
 /// A renderer responsible of rendering shapes.
 pub struct Renderer {
-  framebuffer: Framebuffer<Flat, Dim2, Texture2D, ()>,
   ratio: f32,
   tri_program: Res<Program>,
   tris: RefCell<Tess>,
@@ -120,8 +119,6 @@ pub struct Renderer {
 
 impl Renderer {
   pub fn new(w: u32, h: u32, max_tris: usize, max_quads: usize, max_discs: usize, scene: &mut Scene) -> Self {
-    let fb = Framebuffer::new((w, h), 0).unwrap();
-
     let tri_program = scene.get("spectra/overlay/triangle.glsl", vec![]).unwrap();
     let tris = Tess::new(Mode::Triangle, TessVertices::Reserve::<Vert>(max_tris * 3 + max_quads * 4), None);
 
@@ -139,7 +136,6 @@ impl Renderer {
     let text_quad = Tess::attributeless(Mode::TriangleStrip, 4);
 
     Renderer {
-      framebuffer: fb,
       ratio: w as f32 / h as f32,
       tri_program: tri_program,
       tris: RefCell::new(tris),
@@ -187,7 +183,7 @@ impl Renderer {
     *self.disc_vert_nb.borrow_mut() = disc_i;
   }
 
-  pub fn render(&self, input: RenderInput) -> &Texture2D {
+  pub fn render<F, R>(&self, input: RenderInput, f: F) -> R where F: for<'b> FnOnce([Pipe<'b, ShadingCommand<'b>>; 3]) -> R {
     self.dispatch(&mut self.tris.borrow_mut(), &mut self.discs.borrow_mut(), &input);
 
     let tris_ref = self.tris.borrow();
@@ -226,9 +222,13 @@ impl Renderer {
       DISC_SCREEN_RATIO.alter(self.ratio)
     ];
 
-    Pipeline::new(&self.framebuffer, [0., 0., 0., 0.], &[], &[], vec![
+    let tri_program = self.tri_program.borrow();
+    let disc_program = self.disc_program.borrow();
+    let text_program = self.text_program.borrow();
+
+    let shading_commands = [
       // render triangles
-      Pipe::new(ShadingCommand::new(&self.tri_program.borrow(), vec![
+      Pipe::new(ShadingCommand::new(&tri_program, vec![
         Pipe::new(RenderCommand::new(None, true, vec![
           Pipe::new(tris)
         ]))
@@ -236,16 +236,16 @@ impl Renderer {
       // render discs
       Pipe::empty()
         .uniforms(&disc_uniforms)
-        .unwrap(ShadingCommand::new(&self.disc_program.borrow(), vec![
+        .unwrap(ShadingCommand::new(&disc_program, vec![
           Pipe::new(RenderCommand::new(None, true, vec![
             Pipe::new(discs)
           ]))
         ])),
       // render texts
-      Pipe::new(ShadingCommand::new(&self.text_program.borrow(), text_render_cmds))
-    ]).run();
+      Pipe::new(ShadingCommand::new(&text_program, text_render_cmds))
+    ];
 
-    &self.framebuffer.color_slot
+    f(shading_commands)
   }
 }
 
