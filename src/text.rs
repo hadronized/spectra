@@ -8,6 +8,7 @@ use texture::{Dim2, Flat, R32F, Sampler, Texture};
 
 pub type Result<A> = ::std::result::Result<A, FontError>;
 
+/// Error used while rasterizing text.
 #[derive(Debug)]
 pub enum FontError {
   IncorrectPath(PathBuf),
@@ -15,6 +16,11 @@ pub enum FontError {
   RasterizationFailed(String)
 }
 
+/// A texture containing some text (`String`).
+///
+/// This type is used to represent static text and works *on its own*. Once you’re handed such a
+/// type, you can directly use the texture in a shader as it contains the pixels representing the
+/// rasterizing glyphs.
 pub struct TextTexture {
   texture: Texture<Flat, Dim2, R32F>,
 }
@@ -33,6 +39,7 @@ pub struct Rasterizer<'a> {
 }
 
 impl<'a> Rasterizer<'a> {
+  /// Create a rasterizer from a font path.
   pub fn from_file<P>(font_path: P) -> Result<Self> where P: AsRef<Path> {
     let font_path = font_path.as_ref();
     let mut data = Vec::new();
@@ -49,6 +56,7 @@ impl<'a> Rasterizer<'a> {
     })
   }
 
+  /// Rasterize some text into a texture.
   pub fn rasterize(&self, text: &str, height: f32) -> Result<TextTexture> {
     // prepare the font hints
     let px_height = height.ceil() as usize;
