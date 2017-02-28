@@ -30,7 +30,6 @@ pub mod resource;
 #[macro_use]
 pub mod scene;
 
-pub mod anim;
 pub mod audio;
 pub mod bootstrap;
 pub mod camera;
@@ -51,7 +50,6 @@ pub mod text;
 pub mod texture;
 pub mod transform;
 
-pub use anim::Cont;
 pub use audio::Audio;
 pub use bootstrap::{Device, WindowDim};
 pub use camera::{Camera, Freefly};
