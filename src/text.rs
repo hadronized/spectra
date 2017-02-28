@@ -1,9 +1,11 @@
 use rusttype::{Font, FontCollection, Scale, point};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
+use linear::Vector2;
 use texture::{Dim2, Flat, R32F, Sampler, Texture};
 
 pub type Result<A> = ::std::result::Result<A, FontError>;
@@ -36,6 +38,7 @@ impl Deref for TextTexture {
 /// Rasterizer responsible of rasterizing text.
 pub struct Rasterizer<'a> {
   font: Font<'a>,
+  cache: HashMap<char, GlyphMetrics>
 }
 
 impl<'a> Rasterizer<'a> {
@@ -52,7 +55,8 @@ impl<'a> Rasterizer<'a> {
     let font = FontCollection::from_bytes(data).into_font().ok_or(FontError::MultipleFonts)?;
 
     Ok(Rasterizer {
-      font: font
+      font: font,
+      cache: HashMap::new()
     })
   }
 
@@ -98,4 +102,28 @@ impl<'a> Rasterizer<'a> {
       texture: texture
     })
   }
+}
+
+/// Glyph metrics. Represents information about a given glyph to ease dynamic text rendering.
+struct GlyphMetrics {
+  bounding_box: GlyphBoundingBox,
+  uv_coords: GlyphUVCoords
+}
+
+/// Glyph bounding box.
+///
+/// This is not a pixel bounding box – it’s not the smallest rectangular area that tightly wraps a
+/// glyph’s pixels. This type of bounding box wraps the whole glyph, with all the spaces required
+/// above and below the baseline and after the glyph.
+struct GlyphBoundingBox {
+  lower: Vector2<f32>,
+  upper: Vector2<f32>
+}
+
+/// Glyph UV coordinates.
+///
+/// UV coordinates are used to retrieve the pixels in a texture containing all the glyphs.
+struct GlyphUVCoords {
+  lower: Vector2<f32>,
+  upper: Vector2<f32>
 }
