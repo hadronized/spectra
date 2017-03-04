@@ -33,11 +33,11 @@ impl Forward {
     let textures: &[&RawTexture] = &[source];
     let tess_render = TessRender::one_whole(&self.quad);
 
-    Pipeline::new(&back_fb, [0., 0., 0., 0.], textures, &[], vec![
+    Pipeline::new(&back_fb, [0., 0., 0., 0.], textures, &[], &[
       Pipe::empty()
         .uniforms(&[FORWARD_SOURCE.alter(Unit::new(0))])
-        .unwrap(ShadingCommand::new(&self.program.borrow(), vec![
-          Pipe::new(RenderCommand::new(None, true, vec![
+        .unwrap(ShadingCommand::new(&self.program.borrow(), &[
+          Pipe::new(RenderCommand::new(None, true, &[
             Pipe::new(tess_render)]))
           ]))
     ]).run();
@@ -45,6 +45,6 @@ impl Forward {
 
   pub fn black_screen(&self) {
     let back_fb = Framebuffer::default((self.w, self.h));
-    Pipeline::new(&back_fb, [0., 0., 0., 0.], &[], &[], vec![]).run();
+    Pipeline::new(&back_fb, [0., 0., 0., 0.], &[], &[], &[]).run();
   }
 }
