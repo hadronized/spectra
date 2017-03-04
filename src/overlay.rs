@@ -209,40 +209,40 @@ impl Renderer {
       ]
     }).collect()).unwrap_or(Vec::new());
 
-    let text_textures: Vec<_> = input.texts.map(|(texts, _)| texts.iter().map(|text| [&***text.text_texture]).collect()).unwrap_or(Vec::new());
+    // let text_textures: Vec<_> = input.texts.map(|(texts, _)| texts.iter().map(|text| [&***text.text_texture]).collect()).unwrap_or(Vec::new());
 
-    let text_nb = input.texts.map(|(texts, _)| texts.len()).unwrap_or(0);
-    let text_render_cmds: Vec<_> = (0..text_nb).map(|i| {
-        let blending = (Equation::Additive, Factor::One, Factor::SrcAlphaComplement);
-        Pipe::empty()
-          .uniforms(&text_uniforms[i])
-          .textures(&text_textures[i])
-          .unwrap(RenderCommand::new(Some(blending), true, vec![
-            Pipe::new(text_quad.clone())
-          ]))
-      }).collect();
+    // let text_nb = input.texts.map(|(texts, _)| texts.len()).unwrap_or(0);
+    // let text_render_cmds: Vec<_> = (0..text_nb).map(|i| {
+    //     let blending = (Equation::Additive, Factor::One, Factor::SrcAlphaComplement);
+    //     Pipe::empty()
+    //       .uniforms(&text_uniforms[i])
+    //       .textures(&text_textures[i])
+    //       .unwrap(RenderCommand::new(Some(blending), true, vec![
+    //         Pipe::new(text_quad.clone())
+    //       ]))
+    //   }).collect();
 
     let disc_uniforms = [
       DISC_SCREEN_RATIO.alter(self.ratio)
     ];
 
-    Pipeline::new(&self.framebuffer, [0., 0., 0., 0.], &[], &[], vec![
+    Pipeline::new(&self.framebuffer, [0., 0., 0., 0.], &[], &[], &[
       // render triangles
-      Pipe::new(ShadingCommand::new(&self.tri_program.borrow(), vec![
-        Pipe::new(RenderCommand::new(None, true, vec![
+      Pipe::new(ShadingCommand::new(&self.tri_program.borrow(), &[
+        Pipe::new(RenderCommand::new(None, true, &[
           Pipe::new(tris)
         ]))
       ])),
       // render discs
       Pipe::empty()
         .uniforms(&disc_uniforms)
-        .unwrap(ShadingCommand::new(&self.disc_program.borrow(), vec![
-          Pipe::new(RenderCommand::new(None, true, vec![
+        .unwrap(ShadingCommand::new(&self.disc_program.borrow(), &[
+          Pipe::new(RenderCommand::new(None, true, &[
             Pipe::new(discs)
           ]))
         ])),
       // render texts
-      Pipe::new(ShadingCommand::new(&self.text_program.borrow(), text_render_cmds))
+      //Pipe::new(ShadingCommand::new(&self.text_program.borrow(), text_render_cmds))
     ]).run();
 
     &self.framebuffer.color_slot
