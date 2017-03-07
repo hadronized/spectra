@@ -149,8 +149,27 @@ impl Compositor {
 
   /// Consume and display a compositing graph represented by its nodes.
   pub fn display(&mut self, root: Node) {
-    unimplemented!()
-    //self.consume_tagged_nodes(TaggedNode { node: root, framebuffer_index: None });
+    let fb_index = self.treat_node(root);
+
+    {
+      let fb = &self.framebuffers[fb_index];
+
+      let screen = Framebuffer::default((self.w, self.h));
+
+      let black = [0., 0., 0., 1.];
+      let program = self.program.borrow();
+      let uniforms_tex = [FORWARD_SOURCE.alter(Unit::new(0))];
+      let tess_render = TessRender::from(&self.quad);
+      let tess = &[Pipe::empty().uniforms(&uniforms_tex).unwrap(tess_render.clone())];
+      let render_cmd = &[Pipe::new(RenderCommand::new(None, false, tess))];
+      let shd_cmd = &[Pipe::new(ShadingCommand::new(&program, render_cmd))];
+      let texture_set = &[&*fb.color_slot];
+
+      Pipeline::new(&screen, black, texture_set, &[], shd_cmd).run();
+    }
+
+    self.dispose_framebuffer(fb_index);
+    assert!(self.free_framebuffers.is_empty());
   }
 
   /// Treat a node hierarchy and return the index  of the framebuffer that contains the result.
