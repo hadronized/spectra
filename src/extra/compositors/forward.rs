@@ -36,7 +36,7 @@ impl Forward {
     let textures: &[&RawTexture] = &[source];
     let tess_render = TessRender::one_whole(&self.quad);
 
-    Pipeline::new(&self.framebuffer, [0., 0., 0., 0.], textures, &[], vec![
+    Pipeline::new(&self.framebuffer, [0., 0., 0., 0.], textures, &[], &[
       Pipe::empty()
         .uniforms(&[FORWARD_SOURCE.alter(Unit::new(0))])
         .unwrap(ShadingCommand::new(&self.program.borrow(), &[
@@ -48,6 +48,6 @@ impl Forward {
 
   /// Clear the screen with a given color.
   pub fn color_screen(&self, clear_color: ColorAlpha) {
-    Pipeline::new(&self.framebuffer, *clear_color.as_ref(), &[], &[], vec![]).run();
+    Pipeline::new(&self.framebuffer, *clear_color.as_ref(), &[], &[], &[]).run();
   }
 }
