@@ -74,6 +74,7 @@ pub mod scene;
 pub mod audio;
 pub mod bootstrap;
 pub mod camera;
+pub mod compositing;
 pub mod color;
 pub mod edit;
 pub mod extra;

@@ -39,8 +39,8 @@ impl Forward {
     Pipeline::new(&self.framebuffer, [0., 0., 0., 0.], textures, &[], vec![
       Pipe::empty()
         .uniforms(&[FORWARD_SOURCE.alter(Unit::new(0))])
-        .unwrap(ShadingCommand::new(&self.program.borrow(), vec![
-          Pipe::new(RenderCommand::new(None, true, vec![
+        .unwrap(ShadingCommand::new(&self.program.borrow(), &[
+          Pipe::new(RenderCommand::new(None, true, &[
             Pipe::new(tess_render)]))
           ]))
     ]).run();
