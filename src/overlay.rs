@@ -1,6 +1,5 @@
 use luminance::{Dim2, Equation, Factor, Flat, Mode, Pipe, RenderCommand, ShadingCommand, Tess, TessRender, TessVertices, Uniform, Unit, Vertex, VertexFormat};
-use luminance::shader::program::AlterUniform;
-use std::cell::{Ref, RefCell, RefMut};
+use std::cell::RefCell;
 
 use compositing;
 use resource::Res;
@@ -241,7 +240,7 @@ impl Overlay {
   }
 }
 
-struct Render<'a, 'b> where 'b: 'a {
+pub struct Render<'a, 'b> where 'b: 'a {
   shading_cmds: &'a [Pipe<'b, ShadingCommand<'b>>]
 }
 
@@ -250,6 +249,12 @@ impl<'a, 'b> Render<'a, 'b> where 'b: 'a {
     Render {
       shading_cmds: shading_cmds
     }
+  }
+}
+
+impl<'a, 'b> compositing::Render<'b> for Render<'a, 'b> where 'b: 'a {
+  fn push_shading_commands(&self, shading_commands: &mut Vec<Pipe<'b, ShadingCommand<'b>>>) {
+    shading_commands.extend_from_slice(&self.shading_cmds);
   }
 }
 
