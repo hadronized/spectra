@@ -1,6 +1,7 @@
 use luminance::{Dim2, Equation, Factor, Flat, Mode, Pipe, RenderCommand, ShadingCommand, Tess, TessRender, TessVertices, Uniform, Unit, Vertex, VertexFormat};
 use std::cell::{Ref, RefCell, RefMut};
 
+use compositing;
 use resource::Res;
 use scene::Scene;
 use shader::Program;
@@ -103,24 +104,46 @@ const TEXT_SIZE: &'static Uniform<[f32; 2]> = &Uniform::new(2);
 const TEXT_SCALE: &'static Uniform<f32> = &Uniform::new(3);
 const TEXT_COLOR: &'static Uniform<[f32; 4]> = &Uniform::new(4);
 
-pub struct Renderer<'a> {
+pub struct Render<'a, 'b> where 'b: 'a {
+  render_input: RenderInput<'a, 'b>,
   ratio: f32,
   tri_program: Ref<'a, Program>,
-  tris: &'a mut Tess,
-  tri_vert_nb: usize,
+  tris: &'a RefCell<Tess>,
+  tri_vert_nb: RefCell<usize>,
   disc_program: Ref<'a, Program>,
-  discs: &'a mut Tess,
-  disc_vert_nb: usize,
+  discs: &'a RefCell<Tess>,
+  disc_vert_nb: RefCell<usize>,
   tex_program: Ref<'a, Program>,
   text_quad: &'a Tess,
   unit_converter: &'a UnitConverter
 }
 
-impl<'a> Renderer<'a> {
-  fn dispatch(&mut self, input: &RenderInput) {
-    let mut tris = self.tris.as_slice_mut().unwrap();
+impl<'a, 'b> Render<'a, 'b> where 'b: 'a {
+  fn new(overlay: &'a mut Overlay, render_input: RenderInput<'a, 'b>) -> Self {
+    Render {
+      render_input: render_input,
+      ratio: overlay.ratio,
+      tri_program: overlay.tri_program.borrow(),
+      tris: &overlay.tris,
+      tri_vert_nb: RefCell::new(0),
+      disc_program: overlay.disc_program.borrow(),
+      discs: &overlay.discs,
+      disc_vert_nb: RefCell::new(0),
+      tex_program: overlay.text_program.borrow(),
+      text_quad: &overlay.text_quad,
+      unit_converter: &overlay.unit_converter
+    }
+  }
+
+  /// Dispatch render input primitives into GPU buffers.
+  fn dispatch(&self) {
+    let input = &self.render_input;
+    let mut tris_ref = self.tris.borrow_mut();
+    let mut tris = tris_ref.as_slice_mut().unwrap();
     let mut tri_i = 0;
-    let mut discs = self.discs.as_slice_mut().unwrap();
+
+    let mut discs_ref = self.discs.borrow_mut();
+    let mut discs = discs_ref.as_slice_mut().unwrap();
     let mut disc_i = 0;
 
     for &Triangle(a, b, c) in input.triangles {
@@ -146,9 +169,18 @@ impl<'a> Renderer<'a> {
       disc_i += 1;
     }
 
-    self.tri_vert_nb = tri_i;
-    self.disc_vert_nb = disc_i;
+    *self.tri_vert_nb.borrow_mut() = tri_i;
+    *self.disc_vert_nb.borrow_mut() = disc_i;
   }
+}
+
+impl<'a, 'b, 'c> compositing::Render<'a> for Render<'b, 'c> where 'c: 'b, 'b: 'a {
+  fn shading_commands(&self) -> &[Pipe<'a, ShadingCommand<'a>>] {
+    self.dispatch();
+
+    unimplemented!()
+  }
+}
 
   //pub fn render<F, R>(&self, input: RenderInput, f: F) -> R where F: for<'b> FnOnce([Pipe<'b, ShadingCommand<'b>>; 3]) -> R {
   //  self.dispatch(&mut self.tris.borrow_mut(), &mut self.discs.borrow_mut(), &input);
@@ -214,14 +246,13 @@ impl<'a> Renderer<'a> {
 
   //  f(shading_commands)
   //}
-}
 
 pub struct Overlay {
   ratio: f32,
   tri_program: Res<Program>,
-  tris: Tess,
+  tris: RefCell<Tess>,
   disc_program: Res<Program>,
-  discs: Tess,
+  discs: RefCell<Tess>,
   text_program: Res<Program>,
   text_quad: Tess,
   unit_converter: UnitConverter,
@@ -248,33 +279,30 @@ impl Overlay {
     Overlay {
       ratio: w as f32 / h as f32,
       tri_program: tri_program,
-      tris: tris,
+      tris: RefCell::new(tris),
       disc_program: disc_program,
-      discs: discs,
+      discs: RefCell::new(discs),
       text_program: text_program,
       text_quad: text_quad,
       unit_converter: UnitConverter::new(w, h)
     }
   }
 
-  /// Exposes the renderer of the overlay.
-  ///
-  /// Keep in mind that this function borrows the overlay object until you drop the returned
-  /// renderer.
-  pub fn renderer(&mut self) -> Renderer {
-    Renderer {
-      ratio: self.ratio,
-      tri_program: self.tri_program.borrow(),
-      tris: &mut self.tris,
-      tri_vert_nb: 0,
-      disc_program: self.disc_program.borrow(),
-      discs: &mut self.discs,
-      disc_vert_nb: 0,
-      tex_program: self.text_program.borrow(),
-      text_quad: &self.text_quad,
-      unit_converter: &self.unit_converter
-    }
-  }
+  // /// Render the overlay.
+  // pub fn render(&mut self) -> Render {
+  //   Render {
+  //     ratio: self.ratio,
+  //     tri_program: self.tri_program.borrow(),
+  //     tris: &mut self.tris,
+  //     tri_vert_nb: RefCell::new(0),
+  //     disc_program: self.disc_program.borrow(),
+  //     discs: &mut self.discs,
+  //     disc_vert_nb: RefCell::new(0),
+  //     tex_program: self.text_program.borrow(),
+  //     text_quad: &self.text_quad,
+  //     unit_converter: &self.unit_converter
+  //   }
+  // }
 }
 
 #[derive(Clone)]

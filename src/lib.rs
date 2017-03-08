@@ -85,7 +85,6 @@ pub mod model;
 pub mod object;
 pub mod overlay;
 pub mod projection;
-pub mod render;
 pub mod shader;
 pub mod spline;
 pub mod text;
