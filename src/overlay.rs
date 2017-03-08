@@ -105,80 +105,6 @@ const TEXT_SIZE: &'static Uniform<[f32; 2]> = &Uniform::new(2);
 const TEXT_SCALE: &'static Uniform<f32> = &Uniform::new(3);
 const TEXT_COLOR: &'static Uniform<[f32; 4]> = &Uniform::new(4);
 
-pub struct Render<'a, 'b> where 'b: 'a {
-  render_input: RenderInput<'a, 'b>,
-  ratio: f32,
-  tri_program: Ref<'a, Program>,
-  tris: RefMut<'a, Tess>,
-  tri_vert_nb: usize,
-  disc_program: Ref<'a, Program>,
-  discs: RefMut<'a, Tess>,
-  disc_vert_nb: usize,
-  disc_uniforms: [AlterUniform<'a>; 1],
-  text_program: Ref<'a, Program>,
-  text_quad: &'a Tess,
-  unit_converter: &'a UnitConverter,
-}
-
-
-
-  //pub fn render<F, R>(&self, input: RenderInput, f: F) -> R where F: for<'b> FnOnce([Pipe<'b, ShadingCommand<'b>>; 3]) -> R {
-  //  // FIXME: no alloc?
-  //  let text_uniforms: Vec<_> = input.texts.map(|(texts, text_scale)| texts.iter().map(|text| {
-  //    let (tex_w, tex_h) = text.text_texture.size();
-  //    
-  //    [
-  //      TEXT_SAMPLER.alter(Unit::new(0)),
-  //      TEXT_POS.alter(text.left_lower.to_clip_space(&self.unit_converter).pos),
-  //      TEXT_SIZE.alter(self.unit_converter.from_win_dim(tex_w as f32, tex_h as f32)),
-  //      TEXT_SCALE.alter(text_scale),
-  //      TEXT_COLOR.alter(text.left_lower.color),
-  //    ]
-  //  }).collect()).unwrap_or(Vec::new());
-
-  //  let text_textures: Vec<_> = input.texts.map(|(texts, _)| texts.iter().map(|text| [&***text.text_texture]).collect()).unwrap_or(Vec::new());
-
-  //  let text_nb = input.texts.map(|(texts, _)| texts.len()).unwrap_or(0);
-  //  let text_render_cmds: Vec<_> = (0..text_nb).map(|i| {
-  //      let blending = (Equation::Additive, Factor::One, Factor::SrcAlphaComplement);
-  //      Pipe::empty()
-  //        .uniforms(&text_uniforms[i])
-  //        .textures(&text_textures[i])
-  //        .unwrap(RenderCommand::new(Some(blending), true, vec![
-  //          Pipe::new(text_quad.clone())
-  //        ]))
-  //    }).collect();
-
-  //  let disc_uniforms = [
-  //    DISC_SCREEN_RATIO.alter(self.ratio)
-  //  ];
-
-  //  let tri_program = self.tri_program.borrow();
-  //  let disc_program = self.disc_program.borrow();
-  //  let text_program = self.text_program.borrow();
-
-  //  let shading_commands = [
-  //    // render triangles
-  //    Pipe::new(ShadingCommand::new(&tri_program, vec![
-  //      Pipe::new(RenderCommand::new(None, true, vec![
-  //        Pipe::new(tris)
-  //      ]))
-  //    ])),
-  //    // render discs
-  //    Pipe::empty()
-  //      .uniforms(&disc_uniforms)
-  //      .unwrap(ShadingCommand::new(&disc_program, vec![
-  //        Pipe::new(RenderCommand::new(None, true, vec![
-  //          Pipe::new(discs)
-  //        ]))
-  //      ])),
-  //    // render texts
-  //    Pipe::new(ShadingCommand::new(&text_program, text_render_cmds))
-  //  ];
-
-  //  f(shading_commands)
-  //}
-
 pub struct Overlay {
   ratio: f32,
   tri_program: Res<Program>,
@@ -256,7 +182,7 @@ impl Overlay {
     (tri_i, disc_i)
   }
 
-  pub fn render<F>(&self, input: RenderInput, f: F) where F: FnOnce() {
+  pub fn render<F, R>(&self, input: RenderInput, f: F) -> R where F: FnOnce(Render) -> R {
     let (tri_vert_nb, disc_vert_nb) = self.dispatch(&input);
     
     let tris_ref = self.tris.borrow();
@@ -300,26 +226,30 @@ impl Overlay {
       DISC_SCREEN_RATIO.alter(self.ratio)
     ];
 
-    let _ = [
-      // render triangles
-      Pipe::new(ShadingCommand::new(&tri_program, &[
-        Pipe::new(RenderCommand::new(None, true, &[
-          Pipe::new(tris)
-        ]))
-      ])),
-      // render discs
-      Pipe::empty()
-        .uniforms(&disc_uniforms)
-        .unwrap(ShadingCommand::new(&disc_program, &[
-          Pipe::new(RenderCommand::new(None, true, &[
-            Pipe::new(discs)
-          ]))
-        ])),
-      // render texts
+    let tris = &[Pipe::new(tris)];
+    let tris_render_cmds = &[Pipe::new(RenderCommand::new(None, true, tris))];
+    let discs = &[Pipe::new(discs)];
+    let discs_render_cmds = &[Pipe::new(RenderCommand::new(None, true, discs))];
+    let shading_cmds = &[
+      Pipe::new(ShadingCommand::new(&tri_program, tris_render_cmds)),
+      Pipe::empty().uniforms(&disc_uniforms).unwrap(ShadingCommand::new(&disc_program, discs_render_cmds)),
       Pipe::new(ShadingCommand::new(&text_program, &text_render_cmds))
     ];
 
-    unimplemented!()
+    let render = Render::new(shading_cmds);
+    f(render)
+  }
+}
+
+struct Render<'a, 'b> where 'b: 'a {
+  shading_cmds: &'a [Pipe<'b, ShadingCommand<'b>>]
+}
+
+impl<'a, 'b> Render<'a, 'b> where 'b: 'a {
+  fn new(shading_cmds: &'a [Pipe<'b, ShadingCommand<'b>>]) -> Self {
+    Render {
+      shading_cmds: shading_cmds
+    }
   }
 }
 
