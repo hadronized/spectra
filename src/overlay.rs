@@ -184,7 +184,7 @@ impl Overlay {
   /// Render the overlay.
   ///
   /// The render is not directly returned but instead is passed to a continuation to work with
-  /// (CPS).
+  /// (CPS). The render implements the `compositing::Render` trait.
   pub fn render<F, R>(&self, input: RenderInput, f: F) -> R where F: FnOnce(Render) -> R {
     let (tri_vert_nb, disc_vert_nb) = self.dispatch(&input);
     
