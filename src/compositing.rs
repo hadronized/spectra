@@ -17,24 +17,15 @@ pub type DepthMap = Texture<Flat, Dim2, Depth32F>;
 
 /// Render layer used to host renders.
 pub struct RenderLayer<'a> {
-  shading_commands: Vec<Pipe<'a, ShadingCommand<'a>>>
+  render: Box<Fn(&Framebuffer<Flat, Dim2, ColorMap, DepthMap>) + 'a>
 }
 
 impl<'a> RenderLayer<'a> {
-  pub fn new() -> Self {
+  pub fn new<F>(render: F) -> Self where F: 'a + Fn(&Framebuffer<Flat, Dim2, ColorMap, DepthMap>) {
     RenderLayer {
-      shading_commands: Vec::new()
+      render: Box::new(render)
     }
   }
-
-  pub fn push<R>(&mut self, render: &R) where R: 'a + Render<'a> {
-    render.push_shading_commands(&mut self.shading_commands);
-  }
-}
-
-/// Class of renders that can interact with render layers.
-pub trait Render<'a> {
-  fn push_shading_commands(&self, shading_commands: &mut Vec<Pipe<'a, ShadingCommand<'a>>>);
 }
 
 /// Compositing node.
@@ -189,9 +180,8 @@ impl Compositor {
   fn render(&mut self, layer: RenderLayer) -> usize {
     let fb_index = self.pull_framebuffer();
     let fb = &self.framebuffers[fb_index];
-    let black = [0., 0., 0., 1.];
 
-    Pipeline::new(fb, black, &[], &[], &layer.shading_commands).run();
+    (layer.render)(&fb);
 
     fb_index
   }

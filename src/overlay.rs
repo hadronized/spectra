@@ -1,7 +1,7 @@
-use luminance::{Dim2, Equation, Factor, Flat, Mode, Pipe, RenderCommand, ShadingCommand, Tess, TessRender, TessVertices, Uniform, Unit, Vertex, VertexFormat};
+use luminance::{Dim2, Equation, Factor, Framebuffer, Flat, Mode, Pipe, Pipeline, RenderCommand, ShadingCommand, Tess, TessRender, TessVertices, Uniform, Unit, Vertex, VertexFormat};
 use std::cell::RefCell;
 
-use compositing;
+use compositing::{self, ColorMap, DepthMap};
 use resource::Res;
 use scene::Scene;
 use shader::Program;
@@ -182,10 +182,7 @@ impl Overlay {
   }
 
   /// Render the overlay.
-  ///
-  /// The render is not directly returned but instead is passed to a continuation to work with
-  /// (CPS). The render implements the `compositing::Render` trait.
-  pub fn render<F, R>(&self, input: RenderInput, f: F) -> R where F: FnOnce(Render) -> R {
+  pub fn render(&self, framebuffer: &Framebuffer<Flat, Dim2, ColorMap, DepthMap>, input: RenderInput) {
     let (tri_vert_nb, disc_vert_nb) = self.dispatch(&input);
     
     let tris_ref = self.tris.borrow();
@@ -233,32 +230,12 @@ impl Overlay {
     let tris_render_cmds = &[Pipe::new(RenderCommand::new(None, true, tris))];
     let discs = &[Pipe::new(discs)];
     let discs_render_cmds = &[Pipe::new(RenderCommand::new(None, true, discs))];
-    let shading_cmds = &[
+
+    Pipeline::new(framebuffer, [0., 0., 0., 1.], &[], &[], &[
       Pipe::new(ShadingCommand::new(&tri_program, tris_render_cmds)),
       Pipe::empty().uniforms(&disc_uniforms).unwrap(ShadingCommand::new(&disc_program, discs_render_cmds)),
       Pipe::new(ShadingCommand::new(&text_program, &text_render_cmds))
-    ];
-
-    let render = Render::new(shading_cmds);
-    f(render)
-  }
-}
-
-pub struct Render<'a, 'b> where 'b: 'a {
-  shading_cmds: &'a [Pipe<'b, ShadingCommand<'b>>]
-}
-
-impl<'a, 'b> Render<'a, 'b> where 'b: 'a {
-  fn new(shading_cmds: &'a [Pipe<'b, ShadingCommand<'b>>]) -> Self {
-    Render {
-      shading_cmds: shading_cmds
-    }
-  }
-}
-
-impl<'a, 'b> compositing::Render<'b> for Render<'a, 'b> where 'b: 'a {
-  fn push_shading_commands(&self, shading_commands: &mut Vec<Pipe<'b, ShadingCommand<'b>>>) {
-    shading_commands.extend_from_slice(&self.shading_cmds);
+    ]).run();
   }
 }
 
