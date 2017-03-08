@@ -1,4 +1,5 @@
 use luminance::{Dim2, Equation, Factor, Flat, Mode, Pipe, RenderCommand, ShadingCommand, Tess, TessRender, TessVertices, Uniform, Unit, Vertex, VertexFormat};
+use luminance::shader::program::AlterUniform;
 use std::cell::{Ref, RefCell, RefMut};
 
 use compositing;
@@ -108,89 +109,20 @@ pub struct Render<'a, 'b> where 'b: 'a {
   render_input: RenderInput<'a, 'b>,
   ratio: f32,
   tri_program: Ref<'a, Program>,
-  tris: &'a RefCell<Tess>,
-  tri_vert_nb: RefCell<usize>,
+  tris: RefMut<'a, Tess>,
+  tri_vert_nb: usize,
   disc_program: Ref<'a, Program>,
-  discs: &'a RefCell<Tess>,
-  disc_vert_nb: RefCell<usize>,
-  tex_program: Ref<'a, Program>,
+  discs: RefMut<'a, Tess>,
+  disc_vert_nb: usize,
+  disc_uniforms: [AlterUniform<'a>; 1],
+  text_program: Ref<'a, Program>,
   text_quad: &'a Tess,
-  unit_converter: &'a UnitConverter
+  unit_converter: &'a UnitConverter,
 }
 
-impl<'a, 'b> Render<'a, 'b> where 'b: 'a {
-  fn new(overlay: &'a mut Overlay, render_input: RenderInput<'a, 'b>) -> Self {
-    Render {
-      render_input: render_input,
-      ratio: overlay.ratio,
-      tri_program: overlay.tri_program.borrow(),
-      tris: &overlay.tris,
-      tri_vert_nb: RefCell::new(0),
-      disc_program: overlay.disc_program.borrow(),
-      discs: &overlay.discs,
-      disc_vert_nb: RefCell::new(0),
-      tex_program: overlay.text_program.borrow(),
-      text_quad: &overlay.text_quad,
-      unit_converter: &overlay.unit_converter
-    }
-  }
 
-  /// Dispatch render input primitives into GPU buffers.
-  fn dispatch(&self) {
-    let input = &self.render_input;
-    let mut tris_ref = self.tris.borrow_mut();
-    let mut tris = tris_ref.as_slice_mut().unwrap();
-    let mut tri_i = 0;
-
-    let mut discs_ref = self.discs.borrow_mut();
-    let mut discs = discs_ref.as_slice_mut().unwrap();
-    let mut disc_i = 0;
-
-    for &Triangle(a, b, c) in input.triangles {
-      let abc = [a, b, c];
-
-      for &v in &abc {
-        tris[tri_i] = v.to_clip_space(self.unit_converter);
-        tri_i += 1;
-      }
-    }
-
-    for &Quad(a, b, c, d) in input.quads {
-      let abcd = [a, b, c, c, b, d];
-
-      for &v in &abcd {
-        tris[tri_i] = v.to_clip_space(self.unit_converter);
-        tri_i += 1;
-      }
-    }
-
-    for disc in input.discs {
-      discs[disc_i] = disc.to_clip_space(self.unit_converter);
-      disc_i += 1;
-    }
-
-    *self.tri_vert_nb.borrow_mut() = tri_i;
-    *self.disc_vert_nb.borrow_mut() = disc_i;
-  }
-}
-
-impl<'a, 'b, 'c> compositing::Render<'a> for Render<'b, 'c> where 'c: 'b, 'b: 'a {
-  fn shading_commands(&self) -> &[Pipe<'a, ShadingCommand<'a>>] {
-    self.dispatch();
-
-    unimplemented!()
-  }
-}
 
   //pub fn render<F, R>(&self, input: RenderInput, f: F) -> R where F: for<'b> FnOnce([Pipe<'b, ShadingCommand<'b>>; 3]) -> R {
-  //  self.dispatch(&mut self.tris.borrow_mut(), &mut self.discs.borrow_mut(), &input);
-
-  //  let tris_ref = self.tris.borrow();
-  //  let tris = TessRender::one_sub(&tris_ref, *self.tri_vert_nb.borrow());
-  //  let discs_ref = self.discs.borrow();
-  //  let discs = TessRender::one_sub(&discs_ref, *self.disc_vert_nb.borrow());
-  //  let text_quad = TessRender::one_whole(&self.text_quad);
-
   //  // FIXME: no alloc?
   //  let text_uniforms: Vec<_> = input.texts.map(|(texts, text_scale)| texts.iter().map(|text| {
   //    let (tex_w, tex_h) = text.text_texture.size();
@@ -288,21 +220,107 @@ impl Overlay {
     }
   }
 
-  // /// Render the overlay.
-  // pub fn render(&mut self) -> Render {
-  //   Render {
-  //     ratio: self.ratio,
-  //     tri_program: self.tri_program.borrow(),
-  //     tris: &mut self.tris,
-  //     tri_vert_nb: RefCell::new(0),
-  //     disc_program: self.disc_program.borrow(),
-  //     discs: &mut self.discs,
-  //     disc_vert_nb: RefCell::new(0),
-  //     tex_program: self.text_program.borrow(),
-  //     text_quad: &self.text_quad,
-  //     unit_converter: &self.unit_converter
-  //   }
-  // }
+  /// Dispatch render input primitives into GPU buffers.
+  fn dispatch(&self, input: &RenderInput) -> (usize, usize) {
+    let mut tris_ref = self.tris.borrow_mut();
+    let mut tris = tris_ref.as_slice_mut().unwrap();
+    let mut tri_i = 0;
+
+    let mut discs_ref = self.discs.borrow_mut();
+    let mut discs = discs_ref.as_slice_mut().unwrap();
+    let mut disc_i = 0;
+
+    for &Triangle(a, b, c) in input.triangles {
+      let abc = [a, b, c];
+
+      for &v in &abc {
+        tris[tri_i] = v.to_clip_space(&self.unit_converter);
+        tri_i += 1;
+      }
+    }
+
+    for &Quad(a, b, c, d) in input.quads {
+      let abcd = [a, b, c, c, b, d];
+
+      for &v in &abcd {
+        tris[tri_i] = v.to_clip_space(&self.unit_converter);
+        tri_i += 1;
+      }
+    }
+
+    for disc in input.discs {
+      discs[disc_i] = disc.to_clip_space(&self.unit_converter);
+      disc_i += 1;
+    }
+
+    (tri_i, disc_i)
+  }
+
+  pub fn render<F>(&self, input: RenderInput, f: F) where F: FnOnce() {
+    let (tri_vert_nb, disc_vert_nb) = self.dispatch(&input);
+    
+    let tris_ref = self.tris.borrow();
+    let tris = TessRender::one_sub(&tris_ref, tri_vert_nb);
+
+    let discs_ref = self.discs.borrow();
+    let discs = TessRender::one_sub(&discs_ref, disc_vert_nb);
+
+    let text_quad = TessRender::one_whole(&self.text_quad);
+    let text_quad_render = [Pipe::new(text_quad)];
+
+    let tri_program = self.tri_program.borrow();
+    let disc_program = self.disc_program.borrow();
+    let text_program = self.text_program.borrow();
+
+    // FIXME: no alloc?
+    let text_uniforms: Vec<_> = input.texts.map(|(texts, text_scale)| texts.iter().map(|text| {
+      let (tex_w, tex_h) = text.text_texture.size();
+      
+      [
+        TEXT_SAMPLER.alter(Unit::new(0)),
+        TEXT_POS.alter(text.left_lower.to_clip_space(&self.unit_converter).pos),
+        TEXT_SIZE.alter(self.unit_converter.from_win_dim(tex_w as f32, tex_h as f32)),
+        TEXT_SCALE.alter(text_scale),
+        TEXT_COLOR.alter(text.left_lower.color),
+      ]
+    }).collect()).unwrap_or(Vec::new());
+
+    let text_textures: Vec<_> = input.texts.map(|(texts, _)| texts.iter().map(|text| [&***text.text_texture]).collect()).unwrap_or(Vec::new());
+
+    let text_nb = input.texts.map(|(texts, _)| texts.len()).unwrap_or(0);
+    let text_render_cmds: Vec<_> = (0..text_nb).map(|i| {
+        let blending = (Equation::Additive, Factor::One, Factor::SrcAlphaComplement);
+        Pipe::empty()
+          .uniforms(&text_uniforms[i])
+          .textures(&text_textures[i])
+          .unwrap(RenderCommand::new(Some(blending), true, &text_quad_render))
+      }).collect();
+
+    let disc_uniforms = [
+      DISC_SCREEN_RATIO.alter(self.ratio)
+    ];
+
+    let _ = [
+      // render triangles
+      Pipe::new(ShadingCommand::new(&tri_program, &[
+        Pipe::new(RenderCommand::new(None, true, &[
+          Pipe::new(tris)
+        ]))
+      ])),
+      // render discs
+      Pipe::empty()
+        .uniforms(&disc_uniforms)
+        .unwrap(ShadingCommand::new(&disc_program, &[
+          Pipe::new(RenderCommand::new(None, true, &[
+            Pipe::new(discs)
+          ]))
+        ])),
+      // render texts
+      Pipe::new(ShadingCommand::new(&text_program, &text_render_cmds))
+    ];
+
+    unimplemented!()
+  }
 }
 
 #[derive(Clone)]

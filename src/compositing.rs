@@ -27,18 +27,14 @@ impl<'a> RenderLayer<'a> {
     }
   }
 
-  pub fn push_shading_command(&mut self, shading_command: Pipe<'a, ShadingCommand<'a>>) {
-    self.shading_commands.push(shading_command);
-  }
-
-  pub fn push<R>(&mut self, render: R) where R: 'a + Render<'a> {
-    self.shading_commands.extend_from_slice(render.shading_commands());
+  pub fn push<R>(&mut self, render: &R) where R: 'a + Render<'a> {
+    render.push_shading_commands(&mut self.shading_commands);
   }
 }
 
 /// Class of renders that can interact with render layers.
 pub trait Render<'a> {
-  fn shading_commands(&self) -> &[Pipe<'a, ShadingCommand<'a>>];
+  fn push_shading_commands(&self, shading_commands: &mut Vec<Pipe<'a, ShadingCommand<'a>>>);
 }
 
 /// Compositing node.
