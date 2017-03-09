@@ -238,20 +238,20 @@ impl Overlay {
   }
 
   /// Obtain a `RenderLayer`.
-  pub fn render_layer<'a, 'b>(&'a self, input: RenderInput<'a, 'b>) -> RenderLayer<'a> {
+  pub fn render_layer<'a, 'b, 'c>(&'a self, input: RenderInput<'b>) -> RenderLayer<'c> where 'a: 'b, 'b: 'c {
     RenderLayer::new(move |framebuffer| self.render(framebuffer, &input))
   }
 }
 
 #[derive(Clone)]
-pub struct RenderInput<'a, 'b> where 'b: 'a {
+pub struct RenderInput<'a> {
   triangles: &'a [Triangle],
   quads: &'a [Quad],
   discs: &'a [Disc],
-  texts: Option<(&'a [Text<'b>], f32)>
+  texts: Option<(&'a [Text<'a>], f32)>
 }
 
-impl<'a, 'b> RenderInput<'a, 'b> where 'b: 'a {
+impl<'a> RenderInput<'a> {
   pub fn new() -> Self {
     RenderInput {
       triangles: &[],
@@ -282,7 +282,7 @@ impl<'a, 'b> RenderInput<'a, 'b> where 'b: 'a {
     }
   }
 
-  pub fn texts(self, texts: &'a [Text<'b>], scale: f32) -> Self {
+  pub fn texts(self, texts: &'a [Text<'a>], scale: f32) -> Self {
     RenderInput {
       texts: Some((texts, scale.max(0.))),
       ..self
