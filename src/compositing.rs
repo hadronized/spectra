@@ -5,6 +5,7 @@ use std::ops::{Add, Sub, Mul};
 
 pub use luminance::{Equation, Factor};
 
+use color::ColorAlpha;
 use resource::Res;
 use scene::Scene;
 use shader::Program;
@@ -38,6 +39,8 @@ pub enum Node<'a> {
   ///
   /// Contains a single texture.
   Texture(TextureLayer<'a>),
+  /// A single color.
+  Color(ColorAlpha),
   /// Composite node.
   ///
   /// Composite nodes are used to blend two compositing nodes according to a given `Equation` and
@@ -173,6 +176,7 @@ impl Compositor {
     match node {
       Node::Render(layer) => self.render(layer),
       Node::Texture(texture) => self.texturize(texture),
+      Node::Color(color) => self.colorize(color),
       Node::Composite(left, right, eq, src_fct, dst_fct) => self.composite(*left, *right, eq, src_fct, dst_fct),
     }
   }
@@ -200,6 +204,17 @@ impl Compositor {
     let texture_set = &[&**texture];
 
     Pipeline::new(fb, black, texture_set, &[], shd_cmd).run();
+
+    fb_index
+  }
+
+  fn colorize(&mut self, color: ColorAlpha) -> usize {
+    let fb_index = self.pull_framebuffer();
+    let fb = &self.framebuffers[fb_index];
+
+    let color = *color.as_ref();
+
+    Pipeline::new(fb, color, &[], &[], &[]).run();
 
     fb_index
   }
