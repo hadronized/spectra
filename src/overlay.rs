@@ -1,7 +1,7 @@
 use luminance::{Dim2, Equation, Factor, Framebuffer, Flat, Mode, Pipe, Pipeline, RenderCommand, ShadingCommand, Tess, TessRender, TessVertices, Uniform, Unit, Vertex, VertexFormat};
 use std::cell::RefCell;
 
-use compositing::{self, ColorMap, DepthMap};
+use compositing::{self, ColorMap, DepthMap, RenderLayer};
 use resource::Res;
 use scene::Scene;
 use shader::Program;
@@ -181,10 +181,9 @@ impl Overlay {
     (tri_i, disc_i)
   }
 
-  /// Render the overlay.
-  pub fn render(&self, framebuffer: &Framebuffer<Flat, Dim2, ColorMap, DepthMap>, input: RenderInput) {
-    let (tri_vert_nb, disc_vert_nb) = self.dispatch(&input);
-    
+  fn render(&self, framebuffer: &Framebuffer<Flat, Dim2, ColorMap, DepthMap>, input: &RenderInput) {
+    let (tri_vert_nb, disc_vert_nb) = self.dispatch(input);
+ 
     let tris_ref = self.tris.borrow();
     let tris = TessRender::one_sub(&tris_ref, tri_vert_nb);
 
@@ -236,6 +235,11 @@ impl Overlay {
       Pipe::empty().uniforms(&disc_uniforms).unwrap(ShadingCommand::new(&disc_program, discs_render_cmds)),
       Pipe::new(ShadingCommand::new(&text_program, &text_render_cmds))
     ]).run();
+  }
+
+  /// Obtain a `RenderLayer`.
+  pub fn render_layer<'a, 'b>(&'a self, input: RenderInput<'a, 'b>) -> RenderLayer<'a> {
+    RenderLayer::new(move |framebuffer| self.render(framebuffer, &input))
   }
 }
 
