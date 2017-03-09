@@ -1,11 +1,11 @@
-use luminance::{Pipe, ShadingCommand};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
 use bootstrap::{Action, EventHandler, EventSig, MouseButton};
 use color::ColorAlpha;
-use overlay::{Disc, Quad, Renderer, RenderInput, Text, Triangle, Vert};
+use compositing::RenderLayer;
+use overlay::{Disc, Overlay, Quad, RenderInput, Text, Triangle, Vert};
 use scene::Scene;
 
 type Time = f32;
@@ -20,8 +20,12 @@ pub struct Viewport {
 
 pub struct GUI<'a> {
   // common
-  renderer: Renderer,
+  overlay: Overlay,
   h: f32,
+  tris: Vec<Triangle>,
+  quads: Vec<Quad>,
+  discs: Vec<Disc>,
+  texts: Vec<Text<'a>>,
 
   widgets: HashMap<String, Box<Widget<'a> + 'a>>,
 
@@ -35,8 +39,12 @@ pub struct GUI<'a> {
 impl<'a> GUI<'a> {
   pub fn new(viewport: Viewport, scene: &mut Scene) -> Self {
     GUI {
-      renderer: Renderer::new(viewport.w.ceil() as u32, viewport.h.ceil() as u32, 1024, 1024, 1024, scene),
+      overlay: Overlay::new(viewport.w.ceil() as u32, viewport.h.ceil() as u32, 1024, 1024, 1024, scene),
       h: viewport.h,
+      tris: Vec::new(),
+      quads: Vec::new(),
+      discs: Vec::new(),
+      texts: Vec::new(),
       widgets: HashMap::new(),
       last_cursor: None,
       last_mouse_left_down: None,
@@ -53,30 +61,30 @@ impl<'a> GUI<'a> {
     self.widgets.remove(id);
   }
 
-  pub fn render<F, R>(&self, f: F) -> R where F: for<'b> FnOnce([Pipe<'b, ShadingCommand<'b>>; 3]) -> R {
-    let mut tris = Vec::new();
-    let mut quads = Vec::new();
-    let mut discs = Vec::new();
-    let mut texts = Vec::new();
+  pub fn render_layer(&mut self) -> RenderLayer {
+    self.tris.clear();
+    self.quads.clear();
+    self.discs.clear();
+    self.texts.clear();
 
     for widget in self.widgets.values() {
       for prim in widget.widget_prims() {
         match prim {
-          WidgetPrim::Triangle(ref tri) => tris.push(*tri),
-          WidgetPrim::Quad(ref quad) => quads.push(*quad),
-          WidgetPrim::Disc(ref disc) => discs.push(*disc),
-          WidgetPrim::Text(ref text) => texts.push(*text)
+          WidgetPrim::Triangle(ref tri) => self.tris.push(*tri),
+          WidgetPrim::Quad(ref quad) => self.quads.push(*quad),
+          WidgetPrim::Disc(ref disc) => self.discs.push(*disc),
+          WidgetPrim::Text(ref text) => self.texts.push(*text)
         }
       }
     }
 
     let render_input = RenderInput::new()
-      .triangles(&tris)
-      .quads(&quads)
-      .discs(&discs)
-      .texts(&texts, 1.);
+      .triangles(&self.tris)
+      .quads(&self.quads)
+      .discs(&self.discs)
+      .texts(&self.texts, 1.);
 
-    self.renderer.render(render_input, f)
+    self.overlay.render_layer(render_input)
   }
 }
 
