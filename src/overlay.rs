@@ -53,8 +53,8 @@ pub struct Quad(pub Vert, pub Vert, pub Vert, pub Vert);
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Disc {
-  center: Vert,
-  radius: f32
+  pub center: Vert,
+  pub radius: f32
 }
 
 impl Disc {
