@@ -168,7 +168,6 @@ impl Compositor {
     }
 
     self.dispose_framebuffer(fb_index);
-    assert!(self.free_framebuffers.is_empty());
   }
 
   /// Treat a node hierarchy and return the index  of the framebuffer that contains the result.
