@@ -1,4 +1,3 @@
-use luminance::{Dim2, Flat, RGBA32F, Texture};
 use serde_json::from_reader;
 use std::collections::HashMap;
 use std::fs::File;
