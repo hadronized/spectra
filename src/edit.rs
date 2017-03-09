@@ -9,7 +9,7 @@ use resource::{Load, LoadError, Result, ResCache};
 /// Time.
 pub type Time = f64;
 
-pub struct Clip<'a, 'b> {
+pub struct Clip<'a, 'b> where 'a: 'b {
   gen_render_layer: Box<Fn(Time) -> RenderLayer<'a> + 'b>
 }
 
