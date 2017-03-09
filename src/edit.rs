@@ -4,20 +4,20 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 
+use compositing::RenderLayer;
 use resource::{Load, LoadError, Result, ResCache};
 
 /// Time.
 pub type Time = f64;
 
-/// A clip is an object that implements a visual sequence.
-pub struct Clip<'a, 'b> where 'a: 'b {
-  act: Box<Fn(Time) -> &'a Texture<Flat, Dim2, RGBA32F> + 'b>
+pub struct Clip<'a, 'b> {
+  gen_render_layer: Box<Fn(Time) -> RenderLayer<'a> + 'b>
 }
 
 impl<'a, 'b> Clip<'a, 'b> {
-  pub fn new<F>(act: F) -> Self where F: 'b + Fn(Time) -> &'a Texture<Flat, Dim2, RGBA32F> {
+  pub fn new<F>(f: F) -> Self where F: 'b + Fn(Time) -> RenderLayer<'a> {
     Clip {
-      act: Box::new(act)
+      gen_render_layer: Box::new(f)
     }
   }
 }
@@ -120,11 +120,11 @@ impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
   }
 
   // TODO: currently, we play the first track we find; add transition support
-  pub fn play(&self, t: Time) -> Option<&'a Texture<Flat, Dim2, RGBA32F>> {
+  pub fn play(&self, t: Time) -> Option<RenderLayer<'a>> {
     for track in &self.tracks {
       for cut in &track.cuts {
         if cut.inst_time <= t && t <= cut.inst_time + cut.dur() {
-          return Some((cut.clip.act)(t));
+          return Some((cut.clip.gen_render_layer)(t));
         }
       }
     }
