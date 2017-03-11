@@ -181,7 +181,7 @@ impl Overlay {
     (tri_i, disc_i)
   }
 
-  fn render(&self, framebuffer: &Framebuffer<Flat, Dim2, ColorMap, DepthMap>, input: &RenderInput) {
+  pub fn render(&self, framebuffer: &Framebuffer<Flat, Dim2, ColorMap, DepthMap>, input: &RenderInput) {
     let (tri_vert_nb, disc_vert_nb) = self.dispatch(input);
  
     let tris_ref = self.tris.borrow();
@@ -235,11 +235,6 @@ impl Overlay {
       Pipe::empty().uniforms(&disc_uniforms).unwrap(ShadingCommand::new(&disc_program, discs_render_cmds)),
       Pipe::new(ShadingCommand::new(&text_program, &text_render_cmds))
     ]).run();
-  }
-
-  /// Obtain a `RenderLayer`.
-  pub fn render_layer<'a, 'b, 'c>(&'a self, input: RenderInput<'b>) -> RenderLayer<'c> where 'a: 'b, 'b: 'c {
-    RenderLayer::new(move |framebuffer| self.render(framebuffer, &input))
   }
 }
 

@@ -84,7 +84,8 @@ impl<'a> GUI<'a> {
       .discs(&self.discs)
       .texts(&self.texts, 1.);
 
-    self.overlay.render_layer(render_input)
+    let overlay = &self.overlay;
+    RenderLayer::new(move |framebuffer| overlay.render(framebuffer, &render_input))
   }
 }
 
