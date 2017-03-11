@@ -1,7 +1,7 @@
 use luminance::{Dim2, Equation, Factor, Framebuffer, Flat, Mode, Pipe, Pipeline, RenderCommand, ShadingCommand, Tess, TessRender, TessVertices, Uniform, Unit, Vertex, VertexFormat};
 use std::cell::RefCell;
 
-use compositing::{ColorMap, DepthMap, RenderLayer};
+use compositing::{ColorMap, DepthMap};
 use resource::Res;
 use scene::Scene;
 use shader::Program;
