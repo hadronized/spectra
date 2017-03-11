@@ -53,8 +53,8 @@ impl<'a> GUI<'a> {
     }
   }
 
-  pub fn add_widget<W>(&mut self, id: &str, widget: &W) where W: 'a + Clone + Widget<'a> {
-    self.widgets.insert(id.to_owned(), Box::new(widget.clone()));
+  pub fn add_widget<W>(&mut self, id: &str, widget: W) where W: 'a + Widget<'a> {
+    self.widgets.insert(id.to_owned(), Box::new(widget));
   }
 
   pub fn remove_widget(&mut self, id: &str) {
