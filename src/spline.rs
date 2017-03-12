@@ -5,7 +5,7 @@ use std::fs::File;
 use std::ops::{Add, Div, Mul, Sub};
 use std::path::Path;
 
-use linear::{UnitQuaternion, Vector2, Vector3, Vector4};
+use linear::{BaseFloat, Unit, UnitQuaternion, Vector2, Vector3, Vector4};
 use resource::{Load, LoadError, ResCache};
 
 /// Time used as sampling type in splines.
@@ -163,7 +163,7 @@ impl<T> Spline<T> {
   }
 }
 
-impl<T> Load for Spline<T> where T: Deserialize {
+impl<T> Load for Spline<T> where T: SplineDeserializerAdapter {
   type Args = ();
 
   const TY_STR: &'static str = "splines";
@@ -174,9 +174,59 @@ impl<T> Load for Spline<T> where T: Deserialize {
     info!("loading spline: {:?}", path);
 
     let file = File::open(path).map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e)))?;
-    let keys = from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?;
+    let keys: Vec<Key<T::Deserialized>> = from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?;
 
-    Ok(Spline::from_keys(keys))
+    Ok(Spline::from_keys(keys.into_iter().map(|key|
+      Key::new(key.t, T::from_deserialized(key.value), key.interpolation)
+    ).collect()))
+  }
+}
+
+/// Spline deserializer adapter used to deserialize splines which keys’ values types don’t directly
+/// implement deserialization.
+pub trait SplineDeserializerAdapter {
+  type Deserialized: Deserialize;
+
+  fn from_deserialized(de: Self::Deserialized) -> Self;
+}
+
+impl SplineDeserializerAdapter for f32 {
+  type Deserialized = Self;
+
+  fn from_deserialized(de: Self::Deserialized) -> Self {
+    de
+  }
+}
+
+impl<T> SplineDeserializerAdapter for Vector2<T> where T: Clone + Deserialize {
+  type Deserialized = [T; 2];
+
+  fn from_deserialized(de: Self::Deserialized) -> Self {
+    (&de).into()
+  }
+}
+
+impl<T> SplineDeserializerAdapter for Vector3<T> where T: Clone + Deserialize {
+  type Deserialized = [T; 3];
+
+  fn from_deserialized(de: Self::Deserialized) -> Self {
+    (&de).into()
+  }
+}
+
+impl<T> SplineDeserializerAdapter for Vector4<T> where T: Clone + Deserialize {
+  type Deserialized = [T; 4];
+
+  fn from_deserialized(de: Self::Deserialized) -> Self {
+    (&de).into()
+  }
+}
+
+impl<T> SplineDeserializerAdapter for UnitQuaternion<T> where T: BaseFloat + Deserialize {
+  type Deserialized = [T; 4];
+
+  fn from_deserialized(de: Self::Deserialized) -> Self {
+    Unit::new((&de).into())
   }
 }
 
