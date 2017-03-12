@@ -4,8 +4,9 @@ use std::fs::File;
 
 use linear::{Matrix4, Quaternion, ToHomogeneous, Unit};
 use model::Model;
+use scale::Scale;
 use resource::{Load, LoadError, Res, ResCache};
-use transform::{Orientation, Position, Scale, Transformable, translation_matrix};
+use transform::{Orientation, Position, Transformable, translation_matrix};
 
 #[derive(Clone, Debug)]
 pub struct Object {

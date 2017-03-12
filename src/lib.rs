@@ -66,9 +66,8 @@ extern crate wavefront_obj;
 #[macro_use]
 pub mod report;
 
-#[macro_use]
 pub mod resource;
-#[macro_use]
+pub mod scale;
 pub mod scene;
 
 pub mod audio;
@@ -104,4 +103,4 @@ pub use scene::Scene;
 pub use spline::{Interpolate, Interpolation, Key, Spline, SplineIterator, Time};
 pub use texture::{Texture, TextureImage, load_rgba_texture, save_rgba_texture};
 pub use transform::{Axis, Orientation, Position, Translation, Transformable, X_AXIS, Y_AXIS, Z_AXIS,
-                   Scale, translation_matrix};
+                    translation_matrix};
