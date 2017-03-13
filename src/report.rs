@@ -1,16 +1,17 @@
 #[macro_export]
 macro_rules! now {
   () => {{
-    let t = ::time::now();
+    use chrono::{Datelike, Local, Timelike};
+    let t = Local::now();
     
     format!("{month:0>2}/{day:0>2}/{year} {hour:0>2}:{min:0>2}:{secs:0>2}:{nsecs:0>9}",
-            month = t.tm_mon + 1,
-            day = t.tm_mday,
-            year = t.tm_year - 100,
-            hour = t.tm_hour,
-            min = t.tm_min,
-            secs = t.tm_sec,
-            nsecs = t.tm_nsec)
+            month = t.month(),
+            day = t.day(),
+            year = t.year(),
+            hour = t.hour(),
+            min = t.minute(),
+            secs = t.second(),
+            nsecs = t.nanosecond())
   }}
 }
 

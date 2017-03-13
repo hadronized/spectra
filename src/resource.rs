@@ -11,7 +11,7 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
 use std::thread;
-use time::precise_time_s;
+use std::time::{Duration, Instant};
 
 /// Class of types that can be loaded.
 pub trait Load: Sized {
@@ -65,10 +65,8 @@ impl<T> Deref for Res<T> {
   }
 }
 
-type Timestamp = f64;
-
 /// Time to await after a resource update to establish that it should be reloaded.
-const UPDATE_AWAIT_TIME: Timestamp = 1.; // 1s
+const UPDATE_AWAIT_TIME_MS: u64 = 1000;
 
 /// Resource cache. Responsible for caching resource.
 pub struct ResCache {
@@ -77,20 +75,20 @@ pub struct ResCache {
   // contains all metadata on resources
   metadata: HashMap<PathBuf, ResMetaData>,
   // vector of pair (path, timestamp) giving indication on resources to reload
-  dirty: Arc<Mutex<Vec<(PathBuf, Timestamp)>>>,
+  dirty: Arc<Mutex<Vec<(PathBuf, Instant)>>>,
   #[allow(dead_code)]
   watcher_thread: thread::JoinHandle<()>
 }
 
 struct ResMetaData {
   on_reload: Box<Fn(&mut ResCache)>,
-  last_update_timestamp: Timestamp // timestamp of the last update
+  last_update_instant: Instant
 }
 
 impl ResCache {
   /// Create a new cache.
   pub fn new<P>(root: P) -> Self where P: AsRef<Path> {
-    let dirty: Arc<Mutex<Vec<(PathBuf, Timestamp)>>> = Arc::new(Mutex::new(Vec::new()));
+    let dirty: Arc<Mutex<Vec<(PathBuf, Instant)>>> = Arc::new(Mutex::new(Vec::new()));
     let dirty_ = dirty.clone();
 
     let root = root.as_ref().to_owned();
@@ -102,7 +100,7 @@ impl ResCache {
 
       for event in wrx.iter() {
         if let notify::Event { path: Some(path), op: Ok(notify::op::WRITE) } = event {
-          dirty_.lock().unwrap().push((path.clone(), precise_time_s()));
+          dirty_.lock().unwrap().push((path.clone(), Instant::now()));
         }
       }
     });
@@ -153,7 +151,7 @@ impl ResCache {
 
               let metadata = ResMetaData {
                 on_reload: on_reload,
-                last_update_timestamp: precise_time_s()
+                last_update_instant: Instant::now()
               };
 
               // cache the resource and its meta data
@@ -180,14 +178,14 @@ impl ResCache {
     let dirty = self.dirty.clone();
     let mut dirty_ = dirty.lock().unwrap();
 
-    for &(ref path, ref timestamp) in dirty_.iter() {
+    for &(ref path, ref instant) in dirty_.iter() {
       let mut metadata = self.metadata.remove(path).unwrap();
 
-      if timestamp - metadata.last_update_timestamp >= UPDATE_AWAIT_TIME {
+      if instant.duration_since(metadata.last_update_instant) >= Duration::from_millis(UPDATE_AWAIT_TIME_MS) {
         (metadata.on_reload)(self);
       }
 
-      metadata.last_update_timestamp = *timestamp;
+      metadata.last_update_instant = *instant;
       self.metadata.insert(path.clone(), metadata);
     }
 

@@ -45,6 +45,7 @@
 
 extern crate alto;
 extern crate any_cache;
+extern crate chrono;
 extern crate gl;
 pub extern crate glfw;
 extern crate image;
@@ -57,7 +58,6 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-extern crate time;
 extern crate vorbis;
 extern crate wavefront_obj;
 
