@@ -47,7 +47,7 @@ extern crate alto;
 extern crate any_cache;
 extern crate chrono;
 extern crate gl;
-pub extern crate glfw;
+extern crate glfw;
 extern crate image;
 pub extern crate luminance;
 extern crate nalgebra;
@@ -64,9 +64,6 @@ extern crate wavefront_obj;
 #[macro_use]
 pub mod report;
 
-pub mod resource;
-pub mod scale;
-pub mod scene;
 
 pub mod audio;
 pub mod bootstrap;
@@ -81,6 +78,9 @@ pub mod model;
 pub mod object;
 pub mod overlay;
 pub mod projection;
+pub mod resource;
+pub mod scale;
+pub mod scene;
 pub mod shader;
 pub mod spline;
 pub mod text;
