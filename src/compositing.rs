@@ -1,7 +1,7 @@
 use luminance::{Depth32F, Dim2, Flat, Framebuffer, Mode, RGBA32F, Tess, Texture, Uniform, Unit};
 use luminance::pipeline::{Pipe, Pipeline, RenderCommand, ShadingCommand};
 use luminance::tess::TessRender;
-use std::ops::{Add, Sub, Mul};
+use std::ops::{Add, BitAnd, Mul, Sub};
 
 pub use luminance::{Equation, Factor};
 
@@ -97,6 +97,14 @@ impl<'a> Mul for Node<'a> {
 
   fn mul(self, rhs: Self) -> Self {
     self.compose_with(rhs, ColorAlpha::new(1., 1., 1., 1.), Equation::Additive, Factor::Zero, Factor::SrcColor)
+  }
+}
+
+impl<'a> BitAnd for Node<'a> {
+  type Output = Self;
+
+  fn bitand(self, rhs: Self) -> Self::Output {
+    self.compose_with(rhs, ColorAlpha::new(0., 0., 0., 0.), Equation::Additive, Factor::SrcAlpha, Factor::SrcAlphaComplement)
   }
 }
 
