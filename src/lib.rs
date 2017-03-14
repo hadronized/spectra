@@ -64,7 +64,6 @@ extern crate wavefront_obj;
 #[macro_use]
 pub mod report;
 
-
 pub mod audio;
 pub mod bootstrap;
 pub mod camera;
