@@ -18,7 +18,7 @@ doc = false
 
 [dependencies]
 alto = "1.0"
-any-cache = { git = "https://github.com/phaazon/any-cache.git" }
+any-cache = "0.1"
 chrono = "0.3"
 clap = "2.19"
 luminance = "0.18"
