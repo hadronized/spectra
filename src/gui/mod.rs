@@ -6,7 +6,7 @@ use bootstrap::{Action, EventHandler, EventSig, MouseButton};
 use color::ColorAlpha;
 use compositing::RenderLayer;
 use overlay::{Disc, Overlay, Quad, RenderInput, Text, Triangle, Vert};
-use scene::Scene;
+use resource::ResCache;
 
 type Time = f32;
 
@@ -37,9 +37,9 @@ pub struct GUI<'a> {
 }
 
 impl<'a> GUI<'a> {
-  pub fn new(viewport: Viewport, scene: &mut Scene) -> Self {
+  pub fn new(viewport: Viewport, cache: &mut ResCache) -> Self {
     GUI {
-      overlay: Overlay::new(viewport.w.ceil() as u32, viewport.h.ceil() as u32, 1024, 1024, 1024, scene),
+      overlay: Overlay::new(viewport.w.ceil() as u32, viewport.h.ceil() as u32, 1024, 1024, 1024, cache),
       h: viewport.h,
       tris: Vec::new(),
       quads: Vec::new(),

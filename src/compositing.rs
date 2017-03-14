@@ -6,8 +6,7 @@ use std::ops::{Add, Sub, Mul};
 pub use luminance::{Equation, Factor};
 
 use color::ColorAlpha;
-use resource::Res;
-use scene::Scene;
+use resource::{Res, ResCache};
 use shader::Program;
 
 /// Simple texture that can be embedded into a compositing graph.
@@ -114,13 +113,13 @@ pub struct Compositor {
 const FORWARD_SOURCE: &'static Uniform<Unit> = &Uniform::new(0);
 
 impl Compositor {
-  pub fn new(w: u32, h: u32, scene: &mut Scene) -> Self {
+  pub fn new(w: u32, h: u32, cache: &mut ResCache) -> Self {
     Compositor {
       w: w,
       h: h,
       framebuffers: Vec::new(),
       free_framebuffers: Vec::new(),
-      program: scene.get("spectra/compositing/forward.glsl", vec![FORWARD_SOURCE.sem("source")]).unwrap(),
+      program: cache.get("spectra/compositing/forward.glsl", vec![FORWARD_SOURCE.sem("source")]).unwrap(),
       quad: Tess::attributeless(Mode::TriangleStrip, 4)
     }
   }

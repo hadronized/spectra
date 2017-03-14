@@ -2,8 +2,7 @@ use luminance::{Dim2, Equation, Factor, Framebuffer, Flat, Mode, Pipe, Pipeline,
 use std::cell::RefCell;
 
 use compositing::{ColorMap, DepthMap};
-use resource::Res;
-use scene::Scene;
+use resource::{Res, ResCache};
 use shader::Program;
 use text::TextTexture;
 use texture::{RGBA32F, Texture};
@@ -116,14 +115,14 @@ pub struct Overlay {
 }
 
 impl Overlay {
-  pub fn new(w: u32, h: u32, max_tris: usize, max_quads: usize, max_discs: usize, scene: &mut Scene) -> Self {
-    let tri_program = scene.get("spectra/overlay/triangle.glsl", vec![]).unwrap();
+  pub fn new(w: u32, h: u32, max_tris: usize, max_quads: usize, max_discs: usize, cache: &mut ResCache) -> Self {
+    let tri_program = cache.get("spectra/overlay/triangle.glsl", vec![]).unwrap();
     let tris = Tess::new(Mode::Triangle, TessVertices::Reserve::<Vert>(max_tris * 3 + max_quads * 4), None);
 
-    let disc_program = scene.get("spectra/overlay/disc.glsl", vec![DISC_SCREEN_RATIO.sem("ratio")]).unwrap();
+    let disc_program = cache.get("spectra/overlay/disc.glsl", vec![DISC_SCREEN_RATIO.sem("ratio")]).unwrap();
     let discs = Tess::new(Mode::Point, TessVertices::Reserve::<Disc>(max_discs), None);
 
-    let text_program = scene.get("spectra/overlay/text.glsl", vec![
+    let text_program = cache.get("spectra/overlay/text.glsl", vec![
       TEXT_SAMPLER.sem("text_texture"),
       TEXT_POS.sem("pos"),
       TEXT_SIZE.sem("size"),
