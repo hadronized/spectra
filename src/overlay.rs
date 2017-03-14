@@ -229,7 +229,7 @@ impl Overlay {
     let discs = &[Pipe::new(discs)];
     let discs_render_cmds = &[Pipe::new(RenderCommand::new(None, true, discs))];
 
-    Pipeline::new(framebuffer, [0., 0., 0., 1.], &[], &[], &[
+    Pipeline::new(framebuffer, [0., 0., 0., 0.], &[], &[], &[
       Pipe::new(ShadingCommand::new(&tri_program, tris_render_cmds)),
       Pipe::empty().uniforms(&disc_uniforms).unwrap(ShadingCommand::new(&disc_program, discs_render_cmds)),
       Pipe::new(ShadingCommand::new(&text_program, &text_render_cmds))
