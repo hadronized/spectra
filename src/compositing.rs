@@ -70,6 +70,12 @@ impl<'a> From<TextureLayer<'a>> for Node<'a> {
   }
 }
 
+impl<'a> From<ColorAlpha> for Node<'a> {
+  fn from(color: ColorAlpha) -> Self {
+    Node::Color(color)
+  }
+}
+
 impl<'a> Add for Node<'a> {
   type Output = Self;
 
