@@ -1,3 +1,6 @@
+// A very simple shader that will just stream vertices as defined in their buffers and apply a
+// constant color to all of them.
+
 #vs
 layout (location = 0) in vec2 co;
 

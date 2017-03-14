@@ -1,3 +1,5 @@
+// This shader is used to debug triangles by showing them as wireframe mode.
+
 #vs
 
 layout (location = 0) in vec3 co;
