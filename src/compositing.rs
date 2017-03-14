@@ -246,7 +246,7 @@ impl Compositor {
         Pipe::empty().uniforms(&uniforms_left).unwrap(tess_render.clone()),
         Pipe::empty().uniforms(&uniforms_right).unwrap(tess_render)
       ];
-      let render_cmd = &[Pipe::new(RenderCommand::new(Some((eq, src_fct, dst_fct)), false, tess))];
+      let render_cmd = &[Pipe::new(RenderCommand::new((eq, src_fct, dst_fct), false, tess))];
       let shd_cmd = &[Pipe::new(ShadingCommand::new(&program, render_cmd))];
       let texture_set = &[
         &*left_fb.color_slot,
