@@ -85,18 +85,3 @@ pub mod spline;
 pub mod text;
 pub mod texture;
 pub mod transform;
-
-pub use audio::Audio;
-pub use bootstrap::{Device, WindowDim};
-pub use camera::{Camera, Freefly};
-pub use color::{Color, ColorAlpha};
-pub use linear::{Matrix4};
-pub use model::{Model, ModelError, Part};
-pub use object::Object;
-pub use projection::{Projectable, perspective};
-pub use resource::{Load, LoadError, Reload};
-pub use shader::{Program, ShaderError, new_program};
-pub use spline::{Interpolate, Interpolation, Key, Spline, SplineIterator, Time};
-pub use texture::{Texture, TextureImage, load_rgba_texture, save_rgba_texture};
-pub use transform::{Axis, Orientation, Position, Translation, Transformable, X_AXIS, Y_AXIS, Z_AXIS,
-                    translation_matrix};
