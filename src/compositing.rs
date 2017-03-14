@@ -48,13 +48,13 @@ pub enum Node<'a> {
   ///
   /// Composite nodes are used to blend two compositing nodes according to a given `Equation` and
   /// two blending `Factor`s for source and destination, respectively.
-  Composite(Box<Node<'a>>, Box<Node<'a>>, Equation, Factor, Factor)
+  Composite(Box<Node<'a>>, Box<Node<'a>>, ColorAlpha, Equation, Factor, Factor)
 }
 
 impl<'a> Node<'a> {
   /// Compose this node with another one.
-  pub fn compose_with(self, other: Self, eq: Equation, src_fct: Factor, dst_fct: Factor) -> Self {
-    Node::Composite(Box::new(self), Box::new(other), eq, src_fct, dst_fct)
+  pub fn compose_with(self, other: Self, clear_color: ColorAlpha, eq: Equation, src_fct: Factor, dst_fct: Factor) -> Self {
+    Node::Composite(Box::new(self), Box::new(other), clear_color, eq, src_fct, dst_fct)
   }
 }
 
@@ -74,7 +74,7 @@ impl<'a> Add for Node<'a> {
   type Output = Self;
 
   fn add(self, rhs: Self) -> Self {
-    self.compose_with(rhs, Equation::Additive, Factor::One, Factor::One)
+    self.compose_with(rhs, ColorAlpha::new(0., 0., 0., 0.), Equation::Additive, Factor::One, Factor::One)
   }
 }
 
@@ -82,7 +82,7 @@ impl<'a> Sub for Node<'a> {
   type Output = Self;
 
   fn sub(self, rhs: Self) -> Self {
-    self.compose_with(rhs, Equation::Subtract, Factor::One, Factor::One)
+    self.compose_with(rhs, ColorAlpha::new(0., 0., 0., 0.), Equation::Subtract, Factor::One, Factor::One)
   }
 }
 
@@ -90,7 +90,7 @@ impl<'a> Mul for Node<'a> {
   type Output = Self;
 
   fn mul(self, rhs: Self) -> Self {
-    self.compose_with(rhs, Equation::Additive, Factor::Zero, Factor::SrcColor)
+    self.compose_with(rhs, ColorAlpha::new(1., 1., 1., 1.), Equation::Additive, Factor::Zero, Factor::SrcColor)
   }
 }
 
@@ -179,7 +179,7 @@ impl Compositor {
       Node::Render(layer) => self.render(layer),
       Node::Texture(texture) => self.texturize(texture),
       Node::Color(color) => self.colorize(color),
-      Node::Composite(left, right, eq, src_fct, dst_fct) => self.composite(*left, *right, eq, src_fct, dst_fct),
+      Node::Composite(left, right, clear_color, eq, src_fct, dst_fct) => self.composite(*left, *right, clear_color, eq, src_fct, dst_fct),
     }
   }
 
@@ -221,7 +221,7 @@ impl Compositor {
     fb_index
   }
 
-  fn composite(&mut self, left: Node, right: Node, eq: Equation, src_fct: Factor, dst_fct: Factor) -> usize {
+  fn composite(&mut self, left: Node, right: Node, clear_color: ColorAlpha, eq: Equation, src_fct: Factor, dst_fct: Factor) -> usize {
     let left_index = self.treat_node(left);
     let right_index = self.treat_node(right);
 
@@ -237,7 +237,6 @@ impl Compositor {
       let right_fb = &self.framebuffers[right_index];
 
       // compose
-      let black = [0., 0., 0., 1.];
       let program = self.program.borrow();
       let uniforms_left = [FORWARD_SOURCE.alter(Unit::new(0))];
       let uniforms_right = [FORWARD_SOURCE.alter(Unit::new(1))];
@@ -253,7 +252,7 @@ impl Compositor {
         &*right_fb.color_slot
       ];
 
-      Pipeline::new(fb, black, texture_set, &[], shd_cmd).run();
+      Pipeline::new(fb, *clear_color.as_ref(), texture_set, &[], shd_cmd).run();
     }
 
     // dispose both left and right framebuffers
