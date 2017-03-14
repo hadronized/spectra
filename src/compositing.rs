@@ -40,6 +40,10 @@ pub enum Node<'a> {
   /// Contains a single texture.
   Texture(TextureLayer<'a>),
   /// A single color.
+  ///
+  /// Keep in mind that such a node is great when you want to display a fullscreen colored quad but
+  /// you shouldn’t use it for blending purpose. Adding color masking to your post-process is a
+  /// better alternative and will avoid fillrate alteration.
   Color(ColorAlpha),
   /// Composite node.
   ///
