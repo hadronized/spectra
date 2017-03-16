@@ -6,6 +6,9 @@ use std::path::Path;
 use resource::{Load, LoadError, Reload, ResCache, Result};
 
 /// Load an RGBA texture from an image at a path.
+///
+/// The `linearizer` argument is an option that gives the factor to apply to linearize if needed. Pass
+/// `None` if the texture is already linearized.
 pub fn load_rgba_texture<P, L>(path: P, sampler: &Sampler, linearizer: L) -> Result<Texture<Flat, Dim2, RGBA32F>> where P: AsRef<Path>, L: Into<Option<f32>> {
   info!("loading texture image: \x1b[35m{:?}", path.as_ref());
 
