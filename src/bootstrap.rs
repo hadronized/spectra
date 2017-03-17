@@ -9,7 +9,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use camera::{Camera, Freefly};
-use transform::Translation;
+use linear::Translation;
 
 type Time = f64;
 

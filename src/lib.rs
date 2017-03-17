@@ -78,7 +78,6 @@ pub mod object;
 pub mod overlay;
 pub mod projection;
 pub mod resource;
-pub mod scale;
 pub mod shader;
 pub mod spline;
 pub mod text;

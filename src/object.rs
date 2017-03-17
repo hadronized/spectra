@@ -2,11 +2,10 @@ use serde_json::from_reader;
 use std::path::Path;
 use std::fs::File;
 
-use linear::{Matrix4, Quaternion, ToHomogeneous, Unit};
+use linear::{Matrix4, Orientation, Position, Quaternion, Scale, ToHomogeneous, Unit, translation_matrix};
 use model::Model;
-use scale::Scale;
 use resource::{Load, LoadError, Res, ResCache};
-use transform::{Orientation, Position, Transformable, translation_matrix};
+use transform::Transformable;
 
 #[derive(Clone, Debug)]
 pub struct Object {

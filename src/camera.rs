@@ -5,11 +5,11 @@ use std::f32::consts::FRAC_PI_4;
 use std::fs::File;
 use std::path::Path;
 
-use linear::{Matrix4, Quaternion, Rotate, ToHomogeneous, Unit, UnitQuaternion, Vector3};
+use linear::{Axis, Matrix4, Orientation, Position, Quaternion, Rotate, ToHomogeneous, Translation,
+             Unit, UnitQuaternion, Vector3, X_AXIS, Y_AXIS, Z_AXIS, translation_matrix};
 use projection::{Projectable, perspective};
 use resource::{Load, LoadError, ResCache};
-use transform::{Axis, Orientation, Position, Transformable, Translation, X_AXIS, Y_AXIS, Z_AXIS,
-                translation_matrix};
+use transform::Transformable;
 
 #[derive(Clone, Debug)]
 pub struct Camera<P> {
