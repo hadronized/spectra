@@ -64,7 +64,7 @@ impl<'a> Node<'a> {
   /// If you set the alpha value to `0` at a pixel in the left node, then the resulting pixel will be
   /// the one from the right node.
   pub fn over(self, rhs: Self) -> Self {
-    self.compose_with(rhs, ColorAlpha::new(0., 0., 0., 0.), Equation::Additive, Factor::SrcAlpha, Factor::SrcAlphaComplement)
+    rhs.compose_with(self, ColorAlpha::new(0., 0., 0., 0.), Equation::Additive, Factor::SrcAlpha, Factor::SrcAlphaComplement)
   }
 }
 
