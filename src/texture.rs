@@ -1,21 +1,25 @@
-pub use luminance::{Dim2, Flat, R32F, RGBA32F, Sampler, Texture};
+pub use luminance::{Depth32F, Dim2, Flat, R32F, RGBA32F, Sampler, Texture};
 use image;
 use std::ops::Deref;
 use std::path::Path;
 
 use resource::{Load, LoadError, Reload, ResCache, Result};
 
+// Common texture aliases.
+pub type TextureRGBA32F = Texture<Flat, Dim2, RGBA32F>;
+pub type TextureDepth32F = Texture<Flat, Dim2, Depth32F>;
+
 /// Load an RGBA texture from an image at a path.
 ///
 /// The `linearizer` argument is an option that gives the factor to apply to linearize if needed. Pass
 /// `None` if the texture is already linearized.
-pub fn load_rgba_texture<P, L>(path: P, sampler: &Sampler, linearizer: L) -> Result<Texture<Flat, Dim2, RGBA32F>> where P: AsRef<Path>, L: Into<Option<f32>> {
+pub fn load_rgba_texture<P, L>(path: P, sampler: &Sampler, linearizer: L) -> Result<TextureRGBA32F> where P: AsRef<Path>, L: Into<Option<f32>> {
   info!("loading texture image: \x1b[35m{:?}", path.as_ref());
 
-  let image = image::open(path).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?.to_rgba();
-  let dim = image.dimensions();
+  let img = image::open(path).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?.to_rgba();
+  let dim = img.dimensions();
   let linearizer = linearizer.into();
-  let raw: Vec<f32> = image.into_raw().into_iter().map(|x| {
+  let raw: Vec<f32> = img.into_raw().into_iter().map(|x| {
     let y = x as f32 / 255.;
     linearizer.map_or(y, |factor| y.powf(1. / factor))
   }).collect();
@@ -27,7 +31,7 @@ pub fn load_rgba_texture<P, L>(path: P, sampler: &Sampler, linearizer: L) -> Res
 }
 
 /// Save an RGBA image on disk.
-pub fn save_rgba_texture<P>(texture: &Texture<Flat, Dim2, RGBA32F>, path: P) where P: AsRef<Path> {
+pub fn save_rgba_texture<P>(texture: &TextureRGBA32F, path: P) where P: AsRef<Path> {
   info!("saving texture image to: \x1b[35m{:?}", path.as_ref());
 
   let texels = texture.get_raw_texels();
@@ -42,13 +46,13 @@ pub fn save_rgba_texture<P>(texture: &Texture<Flat, Dim2, RGBA32F>, path: P) whe
 }
 
 pub struct TextureImage {
-  pub texture: Texture<Flat, Dim2, RGBA32F>,
+  pub texture: TextureRGBA32F,
   sampler: Sampler,
   linearizer: Option<f32>,
 }
 
 impl Deref for TextureImage {
-  type Target = Texture<Flat, Dim2, RGBA32F>;
+  type Target = TextureRGBA32F;
 
   fn deref(&self) -> &Self::Target {
     &self.texture
