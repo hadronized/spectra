@@ -1,7 +1,7 @@
 use luminance::{Depth32F, Dim2, Flat, Framebuffer, Mode, RGBA32F, Tess, Texture, Uniform, Unit};
 use luminance::pipeline::{Pipe, Pipeline, RenderCommand, ShadingCommand};
 use luminance::tess::TessRender;
-use std::ops::{Add, BitAnd, Mul, Sub};
+use std::ops::{Add, Mul, Sub};
 
 pub use luminance::{Equation, Factor};
 
@@ -53,8 +53,18 @@ pub enum Node<'a> {
 
 impl<'a> Node<'a> {
   /// Compose this node with another one.
-  pub fn compose_with(self, other: Self, clear_color: ColorAlpha, eq: Equation, src_fct: Factor, dst_fct: Factor) -> Self {
-    Node::Composite(Box::new(self), Box::new(other), clear_color, eq, src_fct, dst_fct)
+  pub fn compose_with(self, rhs: Self, clear_color: ColorAlpha, eq: Equation, src_fct: Factor, dst_fct: Factor) -> Self {
+    Node::Composite(Box::new(self), Box::new(rhs), clear_color, eq, src_fct, dst_fct)
+  }
+
+  /// Compose this node over the other. In effect, the resulting node will replace any pixels covered
+  /// by the right node by the ones of the left node unless the alpha value is different than `1`.
+  /// In that case, an additive blending based on the alpha value of the left node will be performed.
+  ///
+  /// If you set the alpha value to `0` at a pixel in the left node, then the resulting pixel will be
+  /// the one from the right node.
+  pub fn over(self, rhs: Self) -> Self {
+    self.compose_with(rhs, ColorAlpha::new(0., 0., 0., 0.), Equation::Additive, Factor::SrcAlpha, Factor::SrcAlphaComplement)
   }
 }
 
@@ -97,14 +107,6 @@ impl<'a> Mul for Node<'a> {
 
   fn mul(self, rhs: Self) -> Self {
     self.compose_with(rhs, ColorAlpha::new(1., 1., 1., 1.), Equation::Additive, Factor::Zero, Factor::SrcColor)
-  }
-}
-
-impl<'a> BitAnd for Node<'a> {
-  type Output = Self;
-
-  fn bitand(self, rhs: Self) -> Self::Output {
-    self.compose_with(rhs, ColorAlpha::new(0., 0., 0., 0.), Equation::Additive, Factor::SrcAlpha, Factor::SrcAlphaComplement)
   }
 }
 
