@@ -10,7 +10,7 @@ pub struct LightProp {
 
 pub struct Light<L> {
   pub prop: LightProp,
-  pub caracterization: L
+  pub feature: L
 }
 
 pub type Dir = Light<Direction>;
@@ -37,10 +37,10 @@ impl Default for LightProp {
 }
 
 impl<L> Light<L> {
-  pub fn new(prop: LightProp, caracterization: L) -> Self {
+  pub fn new(prop: LightProp, feature: L) -> Self {
     Light {
       prop: prop,
-      caracterization: caracterization
+      feature: feature 
     }
   }
 }
