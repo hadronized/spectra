@@ -5,7 +5,7 @@ use std::ops::{Add, Mul, Sub};
 
 pub use luminance::{Equation, Factor};
 
-use color::ColorAlpha;
+use color::RGBA;
 use resource::{Res, ResCache};
 use shader::Program;
 
@@ -43,17 +43,17 @@ pub enum Node<'a> {
   /// Keep in mind that such a node is great when you want to display a fullscreen colored quad but
   /// you shouldn’t use it for blending purpose. Adding color masking to your post-process is a
   /// better alternative and will avoid fillrate alteration.
-  Color(ColorAlpha),
+  Color(RGBA),
   /// Composite node.
   ///
   /// Composite nodes are used to blend two compositing nodes according to a given `Equation` and
   /// two blending `Factor`s for source and destination, respectively.
-  Composite(Box<Node<'a>>, Box<Node<'a>>, ColorAlpha, Equation, Factor, Factor)
+  Composite(Box<Node<'a>>, Box<Node<'a>>, RGBA, Equation, Factor, Factor)
 }
 
 impl<'a> Node<'a> {
   /// Compose this node with another one.
-  pub fn compose_with(self, rhs: Self, clear_color: ColorAlpha, eq: Equation, src_fct: Factor, dst_fct: Factor) -> Self {
+  pub fn compose_with(self, rhs: Self, clear_color: RGBA, eq: Equation, src_fct: Factor, dst_fct: Factor) -> Self {
     Node::Composite(Box::new(self), Box::new(rhs), clear_color, eq, src_fct, dst_fct)
   }
 
@@ -64,7 +64,7 @@ impl<'a> Node<'a> {
   /// If you set the alpha value to `0` at a pixel in the left node, then the resulting pixel will be
   /// the one from the right node.
   pub fn over(self, rhs: Self) -> Self {
-    rhs.compose_with(self, ColorAlpha::new(0., 0., 0., 0.), Equation::Additive, Factor::SrcAlpha, Factor::SrcAlphaComplement)
+    rhs.compose_with(self, RGBA::new(0., 0., 0., 0.), Equation::Additive, Factor::SrcAlpha, Factor::SrcAlphaComplement)
   }
 }
 
@@ -80,8 +80,8 @@ impl<'a> From<TextureLayer<'a>> for Node<'a> {
   }
 }
 
-impl<'a> From<ColorAlpha> for Node<'a> {
-  fn from(color: ColorAlpha) -> Self {
+impl<'a> From<RGBA> for Node<'a> {
+  fn from(color: RGBA) -> Self {
     Node::Color(color)
   }
 }
@@ -90,7 +90,7 @@ impl<'a> Add for Node<'a> {
   type Output = Self;
 
   fn add(self, rhs: Self) -> Self {
-    self.compose_with(rhs, ColorAlpha::new(0., 0., 0., 0.), Equation::Additive, Factor::One, Factor::One)
+    self.compose_with(rhs, RGBA::new(0., 0., 0., 0.), Equation::Additive, Factor::One, Factor::One)
   }
 }
 
@@ -98,7 +98,7 @@ impl<'a> Sub for Node<'a> {
   type Output = Self;
 
   fn sub(self, rhs: Self) -> Self {
-    self.compose_with(rhs, ColorAlpha::new(0., 0., 0., 0.), Equation::Subtract, Factor::One, Factor::One)
+    self.compose_with(rhs, RGBA::new(0., 0., 0., 0.), Equation::Subtract, Factor::One, Factor::One)
   }
 }
 
@@ -106,7 +106,7 @@ impl<'a> Mul for Node<'a> {
   type Output = Self;
 
   fn mul(self, rhs: Self) -> Self {
-    self.compose_with(rhs, ColorAlpha::new(1., 1., 1., 1.), Equation::Additive, Factor::Zero, Factor::SrcColor)
+    self.compose_with(rhs, RGBA::new(1., 1., 1., 1.), Equation::Additive, Factor::Zero, Factor::SrcColor)
   }
 }
 
@@ -226,7 +226,7 @@ impl Compositor {
     fb_index
   }
 
-  fn colorize(&mut self, color: ColorAlpha) -> usize {
+  fn colorize(&mut self, color: RGBA) -> usize {
     let fb_index = self.pull_framebuffer();
     let fb = &self.framebuffers[fb_index];
 
@@ -237,7 +237,7 @@ impl Compositor {
     fb_index
   }
 
-  fn composite(&mut self, left: Node, right: Node, clear_color: ColorAlpha, eq: Equation, src_fct: Factor, dst_fct: Factor) -> usize {
+  fn composite(&mut self, left: Node, right: Node, clear_color: RGBA, eq: Equation, src_fct: Factor, dst_fct: Factor) -> usize {
     let left_index = self.treat_node(left);
     let right_index = self.treat_node(right);
 

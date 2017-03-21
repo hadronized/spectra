@@ -73,6 +73,7 @@ pub mod edit;
 pub mod extra;
 pub mod framebuffer;
 pub mod gui;
+pub mod light;
 pub mod linear;
 pub mod model;
 pub mod object;

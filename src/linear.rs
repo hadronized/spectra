@@ -7,6 +7,7 @@ pub use nalgebra::*;
 
 pub type Translation = Vector3<f32>;
 pub type Axis = Vector3<f32>;
+pub type Direction = Vector3<f32>;
 pub type Position = Vector3<f32>;
 pub type Orientation = UnitQuaternion<f32>;
 
