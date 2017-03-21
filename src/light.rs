@@ -13,6 +13,7 @@ pub struct Light<L> {
   pub feature: L
 }
 
+// TODO: use wrappers here, because those resolve to the actual same type
 pub type Dir = Light<Direction>;
 pub type Omni = Light<Position>;
 
