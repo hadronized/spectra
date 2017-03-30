@@ -218,7 +218,7 @@ impl Compositor {
 
     let black = [0., 0., 0., 1.];
     let texture_program = self.texture_program.borrow();
-    let uniforms_tex = [FORWARD_SOURCE.alter(Unit::new(0))];
+    let uniforms_tex = [TEXTURE_SOURCE.alter(Unit::new(0))];
     let tess_render = TessRender::from(&self.quad);
     let tess = &[Pipe::empty().uniforms(&uniforms_tex).unwrap(tess_render.clone())];
     let render_cmd = &[Pipe::new(RenderCommand::new(None, false, tess))];
