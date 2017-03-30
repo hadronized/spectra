@@ -121,12 +121,15 @@ pub struct Compositor {
   // free list of available framebuffers
   free_framebuffers: Vec<usize>,
   // program used to compose nodes
-  program: Res<Program>,
+  compose_program: Res<Program>,
+  // program used to render textures scaled
+  texture_program: Res<Program>,
   // attributeless fullscreen quad for compositing
   quad: Tess
 }
 
 const FORWARD_SOURCE: &'static Uniform<Unit> = &Uniform::new(0);
+const TEXTURE_SOURCE: &'static Uniform<Unit> = &Uniform::new(0);
 
 impl Compositor {
   pub fn new(w: u32, h: u32, cache: &mut ResCache) -> Self {
@@ -135,7 +138,8 @@ impl Compositor {
       h: h,
       framebuffers: Vec::new(),
       free_framebuffers: Vec::new(),
-      program: cache.get("spectra/compositing/forward.glsl", vec![FORWARD_SOURCE.sem("source")]).unwrap(),
+      compose_program: cache.get("spectra/compositing/forward.glsl", vec![FORWARD_SOURCE.sem("source")]).unwrap(),
+      texture_program: cache.get("spectra/compositing/texture.glsl", vec![TEXTURE_SOURCE.sem("source")]).unwrap(),
       quad: Tess::attributeless(Mode::TriangleStrip, 4)
     }
   }
@@ -175,12 +179,12 @@ impl Compositor {
       let screen = Framebuffer::default((self.w, self.h));
 
       let black = [0., 0., 0., 1.];
-      let program = self.program.borrow();
+      let compose_program = self.compose_program.borrow();
       let uniforms_tex = [FORWARD_SOURCE.alter(Unit::new(0))];
       let tess_render = TessRender::from(&self.quad);
       let tess = &[Pipe::empty().uniforms(&uniforms_tex).unwrap(tess_render.clone())];
       let render_cmd = &[Pipe::new(RenderCommand::new(None, false, tess))];
-      let shd_cmd = &[Pipe::new(ShadingCommand::new(&program, render_cmd))];
+      let shd_cmd = &[Pipe::new(ShadingCommand::new(&compose_program, render_cmd))];
       let texture_set = &[&*fb.color_slot];
 
       Pipeline::new(&screen, black, texture_set, &[], shd_cmd).run();
@@ -213,12 +217,12 @@ impl Compositor {
     let fb = &self.framebuffers[fb_index];
 
     let black = [0., 0., 0., 1.];
-    let program = self.program.borrow();
+    let texture_program = self.texture_program.borrow();
     let uniforms_tex = [FORWARD_SOURCE.alter(Unit::new(0))];
     let tess_render = TessRender::from(&self.quad);
     let tess = &[Pipe::empty().uniforms(&uniforms_tex).unwrap(tess_render.clone())];
     let render_cmd = &[Pipe::new(RenderCommand::new(None, false, tess))];
-    let shd_cmd = &[Pipe::new(ShadingCommand::new(&program, render_cmd))];
+    let shd_cmd = &[Pipe::new(ShadingCommand::new(&texture_program, render_cmd))];
     let texture_set = &[&**texture];
 
     Pipeline::new(fb, black, texture_set, &[], shd_cmd).run();
@@ -253,7 +257,7 @@ impl Compositor {
       let right_fb = &self.framebuffers[right_index];
 
       // compose
-      let program = self.program.borrow();
+      let compose_program = self.compose_program.borrow();
       let uniforms_left = [FORWARD_SOURCE.alter(Unit::new(0))];
       let uniforms_right = [FORWARD_SOURCE.alter(Unit::new(1))];
       let tess_render = TessRender::from(&self.quad);
@@ -262,7 +266,7 @@ impl Compositor {
         Pipe::empty().uniforms(&uniforms_right).unwrap(tess_render)
       ];
       let render_cmd = &[Pipe::new(RenderCommand::new((eq, src_fct, dst_fct), false, tess))];
-      let shd_cmd = &[Pipe::new(ShadingCommand::new(&program, render_cmd))];
+      let shd_cmd = &[Pipe::new(ShadingCommand::new(&compose_program, render_cmd))];
       let texture_set = &[
         &*left_fb.color_slot,
         &*right_fb.color_slot
