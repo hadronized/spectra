@@ -3,20 +3,20 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 
-use compositing::RenderLayer;
+use compositing::Node;
 use resource::{Load, LoadError, Result, ResCache};
 
 /// Time.
 pub type Time = f64;
 
 pub struct Clip<'a, 'b> where 'a: 'b {
-  gen_render_layer: Box<Fn(Time) -> RenderLayer<'a> + 'b>
+  gen_node: Box<Fn(Time) -> Node<'a> + 'b>
 }
 
 impl<'a, 'b> Clip<'a, 'b> {
-  pub fn new<F>(f: F) -> Self where F: 'b + Fn(Time) -> RenderLayer<'a> {
+  pub fn new<F>(f: F) -> Self where F: 'b + Fn(Time) -> Node<'a> {
     Clip {
-      gen_render_layer: Box::new(f)
+      gen_node: Box::new(f)
     }
   }
 }
@@ -119,11 +119,11 @@ impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
   }
 
   // TODO: currently, we play the first track we find; add transition support
-  pub fn play(&self, t: Time) -> Option<RenderLayer<'a>> {
+  pub fn play(&self, t: Time) -> Option<Node<'a>> {
     for track in &self.tracks {
       for cut in &track.cuts {
         if cut.inst_time <= t && t <= cut.inst_time + cut.dur() {
-          return Some((cut.clip.gen_render_layer)(t));
+          return Some((cut.clip.gen_node)(t));
         }
       }
     }
