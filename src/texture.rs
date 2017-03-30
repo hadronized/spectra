@@ -16,7 +16,7 @@ pub type TextureDepth32F = Texture<Flat, Dim2, Depth32F>;
 pub fn load_rgba_texture<P, L>(path: P, sampler: &Sampler, linearizer: L) -> Result<TextureRGBA32F> where P: AsRef<Path>, L: Into<Option<f32>> {
   info!("loading texture image: \x1b[35m{:?}", path.as_ref());
 
-  let img = image::open(path).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?.to_rgba();
+  let img = image::open(path).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?.flipv().to_rgba();
   let dim = img.dimensions();
   let linearizer = linearizer.into();
   let raw: Vec<f32> = img.into_raw().into_iter().map(|x| {
