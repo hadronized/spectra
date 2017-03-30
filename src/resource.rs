@@ -51,6 +51,12 @@ pub type Result<T> = ::std::result::Result<T, LoadError>;
 #[derive(Debug)]
 pub struct Res<T>(Rc<RefCell<T>>);
 
+impl<T> Res<T> {
+  pub fn as_rc(&self) -> &Rc<RefCell<T>> {
+    &self.0
+  }
+}
+
 impl<T> Clone for Res<T> {
   fn clone(&self) -> Self {
     Res(self.0.clone())
