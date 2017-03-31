@@ -214,23 +214,25 @@ impl Overlay {
         });
       });
 
-      shd_gate.new(&text_program, &[], &[], &[]).enter(|rdr_gate| {
-        for (text, text_scale) in input.texts {
-          let blending = (Equation::Additive, Factor::One, Factor::SrcAlphaComplement);
-          let (tex_w, tex_h) = text.text_texture.size();
-          let uniforms = [
-            TEXT_SAMPLER.alter(Unit::new(0)),
-            TEXT_POS.alter(text.left_lower.to_clip_space(&self.unit_converter).pos),
-            TEXT_SIZE.alter(self.unit_converter.from_win_dim(tex_w as f32, tex_h as f32)),
-            TEXT_SCALE.alter(text_scale),
-            TEXT_COLOR.alter(text.left_lower.color),
-          ];
+      if let Some((texts, text_scale)) = input.texts {
+        shd_gate.new(&text_program, &[], &[], &[]).enter(|rdr_gate| {
+          for text in texts {
+            let blending = (Equation::Additive, Factor::One, Factor::SrcAlphaComplement);
+            let (tex_w, tex_h) = text.text_texture.size();
+            let uniforms = [
+              TEXT_SAMPLER.alter(Unit::new(0)),
+              TEXT_POS.alter(text.left_lower.to_clip_space(&self.unit_converter).pos),
+              TEXT_SIZE.alter(self.unit_converter.from_win_dim(tex_w as f32, tex_h as f32)),
+              TEXT_SCALE.alter(text_scale),
+              TEXT_COLOR.alter(text.left_lower.color),
+            ];
 
-          rdr_gate.new(blending, true, &uniforms, &[&***text.text_texture], &[]).enter(|tess_gate| {
-            tess_gate.render(text_quad.clone(), &[], &[], &[]);
-          });
-        }
-      });
+            rdr_gate.new(blending, true, &uniforms, &[&***text.text_texture], &[]).enter(|tess_gate| {
+              tess_gate.render(text_quad.clone(), &[], &[], &[]);
+            });
+          }
+        });
+      }
     });
   }
 }
