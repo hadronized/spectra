@@ -1,5 +1,8 @@
-use luminance::{Depth32F, Dim2, Flat, Framebuffer, Mode, RGBA32F, Tess, Texture, Uniform, Unit};
-use luminance::pipeline::{Pipe, Pipeline, RenderCommand, ShadingCommand};
+use luminance::framebuffer::Framebuffer;
+use luminance::pixel::{Depth32F, RGBA32F};
+use luminance::tess::{Mode, Tess};
+use luminance::texture::{Dim2, Flat, Texture, Unit};
+use luminance::pipeline::{Pipeline, RenderCommand, ShadingCommand};
 use luminance::tess::TessRender;
 use std::ops::{Add, Mul, Sub};
 
@@ -7,7 +10,7 @@ pub use luminance::{Equation, Factor};
 
 use color::RGBA;
 use resource::{Res, ResCache};
-use shader::Program;
+use shader::{Program, Uniform};
 
 /// Simple texture that can be embedded into a compositing graph.
 pub type TextureLayer<'a> = &'a ColorMap;
@@ -175,19 +178,17 @@ impl Compositor {
 
     {
       let fb = &self.framebuffers[fb_index];
-
       let screen = Framebuffer::default((self.w, self.h));
-
-      let black = [0., 0., 0., 1.];
       let compose_program = self.compose_program.borrow();
-      let uniforms_tex = [FORWARD_SOURCE.alter(Unit::new(0))];
       let tess_render = TessRender::from(&self.quad);
-      let tess = &[Pipe::empty().uniforms(&uniforms_tex).unwrap(tess_render.clone())];
-      let render_cmd = &[Pipe::new(RenderCommand::new(None, false, tess))];
-      let shd_cmd = &[Pipe::new(ShadingCommand::new(&compose_program, render_cmd))];
-      let texture_set = &[&*fb.color_slot];
 
-      Pipeline::new(&screen, black, texture_set, &[], shd_cmd).run();
+      Pipeline::new(&screen, [0., 0., 0., 1.], &[&*fb.color_slot], &[]).enter(|shd_gate| {
+        shd_gate.new(&compose_program, &[], &[], &[]).enter(|rdr_gate| {
+          rdr_gate.new(None, false, &[], &[], &[]).enter(|tess_gate| {
+            tess_gate.render(tess_render, &[FORWARD_SOURCE.alter(Unit::new(0))], &[], &[])
+          });
+        });
+      });
     }
 
     self.dispose_framebuffer(fb_index);
@@ -236,7 +237,7 @@ impl Compositor {
 
     let color = *color.as_ref();
 
-    Pipeline::new(fb, color, &[], &[], &[]).run();
+    Pipeline::new(fb, color, &[], &[]).enter(|_| {});
 
     fb_index
   }
