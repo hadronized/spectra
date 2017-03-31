@@ -1,4 +1,5 @@
-pub use luminance::{Depth32F, Dim2, Flat, R32F, RGBA32F, Sampler, Texture};
+pub use luminance::pixel::{Depth32F, R32F, RGBA32F};
+pub use luminance::texture::{Dim2, Flat, Sampler, Texture};
 use image;
 use std::ops::Deref;
 use std::path::Path;

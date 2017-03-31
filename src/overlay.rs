@@ -1,9 +1,15 @@
-use luminance::{Dim2, Equation, Factor, Framebuffer, Flat, Mode, Pipe, Pipeline, RenderCommand, ShadingCommand, Tess, TessRender, TessVertices, Uniform, Unit, Vertex, VertexFormat};
+use luminance::blending::{Equation, Factor};
+use luminance::framebuffer::Framebuffer;
+use luminance::pipeline::{Pipeline, RenderCommand, ShadingCommand};
+use luminance::tess::{Mode, Tess, TessRender, TessVertices};
+use luminance::texture::{Dim2, Flat, Unit};
+use luminance::vertex::{Vertex, VertexFormat};
 use std::cell::RefCell;
 
 use compositing::{ColorMap, DepthMap};
+use framebuffer::Framebuffer2D;
 use resource::{Res, ResCache};
-use shader::Program;
+use shader::{Program, Uniform};
 use text::TextTexture;
 use texture::{RGBA32F, Texture};
 
@@ -180,7 +186,7 @@ impl Overlay {
     (tri_i, disc_i)
   }
 
-  pub fn render(&self, framebuffer: &Framebuffer<Flat, Dim2, ColorMap, DepthMap>, input: &RenderInput) {
+  pub fn render(&self, framebuffer: &Framebuffer2D<ColorMap, DepthMap>, input: &RenderInput) {
     let (tri_vert_nb, disc_vert_nb) = self.dispatch(input);
  
     let tris_ref = self.tris.borrow();
@@ -190,50 +196,42 @@ impl Overlay {
     let discs = TessRender::one_sub(&discs_ref, disc_vert_nb);
 
     let text_quad = TessRender::one_whole(&self.text_quad);
-    let text_quad_render = [Pipe::new(text_quad)];
 
     let tri_program = self.tri_program.borrow();
     let disc_program = self.disc_program.borrow();
     let text_program = self.text_program.borrow();
 
-    // FIXME: no alloc?
-    let text_uniforms: Vec<_> = input.texts.map(|(texts, text_scale)| texts.iter().map(|text| {
-      let (tex_w, tex_h) = text.text_texture.size();
-      
-      [
-        TEXT_SAMPLER.alter(Unit::new(0)),
-        TEXT_POS.alter(text.left_lower.to_clip_space(&self.unit_converter).pos),
-        TEXT_SIZE.alter(self.unit_converter.from_win_dim(tex_w as f32, tex_h as f32)),
-        TEXT_SCALE.alter(text_scale),
-        TEXT_COLOR.alter(text.left_lower.color),
-      ]
-    }).collect()).unwrap_or(Vec::new());
+    Pipeline::new(framebuffer, [0., 0., 0., 0.], &[], &[]).enter(|shd_gate| {
+      shd_gate.new(&tri_program, &[], &[], &[]).enter(|rdr_gate| {
+        rdr_gate.new(None, true, &[], &[], &[]).enter(|tess_gate| {
+          tess_gate.render(tris, &[], &[], &[]);
+        });
+      });
 
-    let text_textures: Vec<_> = input.texts.map(|(texts, _)| texts.iter().map(|text| [&***text.text_texture]).collect()).unwrap_or(Vec::new());
+      shd_gate.new(&disc_program, &[DISC_SCREEN_RATIO.alter(self.ratio)], &[], &[]).enter(|rdr_gate| {
+        rdr_gate.new(None, true, &[], &[], &[]).enter(|tess_gate| {
+          tess_gate.render(discs, &[], &[], &[]);
+        });
+      });
 
-    let text_nb = input.texts.map(|(texts, _)| texts.len()).unwrap_or(0);
-    let text_render_cmds: Vec<_> = (0..text_nb).map(|i| {
-        let blending = (Equation::Additive, Factor::One, Factor::SrcAlphaComplement);
-        Pipe::empty()
-          .uniforms(&text_uniforms[i])
-          .textures(&text_textures[i])
-          .unwrap(RenderCommand::new(Some(blending), true, &text_quad_render))
-      }).collect();
+      shd_gate.new(&text_program, &[], &[], &[]).enter(|rdr_gate| {
+        for (text, text_scale) in input.texts {
+          let blending = (Equation::Additive, Factor::One, Factor::SrcAlphaComplement);
+          let (tex_w, tex_h) = text.text_texture.size();
+          let uniforms = [
+            TEXT_SAMPLER.alter(Unit::new(0)),
+            TEXT_POS.alter(text.left_lower.to_clip_space(&self.unit_converter).pos),
+            TEXT_SIZE.alter(self.unit_converter.from_win_dim(tex_w as f32, tex_h as f32)),
+            TEXT_SCALE.alter(text_scale),
+            TEXT_COLOR.alter(text.left_lower.color),
+          ];
 
-    let disc_uniforms = [
-      DISC_SCREEN_RATIO.alter(self.ratio)
-    ];
-
-    let tris = &[Pipe::new(tris)];
-    let tris_render_cmds = &[Pipe::new(RenderCommand::new(None, true, tris))];
-    let discs = &[Pipe::new(discs)];
-    let discs_render_cmds = &[Pipe::new(RenderCommand::new(None, true, discs))];
-
-    Pipeline::new(framebuffer, [0., 0., 0., 0.], &[], &[], &[
-      Pipe::new(ShadingCommand::new(&tri_program, tris_render_cmds)),
-      Pipe::empty().uniforms(&disc_uniforms).unwrap(ShadingCommand::new(&disc_program, discs_render_cmds)),
-      Pipe::new(ShadingCommand::new(&text_program, &text_render_cmds))
-    ]).run();
+          rdr_gate.new(blending, true, &uniforms, &[&***text.text_texture], &[]).enter(|tess_gate| {
+            tess_gate.render(text_quad.clone(), &[], &[], &[]);
+          });
+        }
+      });
+    });
   }
 }
 

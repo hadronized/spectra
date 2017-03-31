@@ -1,11 +1,11 @@
-use luminance::{self, Stage, StageError};
-use luminance::shader::stage::Type;
+use luminance::shader::program::Program as LProgram;
+use luminance::shader::stage::{Stage, StageError, Type};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::ops::Deref;
 use std::path::Path;
 
-pub use luminance::{ProgramError, Sem, Uniform, UniformWarning, Uniformable};
+pub use luminance::shader::program::{ProgramError, Sem, Uniform, UniformWarning, Uniformable};
 
 use resource::{Load, LoadError, Reload, ResCache};
 
@@ -15,21 +15,21 @@ pub enum ShaderError {
   ProgramError(ProgramError)
 }
 
-pub fn new_program(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_src: &str, sem_map: &[Sem]) -> Result<(luminance::Program, Vec<UniformWarning>), ProgramError> {
+pub fn new_program(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_src: &str, sem_map: &[Sem]) -> Result<(LProgram, Vec<UniformWarning>), ProgramError> {
   let stages = compile_stages(tcs_src, tes_src, vs_src, gs_src, fs_src);
 
   match stages {
     Ok((tess, vs, gs, fs)) => {
       if let Some((tcs, tes)) = tess {
         if let Some(gs) = gs {
-          luminance::Program::new(Some((&tcs, &tes)), &vs, Some(&gs), &fs, sem_map)
+          LProgram::new(Some((&tcs, &tes)), &vs, Some(&gs), &fs, sem_map)
         } else {
-          luminance::Program::new(Some((&tcs, &tes)), &vs, None, &fs, sem_map)
+          LProgram::new(Some((&tcs, &tes)), &vs, None, &fs, sem_map)
         }
       } else if let Some(gs) = gs {
-        luminance::Program::new(None, &vs, Some(&gs), &fs, sem_map)
+        LProgram::new(None, &vs, Some(&gs), &fs, sem_map)
       } else {
-        luminance::Program::new(None, &vs, None, &fs, sem_map)
+        LProgram::new(None, &vs, None, &fs, sem_map)
       }
     },
     Err(stage_error) => {
@@ -71,12 +71,12 @@ fn compile_stages(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_s
 ///
 /// At the top of the file, if you don’t put a pragma, you can use `//` to add comments, or die.
 pub struct Program {
-  program: luminance::Program,
+  program: LProgram,
   sem_map: Vec<Sem>
 }
 
 impl Deref for Program {
-  type Target = luminance::Program;
+  type Target = LProgram;
 
   fn deref(&self) -> &Self::Target {
     &self.program
