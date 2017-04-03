@@ -2,11 +2,11 @@ use luminance::framebuffer::Framebuffer;
 use luminance::pixel::{Depth32F, RGBA32F};
 use luminance::tess::{Mode, Tess};
 use luminance::texture::{Dim2, Flat, Texture, Unit};
-use luminance::pipeline::{Pipeline, RenderCommand, ShadingCommand};
+use luminance::pipeline::Pipeline;
 use luminance::tess::TessRender;
 use std::ops::{Add, Mul, Sub};
 
-pub use luminance::{Equation, Factor};
+pub use luminance::blending::{Equation, Factor};
 
 use color::RGBA;
 use resource::{Res, ResCache};
@@ -185,7 +185,8 @@ impl Compositor {
       Pipeline::new(&screen, [0., 0., 0., 1.], &[&*fb.color_slot], &[]).enter(|shd_gate| {
         shd_gate.new(&compose_program, &[], &[], &[]).enter(|rdr_gate| {
           rdr_gate.new(None, false, &[], &[], &[]).enter(|tess_gate| {
-            tess_gate.render(tess_render, &[FORWARD_SOURCE.alter(Unit::new(0))], &[], &[])
+            let uniforms = [FORWARD_SOURCE.alter(Unit::new(0))];
+            tess_gate.render(tess_render, &uniforms, &[], &[])
           });
         });
       });
@@ -223,7 +224,8 @@ impl Compositor {
     Pipeline::new(fb, [0., 0., 0., 1.], &[&**texture], &[]).enter(|shd_gate| {
       shd_gate.new(&texture_program, &[], &[], &[]).enter(|rdr_gate| {
         rdr_gate.new(None, false, &[], &[], &[]).enter(|tess_gate| {
-          tess_gate.render(tess_render, &[TEXTURE_SOURCE.alter(Unit::new(0))], &[], &[]);
+          let uniforms = [TEXTURE_SOURCE.alter(Unit::new(0))];
+          tess_gate.render(tess_render, &uniforms, &[], &[]);
         });
       });
     });
@@ -267,8 +269,11 @@ impl Compositor {
       Pipeline::new(fb, *clear_color.as_ref(), texture_set, &[]).enter(|shd_gate| {
         shd_gate.new(&compose_program, &[], &[], &[]).enter(|rdr_gate| {
           rdr_gate.new((eq, src_fct, dst_fct), false, &[], &[], &[]).enter(|tess_gate| {
-            tess_gate.render(tess_render.clone(), &[FORWARD_SOURCE.alter(Unit::new(0))], &[], &[]);
-            tess_gate.render(tess_render, &[FORWARD_SOURCE.alter(Unit::new(1))], &[], &[]);
+            let uniforms = [FORWARD_SOURCE.alter(Unit::new(0))];
+            tess_gate.render(tess_render.clone(), &uniforms, &[], &[]);
+
+            let uniforms = [FORWARD_SOURCE.alter(Unit::new(1))];
+            tess_gate.render(tess_render, &uniforms, &[], &[]);
           });
         });
       });

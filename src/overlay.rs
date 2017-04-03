@@ -1,6 +1,5 @@
 use luminance::blending::{Equation, Factor};
-use luminance::framebuffer::Framebuffer;
-use luminance::pipeline::{Pipeline, RenderCommand, ShadingCommand};
+use luminance::pipeline::Pipeline;
 use luminance::tess::{Mode, Tess, TessRender, TessVertices};
 use luminance::texture::{Dim2, Flat, Unit};
 use luminance::vertex::{Vertex, VertexFormat};
@@ -208,7 +207,8 @@ impl Overlay {
         });
       });
 
-      shd_gate.new(&disc_program, &[DISC_SCREEN_RATIO.alter(self.ratio)], &[], &[]).enter(|rdr_gate| {
+      let disc_uniforms = [DISC_SCREEN_RATIO.alter(self.ratio)];
+      shd_gate.new(&disc_program, &disc_uniforms, &[], &[]).enter(|rdr_gate| {
         rdr_gate.new(None, true, &[], &[], &[]).enter(|tess_gate| {
           tess_gate.render(discs, &[], &[], &[]);
         });

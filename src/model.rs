@@ -1,4 +1,4 @@
-use luminance::{Mode, Tess, TessVertices};
+use luminance::tess::{Mode, Tess, TessVertices};
 use std::collections::BTreeMap;
 use std::fmt::{self, Debug, Formatter};
 use std::fs::File;

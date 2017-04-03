@@ -1,4 +1,4 @@
-use luminance::{Mode, Tess, TessVertices};
+use luminance::tess::{Mode, Tess, TessVertices};
 
 // A unit cube.
 //

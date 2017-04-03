@@ -1,4 +1,4 @@
-use luminance::{Mode, Tess, TessVertices};
+use luminance::tess::{Mode, Tess, TessVertices};
 
 /// A unit plane, aligned with the (x,y) plane.
 pub fn new_plane() -> Tess {
