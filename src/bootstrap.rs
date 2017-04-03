@@ -28,7 +28,7 @@ type Scroll = mpsc::Receiver<[f32; 2]>;
 
 /// Signals events can pass up back to their handlers to notify them how they have processed an
 /// event. They’re three kinds of signals:
-
+///
 /// - `EventSig::Ignored`:  the event should be passed to other handlers the parents knows about –
 ///    if any – because it wasn’t handled (ignored);
 ///
