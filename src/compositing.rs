@@ -217,16 +217,16 @@ impl Compositor {
     let fb_index = self.pull_framebuffer();
     let fb = &self.framebuffers[fb_index];
 
-    let black = [0., 0., 0., 1.];
     let texture_program = self.texture_program.borrow();
-    let uniforms_tex = [TEXTURE_SOURCE.alter(Unit::new(0))];
     let tess_render = TessRender::from(&self.quad);
-    let tess = &[Pipe::empty().uniforms(&uniforms_tex).unwrap(tess_render.clone())];
-    let render_cmd = &[Pipe::new(RenderCommand::new(None, false, tess))];
-    let shd_cmd = &[Pipe::new(ShadingCommand::new(&texture_program, render_cmd))];
-    let texture_set = &[&**texture];
 
-    Pipeline::new(fb, black, texture_set, &[], shd_cmd).run();
+    Pipeline::new(fb, [0., 0., 0., 1.], &[&**texture], &[]).enter(|shd_gate| {
+      shd_gate.new(&texture_program, &[], &[], &[]).enter(|rdr_gate| {
+        rdr_gate.new(None, false, &[], &[], &[]).enter(|tess_gate| {
+          tess_gate.render(tess_render, &[TEXTURE_SOURCE.alter(Unit::new(0))], &[], &[]);
+        });
+      });
+    });
 
     fb_index
   }
@@ -257,23 +257,21 @@ impl Compositor {
       let left_fb = &self.framebuffers[left_index];
       let right_fb = &self.framebuffers[right_index];
 
-      // compose
-      let compose_program = self.compose_program.borrow();
-      let uniforms_left = [FORWARD_SOURCE.alter(Unit::new(0))];
-      let uniforms_right = [FORWARD_SOURCE.alter(Unit::new(1))];
-      let tess_render = TessRender::from(&self.quad);
-      let tess = &[
-        Pipe::empty().uniforms(&uniforms_left).unwrap(tess_render.clone()),
-        Pipe::empty().uniforms(&uniforms_right).unwrap(tess_render)
-      ];
-      let render_cmd = &[Pipe::new(RenderCommand::new((eq, src_fct, dst_fct), false, tess))];
-      let shd_cmd = &[Pipe::new(ShadingCommand::new(&compose_program, render_cmd))];
       let texture_set = &[
         &*left_fb.color_slot,
         &*right_fb.color_slot
       ];
+      let compose_program = self.compose_program.borrow();
+      let tess_render = TessRender::from(&self.quad);
 
-      Pipeline::new(fb, *clear_color.as_ref(), texture_set, &[], shd_cmd).run();
+      Pipeline::new(fb, *clear_color.as_ref(), texture_set, &[]).enter(|shd_gate| {
+        shd_gate.new(&compose_program, &[], &[], &[]).enter(|rdr_gate| {
+          rdr_gate.new((eq, src_fct, dst_fct), false, &[], &[], &[]).enter(|tess_gate| {
+            tess_gate.render(tess_render.clone(), &[FORWARD_SOURCE.alter(Unit::new(0))], &[], &[]);
+            tess_gate.render(tess_render, &[FORWARD_SOURCE.alter(Unit::new(1))], &[], &[]);
+          });
+        });
+      });
     }
 
     // dispose both left and right framebuffers
