@@ -144,6 +144,8 @@ impl<'a> EventHandler for GUI<'a> {
       let focused = self.widgets.get(&key).unwrap();
       let down_cursor = self.last_mouse_left_down.unwrap();
       focused.on_drag(cursor, down_cursor);
+
+      return EventSig::Handled;
     } else if let Some(key) = self.focused_widgets.get(&Focus::MouseButton(MouseButton::Button1, Action::Press)).cloned() {
       let focused = self.widgets.get(&key).unwrap();
       let down_cursor = self.last_mouse_left_down.unwrap();
@@ -151,10 +153,12 @@ impl<'a> EventHandler for GUI<'a> {
       if px_dist(down_cursor, cursor) > 5. {
         self.focused_widgets.insert(Focus::Drag, key);
         focused.on_drag(cursor, down_cursor);
+
+        return EventSig::Focused;
       }
     }
 
-    EventSig::Handled
+    EventSig::Ignored
   }
 }
 
