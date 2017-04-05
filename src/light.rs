@@ -2,6 +2,7 @@ use color::RGB;
 use linear::{Direction, Position};
 use std::default::Default;
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LightProp {
   pub diff: RGB,
   _pad_0: f32,
@@ -34,6 +35,7 @@ impl Default for LightProp {
   }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Light<L> {
   pub prop: LightProp,
   pub feature: L
@@ -80,4 +82,3 @@ impl From<Position> for LightPos {
 
 pub type Dir = Light<LightDir>;
 pub type Omni = Light<LightPos>;
-
