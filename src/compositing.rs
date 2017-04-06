@@ -51,7 +51,14 @@ pub enum Node<'a> {
   ///
   /// Composite nodes are used to blend two compositing nodes according to a given `Equation` and
   /// two blending `Factor`s for source and destination, respectively.
-  Composite(Box<Node<'a>>, Box<Node<'a>>, RGBA, Equation, Factor, Factor)
+  Composite(Box<Node<'a>>, Box<Node<'a>>, RGBA, Equation, Factor, Factor),
+  /// Simple fullscreen effect.
+  ///
+  /// Such a node is used to apply a user-defined shader on a fullscreen quad. The shader should
+  /// provide both the vertex and fragment shader. The vertex shader doesn’t take any inputs but is
+  /// invoked in an *attributeless* context on a triangle fan configuration. The fragment shader
+  /// should output only one *RGBA* fragment.
+  FullScreenEffect(&'a Program)
 }
 
 impl<'a> Node<'a> {
@@ -86,6 +93,12 @@ impl<'a> From<TextureLayer<'a>> for Node<'a> {
 impl<'a> From<RGBA> for Node<'a> {
   fn from(color: RGBA) -> Self {
     Node::Color(color)
+  }
+}
+
+impl<'a> From<&'a Program> for Node<'a> {
+  fn from(program: &'a Program) -> Self {
+    Node::FullScreenEffect(program)
   }
 }
 
@@ -202,6 +215,7 @@ impl Compositor {
       Node::Texture(texture) => self.texturize(texture),
       Node::Color(color) => self.colorize(color),
       Node::Composite(left, right, clear_color, eq, src_fct, dst_fct) => self.composite(*left, *right, clear_color, eq, src_fct, dst_fct),
+      Node::FullScreenEffect(program) => self.fullscreen_effect(program)
     }
   }
 
@@ -282,6 +296,23 @@ impl Compositor {
     // dispose both left and right framebuffers
     self.dispose_framebuffer(left_index);
     self.dispose_framebuffer(right_index);
+
+    fb_index
+  }
+
+  fn fullscreen_effect(&mut self, program: &Program) -> usize {
+    let fb_index = self.pull_framebuffer();
+    let fb = &self.framebuffers[fb_index];
+
+    let tess_render = TessRender::from(&self.quad);
+
+    Pipeline::new(fb, [0., 0., 0., 1.], &[], &[]).enter(|shd_gate| {
+      shd_gate.new(&program, &[], &[], &[]).enter(|rdr_gate| {
+        rdr_gate.new(None, false, &[], &[], &[]).enter(|tess_gate| {
+          tess_gate.render(tess_render, &[], &[], &[]);
+        });
+      });
+    });
 
     fb_index
   }
