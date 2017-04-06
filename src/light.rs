@@ -7,9 +7,7 @@ pub struct LightProp {
   pub diff: RGB,
   _pad_0: f32,
   pub spec: RGB,
-  _pad_1: f32,
   pub gloss: f32,
-  _pad_2: [f32; 3]
 }
 
 impl LightProp {
@@ -18,9 +16,7 @@ impl LightProp {
       diff: diff,
       _pad_0: 0.,
       spec: spec,
-      _pad_1: 0.,
       gloss: gloss,
-      _pad_2: [0., 0., 0.]
     }
   }
 }
