@@ -56,7 +56,7 @@ pub enum Node<'a> {
   ///
   /// Such a node is used to apply a user-defined shader on a fullscreen quad. The shader should
   /// provide both the vertex and fragment shader. The vertex shader doesn’t take any inputs but is
-  /// invoked in an *attributeless* context on a triangle fan configuration. The fragment shader
+  /// invoked in an *attributeless* context on a triangle strip configuration. The fragment shader
   /// should output only one *RGBA* fragment.
   FullScreenEffect(&'a Program)
 }
