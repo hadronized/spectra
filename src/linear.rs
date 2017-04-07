@@ -1,7 +1,7 @@
-use num::One;
 use std::default::Default;
 use std::ops::Mul;
 
+pub use num::{One, Zero};
 pub use linear::{Matrix4, Vector3};
 pub use nalgebra::*;
 
