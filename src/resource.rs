@@ -71,6 +71,12 @@ impl<T> Deref for Res<T> {
   }
 }
 
+impl<T> From<Rc<RefCell<T>>> for Res<T> {
+  fn from(rc: Rc<RefCell<T>>) -> Self {
+    Res(rc)
+  }
+}
+
 /// Time to await after a resource update to establish that it should be reloaded.
 const UPDATE_AWAIT_TIME_MS: u64 = 1000;
 
