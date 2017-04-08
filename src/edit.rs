@@ -118,17 +118,18 @@ impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
     self.tracks.push(track);
   }
 
-  // TODO: currently, we play the first track we find; add transition support
-  pub fn play(&self, t: Time) -> Option<Node<'a>> {
+  pub fn play(&self, t: Time) -> Vec<Node<'a>> {
+    let mut active_nodes = Vec::new();
+
     for track in &self.tracks {
       for cut in &track.cuts {
         if cut.inst_time <= t && t <= cut.inst_time + cut.dur() {
-          return Some((cut.clip.gen_node)(t));
+          active_nodes.push((cut.clip.gen_node)(t));
         }
       }
     }
 
-    None
+    active_nodes
   }
 }
 
