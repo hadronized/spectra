@@ -173,3 +173,16 @@ pub struct CutManifest {
   pub inst_time: Time,
   pub clip: String
 }
+
+/// A transition is a fold of `Node`s down to a single `Node`.
+pub struct Transition<'a> {
+  fold: Box<Fn(Vec<Node>) -> Node + 'a>
+}
+
+impl<'a> Transition<'a> {
+  pub fn new<F>(f: F) -> Self where F: 'a + Fn(Vec<Node>) -> Node {
+    Transition {
+      fold: Box::new(f)
+    }
+  }
+}
