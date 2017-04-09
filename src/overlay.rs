@@ -152,34 +152,34 @@ impl Overlay {
   /// Dispatch render input primitives into GPU buffers.
   fn dispatch(&self, input: &RenderInput) -> (usize, usize) {
     let mut tris_ref = self.tris.borrow_mut();
-    let mut tris = tris_ref.as_slice_mut().unwrap();
     let mut tri_i = 0;
+    if let Ok(mut tris) = tris_ref.as_slice_mut() {
+      for &Triangle(a, b, c) in input.triangles {
+        let abc = [a, b, c];
+
+        for &v in &abc {
+          tris[tri_i] = v.to_clip_space(&self.unit_converter);
+          tri_i += 1;
+        }
+      }
+
+      for &Quad(a, b, c, d) in input.quads {
+        let abcd = [a, b, c, c, b, d];
+
+        for &v in &abcd {
+          tris[tri_i] = v.to_clip_space(&self.unit_converter);
+          tri_i += 1;
+        }
+      }
+    }
 
     let mut discs_ref = self.discs.borrow_mut();
-    let mut discs = discs_ref.as_slice_mut().unwrap();
     let mut disc_i = 0;
-
-    for &Triangle(a, b, c) in input.triangles {
-      let abc = [a, b, c];
-
-      for &v in &abc {
-        tris[tri_i] = v.to_clip_space(&self.unit_converter);
-        tri_i += 1;
+    if let Ok(mut discs) = discs_ref.as_slice_mut() {
+      for disc in input.discs {
+        discs[disc_i] = disc.to_clip_space(&self.unit_converter);
+        disc_i += 1;
       }
-    }
-
-    for &Quad(a, b, c, d) in input.quads {
-      let abcd = [a, b, c, c, b, d];
-
-      for &v in &abcd {
-        tris[tri_i] = v.to_clip_space(&self.unit_converter);
-        tri_i += 1;
-      }
-    }
-
-    for disc in input.discs {
-      discs[disc_i] = disc.to_clip_space(&self.unit_converter);
-      disc_i += 1;
     }
 
     (tri_i, disc_i)
