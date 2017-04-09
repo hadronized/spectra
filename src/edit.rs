@@ -76,15 +76,16 @@ impl<'a, 'b, 'c, 'd> From<&'d [Cut<'a, 'b, 'c>]> for Track<'a, 'b, 'c> {
 }
 
 /// A timeline gathers tracks used to build up the visual aspect of the demo.
-#[derive(Clone)]
 pub struct Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
   tracks: Vec<Track<'a, 'b, 'c>>,
+  overlaps: Vec<Overlap<'a>>
 }
 
 impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
   pub fn new() -> Self {
     Timeline {
       tracks: Vec::new(),
+      overlaps: Vec::new()
     }
   }
 
@@ -118,9 +119,14 @@ impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
     self.tracks.push(track);
   }
 
-  pub fn play(&self, t: Time) -> Vec<Node<'a>> {
+  pub fn add_overlap(&mut self, overlap: Overlap<'a>) {
+    self.overlaps.push(overlap)
+  }
+
+  pub fn play(&self, t: Time) -> Option<Node<'a>> {
     let mut active_nodes = Vec::new();
 
+    // populate the active nodes
     for track in &self.tracks {
       for cut in &track.cuts {
         if cut.inst_time <= t && t <= cut.inst_time + cut.dur() {
@@ -129,15 +135,22 @@ impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
       }
     }
 
-    active_nodes
-  }
-}
-
-impl<'a, 'b, 'c, 'd> From<&'d [Track<'a, 'b, 'c>]> for Timeline<'a, 'b, 'c> {
-  fn from(tracks: &'d [Track<'a, 'b, 'c>]) -> Self {
-    Timeline {
-      tracks: tracks.to_vec(),
+    // apply overlap if needed
+    match active_nodes.len() {
+      0 => None,
+      1 => active_nodes.pop(), // pop() is already Option<_>
+      _ => {
+        // we need to seek for an overlap here because we have strictly more than one node in hands
+        self.find_overlap(t).map(|overlap| {
+          (overlap.fold)(active_nodes)
+        })
+      }
     }
+  }
+
+  /// Find an active overlap at the given time.
+  fn find_overlap(&self, t: Time) -> Option<&Overlap<'a>> {
+    self.overlaps.iter().find(|x| x.inst_time <= t && t <= x.inst_time + x.dur)
   }
 }
 
@@ -174,14 +187,19 @@ pub struct CutManifest {
   pub clip: String
 }
 
-/// A transition is a fold of `Node`s down to a single `Node`.
-pub struct Transition<'a> {
-  fold: Box<Fn(Vec<Node>) -> Node + 'a>
+/// An overlap is a fold of `Node`s down to a single `Node`. It’s used whenever two cuts overlap and
+/// need to be merged into a single one. It can be used for styling effect or transitions.
+pub struct Overlap<'a> {
+  pub inst_time: Time,
+  pub dur: Time,
+  pub fold: Box<Fn(Vec<Node>) -> Node + 'a>,
 }
 
-impl<'a> Transition<'a> {
-  pub fn new<F>(f: F) -> Self where F: 'a + Fn(Vec<Node>) -> Node {
-    Transition {
+impl<'a> Overlap<'a> {
+  pub fn new<F>(inst_time: Time, dur: Time, f: F) -> Self where F: 'a + Fn(Vec<Node>) -> Node {
+    Overlap {
+      inst_time: inst_time,
+      dur: dur,
       fold: Box::new(f)
     }
   }
