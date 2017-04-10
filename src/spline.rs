@@ -329,6 +329,16 @@ impl Interpolate for UnitQuaternion<f32> {
   }
 }
 
+impl Interpolate for Scale {
+  fn lerp(a: Self, b: Self, t: Time) -> Self {
+    let av = Vector3::new(a.x, a.y, a.z);
+    let bv = Vector3::new(b.x, b.y, b.z);
+    let r = *lerp(av, bv, t).as_ref();
+
+    Scale::from(&r)
+  }
+}
+
 // Default implementation of Interpolate::lerp.
 pub fn lerp<T>(a: T, b: T, t: Time) -> T where T: Add<Output = T> + Mul<Time, Output = T> {
   a * (1. - t) + b * t
