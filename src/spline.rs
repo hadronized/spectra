@@ -5,7 +5,7 @@ use std::fs::File;
 use std::ops::{Add, Div, Mul, Sub};
 use std::path::Path;
 
-use linear::{BaseFloat, Unit, UnitQuaternion, Vector2, Vector3, Vector4};
+use linear::{BaseFloat, Scale, Unit, UnitQuaternion, Vector2, Vector3, Vector4};
 use resource::{Load, LoadError, ResCache};
 
 /// Time used as sampling type in splines.
@@ -227,6 +227,14 @@ impl<T> SplineDeserializerAdapter for UnitQuaternion<T> where T: BaseFloat + Des
 
   fn from_deserialized(de: Self::Deserialized) -> Self {
     Unit::new((&de).into())
+  }
+}
+
+impl SplineDeserializerAdapter for Scale {
+  type Deserialized = [f32; 3];
+
+  fn from_deserialized(de: Self::Deserialized) -> Self {
+    Scale::from(&de)
   }
 }
 
