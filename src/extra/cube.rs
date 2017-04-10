@@ -43,7 +43,7 @@ pub fn new_cube(with_normals: bool) -> Tess {
       ([-1., -1.,  1.], [ 0., -1., 0.]),
     ];
 
-    let indices = [
+    let indices: &[u32] = &[
       0, 1, 2, 2, 1, 3, // front face
       4, 5, 6, 6, 5, 7, // back face
       8, 9, 10, 10, 9, 11, // left face
@@ -52,7 +52,7 @@ pub fn new_cube(with_normals: bool) -> Tess {
       20, 21, 22, 22, 21, 23, // bottom face
     ];
 
-    Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), Some(&indices))
+    Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), indices)
   } else {
     let vertices = [
       [ 1., -1.,  1.],
@@ -65,7 +65,7 @@ pub fn new_cube(with_normals: bool) -> Tess {
       [-1.,  1., -1.],
     ];
 
-    let indices = [
+    let indices: &[u32] = &[
       0, 1, 2, 2, 1, 3, // front face
       1, 5, 3, 3, 5, 7, // top face
       2, 3, 6, 6, 3, 7, // right face
@@ -74,6 +74,6 @@ pub fn new_cube(with_normals: bool) -> Tess {
       4, 5, 6, 6, 5, 7, // back face
     ];
 
-    Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), Some(&indices))
+    Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), indices)
   }
 }
