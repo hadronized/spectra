@@ -1,5 +1,5 @@
 pub use luminance::pixel::{Depth32F, R32F, RGBA32F};
-pub use luminance::texture::{Dim2, Flat, MagFilter, MinFilter, Sampler, Texture, Wrap};
+pub use luminance::texture::{Dim2, Flat, MagFilter, MinFilter, Sampler, Texture, Unit, Wrap};
 use image;
 use std::ops::Deref;
 use std::path::Path;
