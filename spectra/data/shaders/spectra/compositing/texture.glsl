@@ -18,11 +18,12 @@ void main() {
 #fs
 
 uniform sampler2D source;
+uniform vec2 scale;
 
 in vec2 v_co;
 out vec4 frag;
 
 void main() {
-  frag = texture(source, v_co);
+  frag = texture(source, v_co * scale);
 }
 

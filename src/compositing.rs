@@ -39,8 +39,9 @@ pub enum Node<'a> {
   Render(RenderLayer<'a>),
   /// A texture node.
   ///
-  /// Contains a single texture.
-  Texture(TextureLayer<'a>),
+  /// Contains a single texture. The optional `[f32; 2]` is 2D scale applied when sampling the
+  /// texture.
+  Texture(TextureLayer<'a>, Option<[f32; 2]>),
   /// A single color.
   ///
   /// Keep in mind that such a node is great when you want to display a fullscreen colored quad but
@@ -86,7 +87,7 @@ impl<'a> From<RenderLayer<'a>> for Node<'a> {
 
 impl<'a> From<TextureLayer<'a>> for Node<'a> {
   fn from(texture: TextureLayer<'a>) -> Self {
-    Node::Texture(texture)
+    Node::Texture(texture, Some([1., 1.]))
   }
 }
 
@@ -145,7 +146,9 @@ pub struct Compositor {
 }
 
 const FORWARD_SOURCE: &'static Uniform<Unit> = &Uniform::new(0);
+
 const TEXTURE_SOURCE: &'static Uniform<Unit> = &Uniform::new(0);
+const TEXTURE_SCALE: &'static Uniform<[f32; 2]> = &Uniform::new(1);
 
 impl Compositor {
   pub fn new(w: u32, h: u32, cache: &mut ResCache) -> Self {
@@ -155,7 +158,10 @@ impl Compositor {
       framebuffers: Vec::new(),
       free_framebuffers: Vec::new(),
       compose_program: cache.get("spectra/compositing/forward.glsl", vec![FORWARD_SOURCE.sem("source")]).unwrap(),
-      texture_program: cache.get("spectra/compositing/texture.glsl", vec![TEXTURE_SOURCE.sem("source")]).unwrap(),
+      texture_program: cache.get("spectra/compositing/texture.glsl", vec![
+        TEXTURE_SOURCE.sem("source"),
+        TEXTURE_SCALE.sem("scale")
+      ]).unwrap(),
       quad: Tess::attributeless(Mode::TriangleStrip, 4)
     }
   }
@@ -212,7 +218,7 @@ impl Compositor {
   fn treat_node(&mut self, node: Node) -> usize {
     match node {
       Node::Render(layer) => self.render(layer),
-      Node::Texture(texture) => self.texturize(texture),
+      Node::Texture(texture, scale) => self.texturize(texture, scale),
       Node::Color(color) => self.colorize(color),
       Node::Composite(left, right, clear_color, eq, src_fct, dst_fct) => self.composite(*left, *right, clear_color, eq, src_fct, dst_fct),
       Node::FullScreenEffect(program) => self.fullscreen_effect(program)
@@ -228,17 +234,21 @@ impl Compositor {
     fb_index
   }
 
-  fn texturize(&mut self, texture: TextureLayer) -> usize {
+  fn texturize(&mut self, texture: TextureLayer, opt_scale: Option<[f32; 2]>) -> usize {
     let fb_index = self.pull_framebuffer();
     let fb = &self.framebuffers[fb_index];
 
     let texture_program = self.texture_program.borrow();
     let tess_render = TessRender::from(&self.quad);
+    let scale = opt_scale.unwrap_or([1., 1.]);
 
     Pipeline::new(fb, [0., 0., 0., 1.], &[&**texture], &[]).enter(|shd_gate| {
       shd_gate.new(&texture_program, &[], &[], &[]).enter(|rdr_gate| {
         rdr_gate.new(None, false, &[], &[], &[]).enter(|tess_gate| {
-          let uniforms = [TEXTURE_SOURCE.alter(Unit::new(0))];
+          let uniforms = [
+            TEXTURE_SOURCE.alter(Unit::new(0)),
+            TEXTURE_SCALE.alter(scale)
+          ];
           tess_gate.render(tess_render, &uniforms, &[], &[]);
         });
       });
