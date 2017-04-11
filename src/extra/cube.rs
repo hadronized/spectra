@@ -12,7 +12,7 @@ pub fn new_cube(with_normals: bool) -> Tess {
   if with_normals {
     let vertices = [
       // front face
-      ([ 1., -1.,  1.], [ 0.,  0.,  1.]), // 0
+      ([ 1.0f32, -1.,  1.], [ 0.0f32,  0.,  1.]), // 0
       ([ 1.,  1.,  1.], [ 0.,  0.,  1.]),
       ([-1., -1.,  1.], [ 0.,  0.,  1.]),
       ([-1.,  1.,  1.], [ 0.,  0.,  1.]),
@@ -55,7 +55,7 @@ pub fn new_cube(with_normals: bool) -> Tess {
     Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), indices)
   } else {
     let vertices = [
-      [ 1., -1.,  1.],
+      [ 1.0f32, -1.,  1.],
       [ 1.,  1.,  1.],
       [-1., -1.,  1.],
       [-1.,  1.,  1.],
