@@ -52,6 +52,10 @@ pub type Result<T> = ::std::result::Result<T, LoadError>;
 pub struct Res<T>(Rc<RefCell<T>>);
 
 impl<T> Res<T> {
+  pub fn new(resource: T) -> Self {
+    Res(Rc::new(RefCell::new(resource)))
+  }
+
   pub fn as_rc(&self) -> &Rc<RefCell<T>> {
     &self.0
   }
