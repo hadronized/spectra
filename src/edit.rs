@@ -123,7 +123,7 @@ impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
     self.overlaps.push(overlap)
   }
 
-  pub fn play(&self, t: Time) -> Option<Node<'a>> {
+  pub fn play(&self, t: Time) -> Played<'a> {
     let mut active_nodes = Vec::new();
 
     // populate the active nodes
@@ -137,13 +137,13 @@ impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
 
     // apply overlap if needed
     match active_nodes.len() {
-      0 => None,
-      1 => active_nodes.pop(), // pop() is already Option<_>
+      0 => Played::Inactive,
+      1 => active_nodes.pop().map(Played::Resolved).unwrap_or(Played::Inactive),
       _ => {
         // we need to seek for an overlap here because we have strictly more than one node in hands
         self.find_overlap(t).map(|overlap| {
-          (overlap.fold)(active_nodes)
-        })
+          Played::Resolved((overlap.fold)(active_nodes))
+        }).unwrap_or(Played::NoOverlap)
       }
     }
   }
@@ -152,6 +152,16 @@ impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
   fn find_overlap(&self, t: Time) -> Option<&Overlap<'a>> {
     self.overlaps.iter().find(|x| x.inst_time <= t && t <= x.inst_time + x.dur)
   }
+}
+
+/// Informational value giving hints about how a timeline has played.
+pub enum Played<'a> {
+  /// The timeline has correctly resolved everything and a `Node` is available
+  Resolved(Node<'a>),
+  /// There are active `Node`s but no overlap to fold them.
+  NoOverlap,
+  /// No active `Node`s.
+  Inactive
 }
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
