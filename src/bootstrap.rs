@@ -17,8 +17,8 @@ type Time = f64;
 #[derive(Clone, Copy, Debug)]
 pub enum WindowDim {
   Windowed(u32, u32),
-  FullScreen,
-  FullScreenRestricted(u32, u32)
+  Fullscreen,
+  FullscreenRestricted(u32, u32)
 }
 
 type Keyboard = mpsc::Receiver<(Key, Action)>;
@@ -105,7 +105,7 @@ impl Device {
   /// Entry point.
   ///
   /// This function is the first one you have to call before anything else related to this crate.
-  /// 
+  ///
   /// # Arguments
   ///
   /// - `dim`: dimension of the window to create
@@ -127,21 +127,21 @@ impl Device {
         let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::Windowed).expect("Failed to create GLFW window.");
         (window, events, w, h)
       },
-      WindowDim::FullScreen => {
+      WindowDim::Fullscreen => {
         glfw.with_primary_monitor(|glfw, monitor| {
           let monitor = monitor.unwrap();
           let vmode = monitor.get_video_mode().expect("primary monitor’s video mode");
           let (w, h) = (vmode.width, vmode.height);
 
-          let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::FullScreen(monitor)).expect("Failed to create GLFW window.");
+          let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::Fullscreen(monitor)).expect("Failed to create GLFW window.");
           (window, events, w, h)
         })
       },
-      WindowDim::FullScreenRestricted(w, h) => {
+      WindowDim::FullscreenRestricted(w, h) => {
         glfw.with_primary_monitor(|glfw, monitor| {
           let monitor = monitor.unwrap();
 
-          let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::FullScreen(monitor)).expect("Failed to create GLFW window.");
+          let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::Fullscreen(monitor)).expect("Failed to create GLFW window.");
           (window, events, w, h)
         })
       }

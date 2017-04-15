@@ -59,7 +59,7 @@ pub enum Node<'a> {
   /// provide both the vertex and fragment shader. The vertex shader doesn’t take any inputs but is
   /// invoked in an *attributeless* context on a triangle strip configuration. The fragment shader
   /// should output only one *RGBA* fragment.
-  FullScreenEffect(&'a Program)
+  FullscreenEffect(&'a Program)
 }
 
 impl<'a> Node<'a> {
@@ -99,7 +99,7 @@ impl<'a> From<RGBA> for Node<'a> {
 
 impl<'a> From<&'a Program> for Node<'a> {
   fn from(program: &'a Program) -> Self {
-    Node::FullScreenEffect(program)
+    Node::FullscreenEffect(program)
   }
 }
 
@@ -221,7 +221,7 @@ impl Compositor {
       Node::Texture(texture, scale) => self.texturize(texture, scale),
       Node::Color(color) => self.colorize(color),
       Node::Composite(left, right, clear_color, eq, src_fct, dst_fct) => self.composite(*left, *right, clear_color, eq, src_fct, dst_fct),
-      Node::FullScreenEffect(program) => self.fullscreen_effect(program)
+      Node::FullscreenEffect(program) => self.fullscreen_effect(program)
     }
   }
 
