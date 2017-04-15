@@ -17,7 +17,7 @@ path = "spectra/src/main.rs"
 doc = false
 
 [dependencies]
-alto = "1.0"
+alto = "1.1"
 any-cache = "0.1"
 chrono = "0.3"
 clap = "2.19"
