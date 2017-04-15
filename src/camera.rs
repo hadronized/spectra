@@ -7,7 +7,7 @@ use std::path::Path;
 
 use linear::{Axis, Matrix4, Orientation, Position, Quaternion, Rotate, ToHomogeneous, Translation,
              Unit, UnitQuaternion, Vector3, X_AXIS, Y_AXIS, Z_AXIS, translation_matrix};
-use projection::{Projectable, perspective};
+use projection::{Perspective, Projectable, perspective};
 use resource::{Load, LoadError, ResCache};
 use transform::Transformable;
 
@@ -33,6 +33,12 @@ impl<P> Default for Camera<P> where P: Default {
     Camera::new(Position::new(0., 0., 0.),
                 Orientation::from_unit_value_unchecked(Quaternion::from_parts(1., Vector3::new(0., 0., 0.))),
                 P::default())
+  }
+}
+
+impl<T> Projectable for Camera<T> where T: Projectable {
+  fn projection(&self) -> Matrix4<f32> {
+    self.properties.projection()
   }
 }
 
@@ -73,7 +79,7 @@ impl<A> Load for Camera<A> where A: Default + Deserialize {
   }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize)]
 pub struct Freefly {
   // sensitivities
   #[serde(default = "def_yaw_sens")]
@@ -89,15 +95,7 @@ pub struct Freefly {
   #[serde(default = "def_upward_sens")]
   pub upward_sens: f32,
   // projection
-  #[serde(default = "def_ratio")]
-  pub ratio: f32,
-  #[serde(default = "def_fovy")]
-  pub fovy: f32,
-  // clipping
-  #[serde(default = "def_znear")]
-  pub znear: f32,
-  #[serde(default = "def_zfar")]
-  pub zfar: f32,
+  pub perspective: Perspective
 }
 
 impl Freefly {
@@ -109,10 +107,7 @@ impl Freefly {
       forward_sens: def_forward_sens(),
       strafe_sens: def_strafe_sens(),
       upward_sens: def_upward_sens(),
-      ratio: def_ratio(),
-      fovy: def_fovy(),
-      znear: def_znear(),
-      zfar: def_zfar(),
+      perspective: Perspective::new(),
     }
   }
 }
@@ -125,7 +120,7 @@ impl Default for Freefly {
 
 impl Projectable for Freefly {
   fn projection(&self) -> Matrix4<f32> {
-    perspective(self.ratio, self.fovy, self.znear, self.zfar)
+    self.perspective.projection()
   }
 }
 
@@ -151,19 +146,9 @@ impl Camera<Freefly> {
   }
 }
 
-impl<T> Projectable for Camera<T> where T: Projectable {
-  fn projection(&self) -> Matrix4<f32> {
-    self.properties.projection()
-  }
-}
-
 fn def_yaw_sens() -> f32 { 0.01 }
 fn def_pitch_sens() -> f32 { 0.01 }
 fn def_roll_sens() -> f32 { 0.01 }
 fn def_forward_sens() -> f32 { 0.1 }
 fn def_strafe_sens() -> f32 { 0.1 }
 fn def_upward_sens() -> f32 { 0.1 }
-fn def_ratio() -> f32 { 4. / 3. }
-fn def_fovy() -> f32 { FRAC_PI_4 }
-fn def_znear() -> f32 { 0.1 }
-fn def_zfar() -> f32 { 10. }
