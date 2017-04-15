@@ -1,13 +1,12 @@
 use serde::Deserialize;
 use serde_json::from_reader;
 use std::default::Default;
-use std::f32::consts::FRAC_PI_4;
 use std::fs::File;
 use std::path::Path;
 
 use linear::{Axis, Matrix4, Orientation, Position, Quaternion, Rotate, ToHomogeneous, Translation,
              Unit, UnitQuaternion, Vector3, X_AXIS, Y_AXIS, Z_AXIS, translation_matrix};
-use projection::{Perspective, Projectable, perspective};
+use projection::{Perspective, Projectable};
 use resource::{Load, LoadError, ResCache};
 use transform::Transformable;
 
@@ -107,7 +106,7 @@ impl Freefly {
       forward_sens: def_forward_sens(),
       strafe_sens: def_strafe_sens(),
       upward_sens: def_upward_sens(),
-      perspective: Perspective::new(),
+      perspective: Perspective::default(),
     }
   }
 }

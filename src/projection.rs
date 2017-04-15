@@ -1,4 +1,3 @@
-use serde::Deserialize;
 use std::f32::consts::FRAC_PI_4;
 
 use linear::{Matrix4, Perspective3};
@@ -25,19 +24,24 @@ pub struct Perspective {
 }
 
 impl Perspective {
-  pub fn new() -> Self {
+  pub fn new(ratio: f32, fovy: f32, znear: f32, zfar: f32) -> Self {
     Perspective {
-      ratio: def_ratio(),
-      fovy: def_fovy(),
-      znear: def_znear(),
-      zfar: def_zfar(),
+      ratio: ratio,
+      fovy: fovy,
+      znear: znear,
+      zfar: zfar,
     }
   }
 }
 
 impl Default for Perspective {
   fn default() -> Self {
-    Self::new()
+    Perspective {
+      ratio: def_ratio(),
+      fovy: def_fovy(),
+      znear: def_znear(),
+      zfar: def_zfar(),
+    }
   }
 }
 
