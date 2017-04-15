@@ -152,7 +152,7 @@ impl Device {
     window.make_current();
 
     // FIXME: use a target instead
-    if cfg!(feature = "release") {
+    if cfg!(not(debug_assertions)) {
       deb!("hiding cursor");
       window.set_cursor_mode(CursorMode::Disabled);
     }
