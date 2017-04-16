@@ -24,7 +24,6 @@ fn main() {
   write!(&mut manifest, "  let mut resources = Vec::new();\n").unwrap();
 
   for entry in &resources {
-    println!("cargo:warning=packing up resource {:?}", entry);
     write!(&mut manifest, "  resources.push((PathBuf::from(&{0:?}[14..]), include_bytes!({0:?}).as_ref()));\n", entry).unwrap();
   }
 

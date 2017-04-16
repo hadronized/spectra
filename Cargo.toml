@@ -4,12 +4,13 @@ version = "0.1.0"
 license = "BSD-3-Clause"
 authors = ["Dimitri Sabadie <dimitri.sabadie@gmail.com>"]
 description = "Demoscene framework"
-keywords = ["demoscene"]
-build = "build.rs"
+keywords = ["demoscene", "animation", "graphics"]
 
 homepage = "https://github.com/phaazon/spectra"
 repository = "https://github.com/phaazon/spectra"
 documentation = "http://phaazon.github.io/spectra"
+
+build = "build.rs"
 
 [[bin]]
 name = "spectra"
@@ -21,8 +22,7 @@ alto = "1.1"
 any-cache = "0.1"
 chrono = "0.3"
 clap = "2.19"
-#luminance = "0.18"
-luminance = { path = "../../luminance" }
+luminance = "0.19"
 gl = "0.6"
 image = "0.12"
 nalgebra = "0.10"
