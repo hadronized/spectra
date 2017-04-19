@@ -133,7 +133,7 @@ impl Device {
           let vmode = monitor.get_video_mode().expect("primary monitor’s video mode");
           let (w, h) = (vmode.width, vmode.height);
 
-          let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::Fullscreen(monitor)).expect("Failed to create GLFW window.");
+          let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::FullScreen(monitor)).expect("Failed to create GLFW window.");
           (window, events, w, h)
         })
       },
@@ -141,7 +141,7 @@ impl Device {
         glfw.with_primary_monitor(|glfw, monitor| {
           let monitor = monitor.unwrap();
 
-          let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::Fullscreen(monitor)).expect("Failed to create GLFW window.");
+          let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::FullScreen(monitor)).expect("Failed to create GLFW window.");
           (window, events, w, h)
         })
       }
