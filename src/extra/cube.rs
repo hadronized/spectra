@@ -1,15 +1,18 @@
 use luminance::tess::{Mode, Tess, TessVertices};
 
-// A unit cube.
-//
-//     ×-----×
-//    /|    /|
-//   ×-+---× |
-//   | ×---+-×
-//   |/    |/
-//   ×-----×
-pub fn new_cube() -> Tess {
-  let vertices: &[([f32; 3], [f32; 3], [f32; 2])] = &[
+/// Cube’s vertex type – (position, normal, texture coordinates).
+pub type Vertex = ([f32; 3], [f32; 3], [f32; 2]);
+
+/// A unit cube.
+///
+///     ×-----×
+///    /|    /|
+///   ×-+---× |
+///   | ×---+-×
+///   |/    |/
+///   ×-----×
+pub fn new_cube() -> Tess<Vertex> {
+  let vertices = [
     // front face
     ([ 1., -1.,  1.], [ 0.,  0.,  1.], [1., 0.]), // 0
     ([ 1.,  1.,  1.], [ 0.,  0.,  1.], [1., 1.]),
@@ -51,5 +54,5 @@ pub fn new_cube() -> Tess {
     20, 21, 22, 22, 21, 23, // bottom face
   ];
 
-  Tess::new(Mode::Triangle, TessVertices::Fill(vertices), indices)
+  Tess::new(Mode::Triangle, TessVertices::Fill(&vertices), indices)
 }

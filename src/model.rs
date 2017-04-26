@@ -38,12 +38,12 @@ impl IntoIterator for Model {
 }
 
 pub struct Part {
-  pub tess: Tess,
+  pub tess: Tess<Vertex>,
   // TODO: add material index
 }
 
 impl Part {
-  pub fn new(tess: Tess) -> Self {
+  pub fn new(tess: Tess<Vertex>) -> Self {
     Part {
       tess: tess,
     }

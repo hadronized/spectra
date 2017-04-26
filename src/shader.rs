@@ -5,9 +5,11 @@ use std::io::{BufRead, BufReader};
 use std::ops::Deref;
 use std::path::Path;
 
-pub use luminance::shader::program::{ProgramError, Sem, Uniform, UniformWarning, Uniformable};
+pub use luminance::shader::program::{ProgramError, Uniform, Uniformable, UniformBuilder,
+                                     UniformInterface, UniformWarning};
+use luminance::vertex::Vertex;
 
-use resource::{Load, LoadError, Reload, ResCache};
+use resource::{Load, LoadError, ResCache};
 
 #[derive(Debug)]
 pub enum ShaderError {
@@ -15,21 +17,28 @@ pub enum ShaderError {
   ProgramError(ProgramError)
 }
 
-pub fn new_program(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_src: &str, sem_map: &[Sem]) -> Result<(LProgram, Vec<UniformWarning>), ProgramError> {
+pub fn new_program<In, Out, Uni>(tcs_src: &str,
+                                 tes_src: &str,
+                                 vs_src: &str,
+                                 gs_src: &str,
+                                 fs_src: &str)
+                                 -> Result<(LProgram<In, Out, Uni>, Vec<UniformWarning>), ProgramError>
+    where In: Vertex,
+          Uni: UniformInterface {
   let stages = compile_stages(tcs_src, tes_src, vs_src, gs_src, fs_src);
 
   match stages {
     Ok((tess, vs, gs, fs)) => {
       if let Some((tcs, tes)) = tess {
         if let Some(gs) = gs {
-          LProgram::new(Some((&tcs, &tes)), &vs, Some(&gs), &fs, sem_map)
+          LProgram::new(Some((&tcs, &tes)), &vs, Some(&gs), &fs)
         } else {
-          LProgram::new(Some((&tcs, &tes)), &vs, None, &fs, sem_map)
+          LProgram::new(Some((&tcs, &tes)), &vs, None, &fs)
         }
       } else if let Some(gs) = gs {
-        LProgram::new(None, &vs, Some(&gs), &fs, sem_map)
+        LProgram::new(None, &vs, Some(&gs), &fs)
       } else {
-        LProgram::new(None, &vs, None, &fs, sem_map)
+        LProgram::new(None, &vs, None, &fs)
       }
     },
     Err(stage_error) => {
@@ -70,25 +79,24 @@ fn compile_stages(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_s
 /// use twice the same pragma in a file.
 ///
 /// At the top of the file, if you don’t put a pragma, you can use `//` to add comments, or die.
-pub struct Program {
-  program: LProgram,
-  sem_map: Vec<Sem>
+pub struct Program<In, Out, Uni> {
+  program: LProgram<In, Out, Uni>
 }
 
-impl Deref for Program {
-  type Target = LProgram;
+impl<In, Out, Uni> Deref for Program<In, Out, Uni> {
+  type Target = LProgram<In, Out, Uni>;
 
   fn deref(&self) -> &Self::Target {
     &self.program
   }
 }
 
-impl Load for Program {
-  type Args = Vec<Sem>;
+impl<In, Out, Uni> Load for Program<In, Out, Uni> where In: Vertex, Uni: UniformInterface {
+  type Args = ();
 
   const TY_STR: &'static str = "shaders";
 
-  fn load<P>(path: P, _: &mut ResCache, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     info!("loading shader: {:?}", path);
@@ -189,7 +197,7 @@ impl Load for Program {
           }
         }
 
-        let (program, warnings) = new_program(&tcs_src, &tes_src, &vs_src, &gs_src, &fs_src, &args)
+        let (program, warnings) = new_program(&tcs_src, &tes_src, &vs_src, &gs_src, &fs_src)
           .map_err(|e| LoadError::ConversionFailed(format!("{:#?}", e)))?;
 
         // check for semantic errors
@@ -199,8 +207,7 @@ impl Load for Program {
 
         Ok(
           Program {
-            program: program,
-            sem_map: args
+            program: program
           }
         )
       },
@@ -211,8 +218,15 @@ impl Load for Program {
   }
 }
 
-impl Reload for Program {
-  fn reload_args(&self) -> Self::Args {
-    self.sem_map.clone()
+pub trait UnwrapOrUnbound<T> {
+  fn unwrap_or_unbound(self, builder: &UniformBuilder, warnings: &mut Vec<UniformWarning>) -> Uniform<T> where T: Uniformable;
+}
+
+impl<T> UnwrapOrUnbound<T> for Result<Uniform<T>, UniformWarning> {
+  fn unwrap_or_unbound(self, builder: &UniformBuilder, warnings: &mut Vec<UniformWarning>) -> Uniform<T> where T: Uniformable {
+    self.unwrap_or_else(|w| {
+      warnings.push(w);
+      builder.unbound()
+    })
   }
 }

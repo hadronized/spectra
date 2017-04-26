@@ -94,7 +94,7 @@ impl<'a> Rasterizer<'a> {
 
     // create the texture from the buffer
     let sampler = Sampler::default();
-    let texture = Texture::new((width as u32, px_height as u32), 4, &sampler).map_err(|e|
+    let texture = Texture::new([width as u32, px_height as u32], 4, &sampler).map_err(|e|
       FontError::RasterizationFailed(format!("{:?}", e)))?;
     texture.upload(true, &texels);
 

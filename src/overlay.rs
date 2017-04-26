@@ -1,5 +1,6 @@
 use luminance::blending::{Equation, Factor};
 use luminance::pipeline::Pipeline;
+use luminance::shader::program;
 use luminance::tess::{Mode, Tess, TessRender, TessVertices};
 use luminance::texture::{Dim2, Flat, Unit};
 use luminance::vertex::{Vertex, VertexFormat};
@@ -8,7 +9,7 @@ use std::cell::RefCell;
 use compositing::{ColorMap, DepthMap};
 use framebuffer::Framebuffer2D;
 use resource::{Res, ResCache};
-use shader::{Program, Uniform};
+use shader::{Program, Uniform, UniformBuilder, UniformInterface, UniformWarning, UnwrapOrUnbound};
 use text::TextTexture;
 use texture::{RGBA32F, Texture};
 
@@ -100,40 +101,66 @@ impl<'a> Text<'a> {
   }
 }
 
-const DISC_SCREEN_RATIO: &'static Uniform<f32> = &Uniform::new(0);
+struct DiscUniforms {
+  screen_ratio: Uniform<f32>
+}
 
-const TEXT_SAMPLER: &'static Uniform<Unit> = &Uniform::new(0);
-const TEXT_POS: &'static Uniform<[f32; 3]> = &Uniform::new(1);
-const TEXT_SIZE: &'static Uniform<[f32; 2]> = &Uniform::new(2);
-const TEXT_SCALE: &'static Uniform<f32> = &Uniform::new(3);
-const TEXT_COLOR: &'static Uniform<[f32; 4]> = &Uniform::new(4);
+impl UniformInterface for DiscUniforms {
+  fn uniform_interface(builder: UniformBuilder) -> program::Result<(Self, Vec<UniformWarning>)> {
+    let mut warnings = Vec::new();
+
+    let iface = DiscUniforms {
+      screen_ratio: builder.ask("ratio").unwrap_or_unbound(&builder, &mut warnings)
+    };
+
+    Ok((iface, warnings))
+  }
+}
+
+struct TextUniforms {
+  sampler: Uniform<Unit>,
+  pos: Uniform<[f32; 3]>,
+  size: Uniform<[f32; 2]>,
+  scale: Uniform<f32>,
+  color: Uniform<[f32; 4]>
+}
+
+impl UniformInterface for TextUniforms {
+  fn uniform_interface(builder: UniformBuilder) -> program::Result<(Self, Vec<UniformWarning>)> {
+    let mut warnings = Vec::new();
+
+    let iface = TextUniforms {
+      sampler: builder.ask("text_texture").unwrap_or_unbound(&builder, &mut warnings),
+      pos: builder.ask("pos").unwrap_or_unbound(&builder, &mut warnings),
+      size: builder.ask("size").unwrap_or_unbound(&builder, &mut warnings),
+      scale: builder.ask("scale").unwrap_or_unbound(&builder, &mut warnings),
+      color: builder.ask("color").unwrap_or_unbound(&builder, &mut warnings)
+    };
+
+    Ok((iface, warnings))
+  }
+}
 
 pub struct Overlay {
   ratio: f32,
-  tri_program: Res<Program>,
-  tris: RefCell<Tess>,
-  disc_program: Res<Program>,
-  discs: RefCell<Tess>,
-  text_program: Res<Program>,
-  text_quad: Tess,
+  tri_program: Res<Program<Vert, (), ()>>,
+  tris: RefCell<Tess<Vert>>,
+  disc_program: Res<Program<Disc, (), DiscUniforms>>,
+  discs: RefCell<Tess<Disc>>,
+  text_program: Res<Program<[f32; 2], (), TextUniforms>>,
+  text_quad: Tess<[f32; 2]>,
   unit_converter: UnitConverter,
 }
 
 impl Overlay {
   pub fn new(w: u32, h: u32, max_tris: usize, max_quads: usize, max_discs: usize, cache: &mut ResCache) -> Self {
-    let tri_program = cache.get("spectra/overlay/triangle.glsl", vec![]).unwrap();
+    let tri_program = cache.get("spectra/overlay/triangle.glsl", ()).unwrap();
     let tris = Tess::new(Mode::Triangle, TessVertices::Reserve::<Vert>(max_tris * 3 + max_quads * 4), None);
 
-    let disc_program = cache.get("spectra/overlay/disc.glsl", vec![DISC_SCREEN_RATIO.sem("ratio")]).unwrap();
+    let disc_program = cache.get("spectra/overlay/disc.glsl", ()).unwrap();
     let discs = Tess::new(Mode::Point, TessVertices::Reserve::<Disc>(max_discs), None);
 
-    let text_program = cache.get("spectra/overlay/text.glsl", vec![
-      TEXT_SAMPLER.sem("text_texture"),
-      TEXT_POS.sem("pos"),
-      TEXT_SIZE.sem("size"),
-      TEXT_SCALE.sem("scale"),
-      TEXT_COLOR.sem("color")
-    ]).unwrap();
+    let text_program = cache.get("spectra/overlay/text.glsl", ()).unwrap();
 
     let text_quad = Tess::attributeless(Mode::TriangleStrip, 4);
 
@@ -201,34 +228,34 @@ impl Overlay {
     let text_program = self.text_program.borrow();
 
     Pipeline::new(framebuffer, [0., 0., 0., 0.], &[], &[]).enter(|shd_gate| {
-      shd_gate.new(&tri_program, &[], &[], &[]).enter(|rdr_gate| {
-        rdr_gate.new(None, true, &[], &[], &[]).enter(|tess_gate| {
-          tess_gate.render(tris, &[], &[], &[]);
+      shd_gate.new(&tri_program, &[], &[]).enter(|rdr_gate, _| {
+        rdr_gate.new(None, true, &[], &[]).enter(|tess_gate| {
+          tess_gate.render(tris, &[], &[]);
         });
       });
 
-      let disc_uniforms = [DISC_SCREEN_RATIO.alter(self.ratio)];
-      shd_gate.new(&disc_program, &disc_uniforms, &[], &[]).enter(|rdr_gate| {
-        rdr_gate.new(None, true, &[], &[], &[]).enter(|tess_gate| {
-          tess_gate.render(discs, &[], &[], &[]);
+      shd_gate.new(&disc_program, &[], &[]).enter(|rdr_gate, uniforms| {
+        uniforms.screen_ratio.update(self.ratio);
+
+        rdr_gate.new(None, true, &[], &[]).enter(|tess_gate| {
+          tess_gate.render(discs, &[], &[]);
         });
       });
 
       if let Some((texts, text_scale)) = input.texts {
-        shd_gate.new(&text_program, &[], &[], &[]).enter(|rdr_gate| {
+        shd_gate.new(&text_program, &[], &[]).enter(|rdr_gate, uniforms| {
           for text in texts {
             let blending = (Equation::Additive, Factor::One, Factor::SrcAlphaComplement);
-            let (tex_w, tex_h) = text.text_texture.size();
-            let uniforms = [
-              TEXT_SAMPLER.alter(Unit::new(0)),
-              TEXT_POS.alter(text.left_lower.to_clip_space(&self.unit_converter).pos),
-              TEXT_SIZE.alter(self.unit_converter.from_win_dim(tex_w as f32, tex_h as f32)),
-              TEXT_SCALE.alter(text_scale),
-              TEXT_COLOR.alter(text.left_lower.color),
-            ];
+            let [tex_w, tex_h] = text.text_texture.size();
 
-            rdr_gate.new(blending, true, &uniforms, &[&***text.text_texture], &[]).enter(|tess_gate| {
-              tess_gate.render(text_quad.clone(), &[], &[], &[]);
+            uniforms.sampler.update(Unit::new(0));
+            uniforms.pos.update(text.left_lower.to_clip_space(&self.unit_converter).pos);
+            uniforms.size.update(self.unit_converter.from_win_dim(tex_w as f32, tex_h as f32));
+            uniforms.scale.update(text_scale);
+            uniforms.color.update(text.left_lower.color);
+
+            rdr_gate.new(blending, true, &[&***text.text_texture], &[]).enter(|tess_gate| {
+              tess_gate.render(text_quad.clone(), &[], &[]);
             });
           }
         });

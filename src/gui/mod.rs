@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use bootstrap::{Action, EventHandler, EventSig, MouseButton};
 use color::RGBA;
-use compositing::RenderLayer;
+use compositing::Layer;
 use overlay::{Disc, Overlay, Quad, RenderInput, Text, Triangle, Vert};
 use resource::ResCache;
 
@@ -61,7 +61,7 @@ impl<'a> GUI<'a> {
     self.widgets.remove(id);
   }
 
-  pub fn render_layer(&mut self) -> RenderLayer {
+  pub fn render_layer(&mut self) -> Layer {
     self.tris.clear();
     self.quads.clear();
     self.discs.clear();
@@ -85,7 +85,7 @@ impl<'a> GUI<'a> {
       .texts(&self.texts, 1.);
 
     let overlay = &self.overlay;
-    RenderLayer::new(move |framebuffer| overlay.render(framebuffer, &render_input))
+    Layer::new(move |framebuffer| overlay.render(framebuffer, &render_input))
   }
 }
 

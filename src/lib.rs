@@ -42,6 +42,7 @@
 #![feature(associated_consts)]
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
+#![feature(slice_patterns)]
 
 extern crate alto;
 extern crate any_cache;

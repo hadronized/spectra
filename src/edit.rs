@@ -3,18 +3,17 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 
-use compositing::Node;
 use resource::{Load, LoadError, Result, ResCache};
 
 /// Time.
 pub type Time = f64;
 
-pub struct Clip<'a, 'b> where 'a: 'b {
-  gen_node: Box<Fn(Time) -> Node<'a> + 'b>
+pub struct Clip<'a, A> where A: 'a {
+  gen_node: Box<Fn(Time) -> A + 'a>
 }
 
-impl<'a, 'b> Clip<'a, 'b> {
-  pub fn new<F>(f: F) -> Self where F: 'b + Fn(Time) -> Node<'a> {
+impl<'a, A> Clip<'a, A> {
+  pub fn new<F>(f: F) -> Self where F: 'a + Fn(Time) -> A {
     Clip {
       gen_node: Box::new(f)
     }
@@ -24,15 +23,15 @@ impl<'a, 'b> Clip<'a, 'b> {
 /// A cut is an object that slices a `Clip` at an *input time* and *output time*. It is instantiated
 /// in a `Track` at a given *instance time*.
 #[derive(Clone)]
-pub struct Cut<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
+pub struct Cut<'a, 'b, A> where A: 'a, 'a: 'b {
   pub in_time: Time,
   pub out_time: Time,
   pub inst_time: Time,
-  pub clip: &'c Clip<'a, 'b>
+  pub clip: &'b Clip<'a, A>
 }
 
-impl<'a, 'b, 'c> Cut<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
-  pub fn new(in_time: Time, out_time: Time, inst_time: Time, clip: &'c Clip<'a, 'b>) -> Self {
+impl<'a, 'b, A> Cut<'a, 'b, A> where A :'a, 'a: 'b {
+  pub fn new(in_time: Time, out_time: Time, inst_time: Time, clip: &'b Clip<'a, A>) -> Self {
     assert!(in_time <= out_time);
 
     Cut {
@@ -51,24 +50,24 @@ impl<'a, 'b, 'c> Cut<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
 
 /// A track gathers `Cut`s and its purpose is to be used inside a `Timeline`.
 #[derive(Clone)]
-pub struct Track<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
-  cuts: Vec<Cut<'a, 'b, 'c>>
+pub struct Track<'a, 'b, A> where A: 'a, 'a: 'b {
+  cuts: Vec<Cut<'a, 'b, A>>
 }
 
-impl<'a, 'b, 'c> Track<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
+impl<'a, 'b, A> Track<'a, 'b, A> where A: 'a, 'a: 'b {
   pub fn new() -> Self {
     Track {
       cuts: Vec::new()
     }
   }
 
-  pub fn add_cut(&mut self, cut: Cut<'a, 'b, 'c>) {
+  pub fn add_cut(&mut self, cut: Cut<'a, 'b, A>) {
     self.cuts.push(cut);
   }
 }
 
-impl<'a, 'b, 'c, 'd> From<&'d [Cut<'a, 'b, 'c>]> for Track<'a, 'b, 'c> {
-  fn from(cuts: &'d [Cut<'a, 'b, 'c>]) -> Self {
+impl<'a, 'b, 'c, A> From<&'c [Cut<'a, 'b, A>]> for Track<'a, 'b, A> where A: Clone {
+  fn from(cuts: &'c [Cut<'a, 'b, A>]) -> Self {
     Track {
       cuts: cuts.to_vec()
     }
@@ -76,12 +75,12 @@ impl<'a, 'b, 'c, 'd> From<&'d [Cut<'a, 'b, 'c>]> for Track<'a, 'b, 'c> {
 }
 
 /// A timeline gathers tracks used to build up the visual aspect of the demo.
-pub struct Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
-  tracks: Vec<Track<'a, 'b, 'c>>,
-  overlaps: Vec<Overlap<'a>>
+pub struct Timeline<'a, 'b, A> where A: 'a, 'a: 'b {
+  tracks: Vec<Track<'a, 'b, A>>,
+  overlaps: Vec<Overlap<'a, A>>
 }
 
-impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
+impl<'a, 'b, A> Timeline<'a, 'b, A> where A: 'a, 'a: 'b {
   pub fn new() -> Self {
     Timeline {
       tracks: Vec::new(),
@@ -91,7 +90,7 @@ impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
 
   /// Turn a TimelineManifest into a Timeline by providing a mapping between clips’ names and real
   /// clips.
-  pub fn from_manifest(manifest: &TimelineManifest, mapping: &HashMap<String, &'c Clip<'a, 'b>>) -> Self {
+  pub fn from_manifest(manifest: &TimelineManifest, mapping: &HashMap<String, &'b Clip<'a, A>>) -> Self {
     let mut timeline = Self::new();
 
     for track_manifest in &manifest.tracks {
@@ -115,15 +114,15 @@ impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
     timeline
   }
 
-  pub fn add_track(&mut self, track: Track<'a, 'b, 'c>) {
+  pub fn add_track(&mut self, track: Track<'a, 'b, A>) {
     self.tracks.push(track);
   }
 
-  pub fn add_overlap(&mut self, overlap: Overlap<'a>) {
+  pub fn add_overlap(&mut self, overlap: Overlap<'a, A>) {
     self.overlaps.push(overlap)
   }
 
-  pub fn play(&self, t: Time) -> Played<'a> {
+  pub fn play(&self, t: Time) -> Played<A> {
     let mut active_nodes = Vec::new();
 
     // populate the active nodes
@@ -149,18 +148,18 @@ impl<'a, 'b, 'c> Timeline<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
   }
 
   /// Find an active overlap at the given time.
-  fn find_overlap(&self, t: Time) -> Option<&Overlap<'a>> {
+  fn find_overlap(&self, t: Time) -> Option<&Overlap<A>> {
     self.overlaps.iter().find(|x| x.inst_time <= t && t <= x.inst_time + x.dur)
   }
 }
 
 /// Informational value giving hints about how a timeline has played.
-pub enum Played<'a> {
-  /// The timeline has correctly resolved everything and a `Node` is available
-  Resolved(Node<'a>),
-  /// There are active `Node`s but no overlap to fold them.
+pub enum Played<A> {
+  /// The timeline has correctly resolved everything.
+  Resolved(A),
+  /// There are active `Track`s but no overlap to fold them.
   NoOverlap,
-  /// No active `Node`s.
+  /// No active `Track`s.
   Inactive
 }
 
@@ -197,16 +196,16 @@ pub struct CutManifest {
   pub clip: String
 }
 
-/// An overlap is a fold of `Node`s down to a single `Node`. It’s used whenever two cuts overlap and
-/// need to be merged into a single one. It can be used for styling effect or transitions.
-pub struct Overlap<'a> {
+/// An overlap is a fold consuming clips’ outputs down to a single one. It’s used whenever two cuts
+/// overlap and need to be merged into a single one. It can be used for styling effect or transitions.
+pub struct Overlap<'a, A> {
   pub inst_time: Time,
   pub dur: Time,
-  pub fold: Box<Fn(Vec<Node>) -> Node + 'a>,
+  pub fold: Box<Fn(Vec<A>) -> A + 'a>,
 }
 
-impl<'a> Overlap<'a> {
-  pub fn new<F>(inst_time: Time, dur: Time, f: F) -> Self where F: 'a + Fn(Vec<Node>) -> Node {
+impl<'a, A> Overlap<'a, A> {
+  pub fn new<F>(inst_time: Time, dur: Time, f: F) -> Self where F: 'a + Fn(Vec<A>) -> A {
     Overlap {
       inst_time: inst_time,
       dur: dur,

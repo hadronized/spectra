@@ -18,14 +18,14 @@ pub fn load_rgba_texture<P, L>(path: P, sampler: &Sampler, linearizer: L) -> Res
   info!("loading texture image: \x1b[35m{:?}", path.as_ref());
 
   let img = image::open(path).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?.flipv().to_rgba();
-  let dim = img.dimensions();
+  let (w, h) = img.dimensions();
   let linearizer = linearizer.into();
   let raw: Vec<f32> = img.into_raw().into_iter().map(|x| {
     let y = x as f32 / 255.;
     linearizer.map_or(y, |factor| y.powf(1. / factor))
   }).collect();
 
-  let tex = Texture::new(dim, 0, sampler).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?;
+  let tex = Texture::new([w, h], 0, sampler).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?;
   tex.upload_raw(false, &raw);
 
   Ok(tex)
@@ -36,7 +36,7 @@ pub fn save_rgba_texture<P>(texture: &TextureRGBA32F, path: P) where P: AsRef<Pa
   info!("saving texture image to: \x1b[35m{:?}", path.as_ref());
 
   let texels = texture.get_raw_texels();
-  let (w, h) = texture.size();
+  let [w, h] = texture.size();
   let mut output = Vec::with_capacity((w * h) as usize);
 
   for texel in &texels {
