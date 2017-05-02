@@ -1,5 +1,5 @@
 use color::RGB;
-use linear::{Direction, Position};
+use linear::V3;
 use std::default::Default;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -48,12 +48,12 @@ impl<L> Light<L> {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LightDir {
-  dir: Direction,
+  dir: V3<f32>,
   _pad: f32
 }
 
-impl From<Direction> for LightDir {
-  fn from(dir: Direction) -> Self {
+impl From<V3<f32>> for LightDir {
+  fn from(dir: V3<f32>) -> Self {
     LightDir {
       dir: dir,
       _pad: 0.
@@ -63,12 +63,12 @@ impl From<Direction> for LightDir {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LightPos {
-  pos: Position,
+  pos: V3<f32>,
   _pad: f32
 }
 
-impl From<Position> for LightPos {
-  fn from(pos: Position) -> Self {
+impl From<V3<f32>> for LightPos {
+  fn from(pos: V3<f32>) -> Self {
     LightPos {
       pos: pos,
       _pad: 0.

@@ -1,3 +1,4 @@
+use cgmath::{BaseFloat, InnerSpace};
 use serde::Deserialize;
 use serde_json::from_reader;
 use std::f32::consts;
@@ -5,7 +6,7 @@ use std::fs::File;
 use std::ops::{Add, Div, Mul, Sub};
 use std::path::Path;
 
-use linear::{BaseFloat, Scale, Unit, UnitQuaternion, Vector2, Vector3, Vector4};
+use linear::{Scale, Quat, V2, V3, V4};
 use resource::{Load, LoadError, ResCache};
 
 /// Time used as sampling type in splines.
@@ -198,35 +199,35 @@ impl SplineDeserializerAdapter for f32 {
   }
 }
 
-impl<T> SplineDeserializerAdapter for Vector2<T> where T: Clone + Deserialize {
+impl<T> SplineDeserializerAdapter for V2<T> where T: BaseFloat + Deserialize {
   type Deserialized = [T; 2];
 
   fn from_deserialized(de: Self::Deserialized) -> Self {
-    (&de).into()
+    de.into()
   }
 }
 
-impl<T> SplineDeserializerAdapter for Vector3<T> where T: Clone + Deserialize {
+impl<T> SplineDeserializerAdapter for V3<T> where T: BaseFloat + Deserialize {
   type Deserialized = [T; 3];
 
   fn from_deserialized(de: Self::Deserialized) -> Self {
-    (&de).into()
+    de.into()
   }
 }
 
-impl<T> SplineDeserializerAdapter for Vector4<T> where T: Clone + Deserialize {
+impl<T> SplineDeserializerAdapter for V4<T> where T: BaseFloat + Deserialize {
   type Deserialized = [T; 4];
 
   fn from_deserialized(de: Self::Deserialized) -> Self {
-    (&de).into()
+    de.into()
   }
 }
 
-impl<T> SplineDeserializerAdapter for UnitQuaternion<T> where T: BaseFloat + Deserialize {
+impl<T> SplineDeserializerAdapter for Quat<T> where T: BaseFloat + Deserialize {
   type Deserialized = [T; 4];
 
   fn from_deserialized(de: Self::Deserialized) -> Self {
-    Unit::new((&de).into())
+    de.into()
   }
 }
 
@@ -234,7 +235,7 @@ impl SplineDeserializerAdapter for Scale {
   type Deserialized = [f32; 3];
 
   fn from_deserialized(de: Self::Deserialized) -> Self {
-    Scale::from(&de)
+    de.into()
   }
 }
 
@@ -270,8 +271,8 @@ impl<'a, T> IntoIterator for &'a Spline<T> {
   }
 }
 
-/// Keys that can be interpolated between. Implementing this trait is required to perform sampling
-/// on splines.
+/// Keys that can be interpolated in between. Implementing this trait is required to perform
+/// sampling on splines.
 pub trait Interpolate: Copy {
   /// Linear interpolation.
   fn lerp(a: Self, b: Self, t: Time) -> Self;
@@ -285,7 +286,7 @@ pub trait Interpolate: Copy {
 
 impl Interpolate for f32 {
   fn lerp(a: Self, b: Self, t: Time) -> Self {
-    lerp(a, b, t)
+    a * (1. - t) + b * t
   }
 
   fn cubic_hermite(x: (Self, Time), a: (Self, Time), b: (Self, Time), y: (Self, Time), t: Time) -> Self {
@@ -293,9 +294,9 @@ impl Interpolate for f32 {
   }
 }
 
-impl Interpolate for Vector2<f32> {
+impl Interpolate for V2<f32> {
   fn lerp(a: Self, b: Self, t: Time) -> Self {
-    lerp(a, b, t)
+    a.lerp(b, t)
   }
 
   fn cubic_hermite(x: (Self, Time), a: (Self, Time), b: (Self, Time), y: (Self, Time), t: Time) -> Self {
@@ -303,9 +304,9 @@ impl Interpolate for Vector2<f32> {
   }
 }
 
-impl Interpolate for Vector3<f32> {
+impl Interpolate for V3<f32> {
   fn lerp(a: Self, b: Self, t: Time) -> Self {
-    lerp(a, b, t)
+    a.lerp(b, t)
   }
 
   fn cubic_hermite(x: (Self, Time), a: (Self, Time), b: (Self, Time), y: (Self, Time), t: Time) -> Self {
@@ -313,9 +314,9 @@ impl Interpolate for Vector3<f32> {
   }
 }
 
-impl Interpolate for Vector4<f32> {
+impl Interpolate for V4<f32> { 
   fn lerp(a: Self, b: Self, t: Time) -> Self {
-    lerp(a, b, t)
+    a.lerp(b, t)
   }
 
   fn cubic_hermite(x: (Self, Time), a: (Self, Time), b: (Self, Time), y: (Self, Time), t: Time) -> Self {
@@ -323,25 +324,20 @@ impl Interpolate for Vector4<f32> {
   }
 }
 
-impl Interpolate for UnitQuaternion<f32> {
+impl Interpolate for Quat<f32> {
   fn lerp(a: Self, b: Self, t: Time) -> Self {
-    a * UnitQuaternion::new(&(UnitQuaternion::new(&a.quaternion().conjugate()) * b).quaternion().powf(t))
+    a.nlerp(b, t)
   }
 }
 
 impl Interpolate for Scale {
   fn lerp(a: Self, b: Self, t: Time) -> Self {
-    let av = Vector3::new(a.x, a.y, a.z);
-    let bv = Vector3::new(b.x, b.y, b.z);
-    let r = *lerp(av, bv, t).as_ref();
+    let av = V3::new(a.x, a.y, a.z);
+    let bv = V3::new(b.x, b.y, b.z);
+    let r = av.lerp(bv, t);
 
-    Scale::from(&r)
+    Scale::new(r.x, r.y, r.z)
   }
-}
-
-// Default implementation of Interpolate::lerp.
-pub fn lerp<T>(a: T, b: T, t: Time) -> T where T: Add<Output = T> + Mul<Time, Output = T> {
-  a * (1. - t) + b * t
 }
 
 // Default implementation of Interpolate::cubic_hermit.

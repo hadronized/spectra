@@ -1,24 +1,24 @@
+use cgmath::{ElementWise, InnerSpace, Rotation};
 use serde::Deserialize;
 use serde_json::from_reader;
 use std::default::Default;
 use std::fs::File;
 use std::path::Path;
 
-use linear::{Axis, Matrix4, Orientation, Position, Quaternion, Rotate, ToHomogeneous, Translation,
-             Unit, UnitQuaternion, Vector3, X_AXIS, Y_AXIS, Z_AXIS, translation_matrix};
-use projection::{Perspective, Projectable};
+use linear::{M44, Quat, V3};
+use projection::{Perspective, Projectable, Projection};
 use resource::{Load, LoadError, ResCache};
-use transform::Transformable;
+use transform::{Transform, Transformable};
 
 #[derive(Clone, Debug)]
 pub struct Camera<P> {
-  pub position: Position,
-  pub orientation: Orientation,
+  pub position: V3<f32>,
+  pub orientation: Quat<f32>,
   pub properties: P
 }
 
 impl<P> Camera<P> {
-  pub fn new(position: Position, orientation: Orientation, properties: P) -> Self {
+  pub fn new(position: V3<f32>, orientation: Quat<f32>, properties: P) -> Self {
     Camera {
       position: position,
       orientation: orientation,
@@ -29,21 +29,21 @@ impl<P> Camera<P> {
 
 impl<P> Default for Camera<P> where P: Default {
   fn default() -> Self {
-    Camera::new(Position::new(0., 0., 0.),
-                Orientation::from_unit_value_unchecked(Quaternion::from_parts(1., Vector3::new(0., 0., 0.))),
+    Camera::new(V3::new(0., 0., 0.),
+                Quat::from_sv(1., V3::new(0., 0., 0.)),
                 P::default())
   }
 }
 
 impl<T> Projectable for Camera<T> where T: Projectable {
-  fn projection(&self) -> Matrix4<f32> {
+  fn projection(&self) -> Projection {
     self.properties.projection()
   }
 }
 
 impl<P> Transformable for Camera<P> {
-  fn transform(&self) -> Matrix4<f32> {
-    self.orientation.to_rotation_matrix().to_homogeneous() * translation_matrix(-self.position)
+  fn transform(&self) -> Transform {
+    (M44::from(self.orientation) * M44::from_translation(-self.position)).into()
   }
 }
 
@@ -71,8 +71,8 @@ impl<A> Load for Camera<A> where A: Default + Deserialize {
     };
 
     Ok(Camera {
-      position: (&manifest.position).into(),
-      orientation: Unit::new(&Quaternion::from(&manifest.orientation)),
+      position: manifest.position.into(),
+      orientation: manifest.orientation.into(),
       properties: manifest.properties
     })
   }
@@ -118,30 +118,30 @@ impl Default for Freefly {
 }
 
 impl Projectable for Freefly {
-  fn projection(&self) -> Matrix4<f32> {
+  fn projection(&self) -> Projection {
     self.perspective.projection()
   }
 }
 
 impl Camera<Freefly> {
-  pub fn mv(&mut self, dir: Translation) {
+  pub fn mv(&mut self, dir: V3<f32>) {
     let p = &self.properties;
-    let axis = dir * Axis::new(p.strafe_sens, p.upward_sens, p.forward_sens);
-    let v = self.orientation.inverse_rotate(&axis);
+    let axis = dir.normalize().mul_element_wise(V3::new(p.strafe_sens, p.upward_sens, p.forward_sens)); // FIXME: so ugly…
+    let v = self.orientation.invert().rotate_vector(axis);
 
     self.position -= v;
   }
 
-  pub fn look_around(&mut self, dir: Translation) {
+  pub fn look_around(&mut self, dir: V3<f32>) {
     let p = &self.properties;
 
-    fn orient(axis: &Axis, phi: f32) -> Orientation {
-      UnitQuaternion::from_axisangle(Unit::new(&axis), phi)
+    fn orient(phi: f32, axis: V3<f32>) -> Quat<f32> {
+      Quat::from_sv(phi, axis)
     }
 
-    self.orientation = orient(&Y_AXIS, p.yaw_sens * dir.y) * self.orientation;
-    self.orientation = orient(&X_AXIS, p.pitch_sens * dir.x) * self.orientation;
-    self.orientation = orient(&Z_AXIS, p.roll_sens * dir.z) * self.orientation;
+    self.orientation = orient(p.yaw_sens * dir.y, V3::unit_y()) * self.orientation;
+    self.orientation = orient(p.pitch_sens * dir.x, V3::unit_x()) * self.orientation;
+    self.orientation = orient(p.roll_sens * dir.z, V3::unit_z()) * self.orientation;
   }
 }
 

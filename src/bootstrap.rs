@@ -9,7 +9,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use camera::{Camera, Freefly};
-use linear::Translation;
+use linear::V3;
 
 type Time = f64;
 
@@ -324,12 +324,12 @@ impl FreeflyHandler {
     let camera = &mut self.camera.borrow_mut();
 
     match key {
-      Key::W => camera.mv(Translation::new(0., 0., 1.)),
-      Key::S => camera.mv(Translation::new(0., 0., -1.)),
-      Key::A => camera.mv(Translation::new(1., 0., 0.)),
-      Key::D => camera.mv(Translation::new(-1., 0., 0.)),
-      Key::Q => camera.mv(Translation::new(0., -1., 0.)),
-      Key::E => camera.mv(Translation::new(0., 1., 0.)),
+      Key::W => camera.mv(V3::new(0., 0., 1.)),
+      Key::S => camera.mv(V3::new(0., 0., -1.)),
+      Key::A => camera.mv(V3::new(1., 0., 0.)),
+      Key::D => camera.mv(V3::new(-1., 0., 0.)),
+      Key::Q => camera.mv(V3::new(0., -1., 0.)),
+      Key::E => camera.mv(V3::new(0., 1., 0.)),
       _ => ()
     }
   }
@@ -339,10 +339,10 @@ impl FreeflyHandler {
 
     if self.left_down {
       let (dx, dy) = (cursor[0] - self.last_cursor[0], cursor[1] - self.last_cursor[1]);
-      camera.look_around(Translation::new(dy, dx, 0.));
+      camera.look_around(V3::new(dy, dx, 0.));
     } else if self.right_down {
       let (dx, _) = (cursor[0] - self.last_cursor[0], cursor[1] - self.last_cursor[1]);
-      camera.look_around(Translation::new(0., 0., dx));
+      camera.look_around(V3::new(0., 0., dx));
     }
 
     self.last_cursor = cursor;

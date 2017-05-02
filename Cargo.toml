@@ -20,14 +20,14 @@ doc = false
 [dependencies]
 alto = "1.1"
 any-cache = "0.1"
+cgmath = "0.14"
 chrono = "0.3"
 clap = "2.19"
 luminance = { path = "../../luminance" }
 gl = "0.6"
 image = "0.12"
-nalgebra = "0.10"
 notify = "2.6"
-num = "0.1"
+num-traits = "0.1"
 rusttype = "0.2"
 serde = "0.9"
 serde_derive = "0.9"

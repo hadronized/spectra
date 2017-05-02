@@ -46,14 +46,14 @@
 
 extern crate alto;
 extern crate any_cache;
+extern crate cgmath;
 extern crate chrono;
 extern crate gl;
 extern crate glfw;
 extern crate image;
 pub extern crate luminance;
-extern crate nalgebra;
 extern crate notify;
-extern crate num;
+extern crate num_traits;
 extern crate rusttype;
 extern crate serde;
 #[macro_use]
@@ -81,6 +81,7 @@ pub mod object;
 pub mod overlay;
 pub mod projection;
 pub mod resource;
+pub mod scale;
 pub mod shader;
 pub mod spline;
 pub mod text;

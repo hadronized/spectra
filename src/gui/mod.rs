@@ -218,9 +218,9 @@ pub trait ProgressBarListener {
 }
 
 impl ProgressBar {
-  pub fn new(x: f32, y: f32, w: f32, h: f32, progress_color: RGBA, inactive_color: RGBA, dur_sec: Time) -> Rc<RefCell<Self>> {
-    let pcol = *progress_color.as_ref();
-    let icol = *inactive_color.as_ref();
+  pub fn new<PC, IC>(x: f32, y: f32, w: f32, h: f32, progress_color: PC, inactive_color: IC, dur_sec: Time) -> Rc<RefCell<Self>> where PC: Into<RGBA>, IC: Into<RGBA> {
+    let pcol = progress_color.into().into();
+    let icol = inactive_color.into().into();
 
     let progress_quad = Quad(
       Vert::new([x, y, 0.], pcol),
