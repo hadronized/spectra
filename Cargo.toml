@@ -23,8 +23,8 @@ any-cache = "0.1"
 cgmath = "0.14"
 chrono = "0.3"
 clap = "2.19"
-luminance = { path = "../../luminance" }
-gl = "0.6"
+luminance = "0.20"
+luminance-glfw = "0.1"
 image = "0.12"
 notify = "2.6"
 num-traits = "0.1"
@@ -37,7 +37,3 @@ wavefront_obj = "5.0"
 
 [dev-dependencies]
 rand = "0.3" # for unit tests
-
-[dependencies.glfw]
-version = "0.13"
-default-features = false

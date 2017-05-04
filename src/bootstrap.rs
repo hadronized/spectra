@@ -1,6 +1,5 @@
-use gl;
-use glfw::{self, Context, CursorMode, SwapInterval, Window};
-pub use glfw::{Action, Key, MouseButton};
+use luminance_glfw::{self, open_window};
+pub use luminance_glfw::{Action, DeviceError, Key, MouseButton, WindowDim, WindowOpt};
 use std::cell::RefCell;
 use std::os::raw::c_void;
 use std::rc::Rc;
@@ -12,19 +11,6 @@ use camera::{Camera, Freefly};
 use linear::V3;
 
 type Time = f64;
-
-/// Dimension of the window to create.
-#[derive(Clone, Copy, Debug)]
-pub enum WindowDim {
-  Windowed(u32, u32),
-  Fullscreen,
-  FullscreenRestricted(u32, u32)
-}
-
-type Keyboard = mpsc::Receiver<(Key, Action)>;
-type Mouse = mpsc::Receiver<(MouseButton, Action)>;
-type MouseMove = mpsc::Receiver<[f32; 2]>;
-type Scroll = mpsc::Receiver<[f32; 2]>;
 
 /// Signals events can pass up back to their handlers to notify them how they have processed an
 /// event. They’re three kinds of signals:
@@ -80,25 +66,9 @@ impl EventHandler for Unhandled {}
 ///
 /// Upon bootstrapping, this type is created to add interaction and context handling.
 pub struct Device {
-  /// Width of the window.
-  w: u32,
-  /// Height of the window.
-  h: u32,
+  raw: luminance_glfw::Device,
   /// Some kind of epoch start the application started at.
-  start_time: Instant,
-  /// Keyboard receiver.
-  kbd: Keyboard,
-  /// Mouse receiver.
-  mouse: Mouse,
-  /// Cursor receiver.
-  cursor: MouseMove,
-  /// Scroll receiver.
-  scroll: Scroll,
-  /// Window.
-  window: Window,
-  /// Event thread join handle. Unused and keep around until death.
-  #[allow(dead_code)]
-  event_thread: thread::JoinHandle<()>
+  start_time: Instant
 }
 
 impl Device {
@@ -110,120 +80,34 @@ impl Device {
   ///
   /// - `dim`: dimension of the window to create
   /// - `title`: title to give to the window
-  pub fn bootstrap(dim: WindowDim, title: &'static str) -> Self {
+  pub fn bootstrap(dim: WindowDim,
+                   title: &'static str,
+                   win_opt: WindowOpt)
+                   -> Result<Self, DeviceError> {
     info!("{} starting", title);
     info!("window mode: {:?}", dim);
+    info!("window options: {:?}", win_opt);
 
-    let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+    let dev = open_window(dim, title, win_opt)?;
 
-    // OpenGL hints
-    glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
-    glfw.window_hint(glfw::WindowHint::ContextVersionMajor(3));
-    glfw.window_hint(glfw::WindowHint::ContextVersionMinor(3));
+    info!("bootstrapping finished");
 
-    // open a window in windowed or fullscreen mode
-    let (mut window, events, w, h) = match dim {
-      WindowDim::Windowed(w, h) => {
-        let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::Windowed).expect("Failed to create GLFW window.");
-        (window, events, w, h)
-      },
-      WindowDim::Fullscreen => {
-        glfw.with_primary_monitor(|glfw, monitor| {
-          let monitor = monitor.unwrap();
-          let vmode = monitor.get_video_mode().expect("primary monitor’s video mode");
-          let (w, h) = (vmode.width, vmode.height);
-
-          let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::FullScreen(monitor)).expect("Failed to create GLFW window.");
-          (window, events, w, h)
-        })
-      },
-      WindowDim::FullscreenRestricted(w, h) => {
-        glfw.with_primary_monitor(|glfw, monitor| {
-          let monitor = monitor.unwrap();
-
-          let (window, events) = glfw.create_window(w, h, title, glfw::WindowMode::FullScreen(monitor)).expect("Failed to create GLFW window.");
-          (window, events, w, h)
-        })
-      }
-    };
-
-    deb!("opened window");
-
-    window.make_current();
-
-    // FIXME: use a target instead
-    if cfg!(not(debug_assertions)) {
-      deb!("hiding cursor");
-      window.set_cursor_mode(CursorMode::Disabled);
-    }
-
-    window.set_key_polling(true);
-    window.set_cursor_pos_polling(true);
-    window.set_mouse_button_polling(true);
-    window.set_scroll_polling(true);
-    glfw.set_swap_interval(SwapInterval::Sync(1));
-
-    deb!("initializing OpenGL pointers");
-
-    // init OpenGL
-    gl::load_with(|s| window.get_proc_address(s) as *const c_void);
-
-    // create channels to stream keyboard and mouse events
-    let (kbd_snd, kbd_rcv) = mpsc::channel();
-    let (mouse_snd, mouse_rcv) = mpsc::channel();
-    let (cursor_snd, cursor_rcv) = mpsc::channel();
-    let (scroll_snd, scroll_rcv) = mpsc::channel();
-
-    deb!("spawning the event thread");
-    let event_thread = thread::spawn(move || {
-      loop {
-        glfw.wait_events();
-
-        for (_, event) in glfw::flush_messages(&events) {
-          match event {
-            glfw::WindowEvent::Key(key, _, action, _) => {
-              let _ = kbd_snd.send((key, action));
-            },
-            glfw::WindowEvent::MouseButton(button, action, _) => {
-              let _ = mouse_snd.send((button, action));
-            },
-            glfw::WindowEvent::CursorPos(x, y) => {
-              let _ = cursor_snd.send([x as f32, y as f32]);
-            },
-            glfw::WindowEvent::Scroll(x, y) => {
-              let _ = scroll_snd.send([x as f32, y as f32]);
-            },
-            _ => {},
-          }
-        }
-      }
-    });
-
-    deb!("bootstrapping finished");
-
-    Device {
-      w: w,
-      h: h,
-      start_time: Instant::now(),
-      kbd: kbd_rcv,
-      mouse: mouse_rcv,
-      cursor: cursor_rcv,
-      scroll: scroll_rcv,
-      window: window,
-      event_thread: event_thread
-    }
+    Ok(Device {
+      raw: dev,
+      start_time: Instant::now()
+    })
   }
 
   /// Width of the attached window.
   #[inline]
   pub fn width(&self) -> u32 {
-    self.w
+    self.raw.width()
   }
 
   /// Height of the attached window.
   #[inline]
   pub fn height(&self) -> u32 {
-    self.h
+    self.raw.height()
   }
 
   /// Current time, starting from the beginning of the creation of that object.
@@ -234,25 +118,25 @@ impl Device {
 
   /// Dispatch events to a handler.
   pub fn dispatch_events<H>(&self, handler: &mut H) -> bool where H: EventHandler {
-    while let Ok((key, action)) = self.kbd.try_recv() {
+    while let Ok((key, action)) = self.raw.kbd.try_recv() {
       if handler.on_key(key, action) == EventSig::Aborted {
         return false;
       }
     }
 
-    while let Ok((button, action)) = self.mouse.try_recv() {
+    while let Ok((button, action)) = self.raw.mouse.try_recv() {
       if handler.on_mouse_button(button, action) == EventSig::Aborted {
         return false;
       }
     }
 
-    while let Ok(xy) = self.cursor.try_recv() {
+    while let Ok(xy) = self.raw.cursor.try_recv() {
       if handler.on_cursor_move(xy) == EventSig::Aborted {
         return false;
       }
     }
 
-    while let Ok(xy) = self.scroll.try_recv() {
+    while let Ok(xy) = self.raw.scroll.try_recv() {
       if handler.on_scroll(xy) == EventSig::Aborted {
         return false;
       }
@@ -275,14 +159,11 @@ impl Device {
   /// > Note: if you pass `None`, no idleing will take place. However, you might be blocked by the
   /// *VSync* if enabled in your driver.
   pub fn step<FPS, R>(&mut self, fps: FPS, mut draw_frame: R) -> bool where FPS: Into<Option<u32>>, R: FnMut(Time) {
-    if self.window.should_close() {
-      return false;
-    }
-
     let t = self.time();
 
-    draw_frame(t);
-    self.window.swap_buffers();
+    self.raw.draw(|| {
+      draw_frame(t);
+    });
 
     // wait for next frame according to the wished FPS
     if let Some(fps) = fps.into() {
