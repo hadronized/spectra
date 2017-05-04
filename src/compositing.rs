@@ -46,8 +46,6 @@ pub struct Compositor {
   free_framebuffers: Vec<usize>,
   // program used to compose nodes
   forward_program: Res<Program<QuadVert, (), ComposeUniforms>>,
-  // program used to render scaled textures
-  texture_program: Res<Program<QuadVert, (), TextureUniforms>>,
   // attributeless fullscreen quad for compositing
   quad: Tess<QuadVert>
 }
@@ -70,24 +68,6 @@ impl UniformInterface for ComposeUniforms {
   }
 }
 
-struct TextureUniforms {
-  source: Uniform<Unit>,
-  scale: Uniform<[f32; 2]>
-}
-
-impl UniformInterface for TextureUniforms {
-  fn uniform_interface(builder: UniformBuilder) -> program::Result<(Self, Vec<UniformWarning>)> {
-    let mut warnings = Vec::new();
-
-    let iface = TextureUniforms {
-      source: builder.ask("source").unwrap_or_unbound(&builder, &mut warnings),
-      scale: builder.ask("scale").unwrap_or_unbound(&builder, &mut warnings)
-    };
-
-    Ok((iface, warnings))
-  }
-}
-
 impl Compositor {
   /// Construct a new `Compositor` that will output to a screen which dimension is `w × h`.
   pub fn new(w: u32, h: u32, cache: &mut ResCache) -> Self {
@@ -97,7 +77,6 @@ impl Compositor {
       framebuffers: Vec::new(),
       free_framebuffers: Vec::new(),
       forward_program: cache.get("spectra/compositing/forward.glsl", ()).unwrap(),
-      texture_program: cache.get("spectra/compositing/texture.glsl", ()).unwrap(),
       quad: Tess::attributeless(Mode::TriangleStrip, 4)
     }
   }
