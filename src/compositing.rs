@@ -118,7 +118,7 @@ impl Compositor {
       }
 
       let screen = Framebuffer::default([self.w, self.h]);
-      Pipeline::new(&screen, [0., 0., 0., 1.], &[&*fb.color_slot], &[]).enter(|shd_gate| {
+      Pipeline::new(&screen, [0., 0., 0., 1.], &[&*fb.color_slot()], &[]).enter(|shd_gate| {
         shd_gate.new(&self.forward_program.borrow(), &[], &[]).enter(|rdr_gate, uniforms| {
           uniforms.source.update(Unit::new(0));
 
