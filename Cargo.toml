@@ -8,7 +8,7 @@ keywords = ["demoscene", "animation", "graphics"]
 
 homepage = "https://github.com/phaazon/spectra"
 repository = "https://github.com/phaazon/spectra"
-documentation = "http://phaazon.github.io/spectra"
+documentation = "https://docs.rs/spectra"
 
 build = "build.rs"
 
