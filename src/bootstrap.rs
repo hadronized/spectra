@@ -1,3 +1,4 @@
+use clap::{App, Arg};
 use luminance_glfw::{self, open_window};
 pub use luminance_glfw::{Action, DeviceError, Key, MouseButton, WindowDim, WindowOpt};
 use std::cell::RefCell;
@@ -74,19 +75,57 @@ impl Device {
   ///
   /// This function is the first one you have to call before anything else related to this crate.
   ///
-  /// # Arguments
-  ///
-  /// - `dim`: dimension of the window to create
-  /// - `title`: title to give to the window
-  pub fn bootstrap(dim: WindowDim,
-                   title: &'static str,
-                   win_opt: WindowOpt)
-                   -> Result<Self, DeviceError> {
+  /// > Note: see `bootstrap!` macro for a better usage.
+  pub fn new(def_width: u32,
+             def_height: u32,
+             version: &str,
+             author: &str,
+             title: &str,
+             win_opt: WindowOpt)
+             -> Result<Self, DeviceError> {
+    let options = App::new(title)
+      .version(version)
+      .author(author)
+      .arg(Arg::with_name("width")
+           .short("w")
+           .long("width")
+           .value_name("WIDTH")
+           .help("Sets the width of the viewport used for render")
+           .takes_value(true))
+      .arg(Arg::with_name("height")
+           .short("h")
+           .long("height")
+           .value_name("HEIGHT")
+           .help("Sets the height of the viewport used for render")
+           .takes_value(true))
+      .arg(Arg::with_name("fullscreen")
+           .short("f")
+           .long("fullscreen")
+           .value_name("FULLSCREEN")
+           .help("Sets the viewport to be displayed in fullscreen mode")
+           .takes_value(false))
+      .get_matches();
+
+    let width = options.value_of("width").map(|s| s.parse().unwrap_or(def_width)).unwrap_or(def_width);
+    let height = options.value_of("height").map(|s| s.parse().unwrap_or(def_height)).unwrap_or(def_height);
+    let fullscreen = options.is_present("fullscreen");
+
+    // build the WindowDim
+    let win_dim = if fullscreen {
+      if options.is_present("width") && options.is_present("height") {
+        WindowDim::FullscreenRestricted(width, height)
+      } else {
+        WindowDim::Fullscreen
+      }
+    } else {
+      WindowDim::Windowed(width, height)
+    };
+
     info!("{} starting", title);
-    info!("window mode: {:?}", dim);
+    info!("window mode: {:?}", win_dim);
     info!("window options: {:?}", win_opt);
 
-    let dev = open_window(dim, title, win_opt)?;
+    let dev = open_window(win_dim, title, win_opt)?;
 
     info!("bootstrapping finished");
 
@@ -177,6 +216,18 @@ impl Device {
 
     true
   }
+}
+
+#[macro_export]
+macro_rules! bootstrap {
+  ($def_width:expr, $def_height:expr, $win_opt:expr) => {{
+    $crate::Device::new($def_width,
+                        $def_height,
+                        $crate_version!(),
+                        $crate_authors!(),
+                        $crate_name!(),
+                        $win_opt)
+  }}
 }
 
 /// Freefly handler.

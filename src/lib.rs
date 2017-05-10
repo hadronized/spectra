@@ -42,12 +42,14 @@
 #![feature(associated_consts)]
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
+#![feature(macro_reexport)]
 #![feature(slice_patterns)]
 
 extern crate alto;
 extern crate any_cache;
 extern crate cgmath;
 extern crate chrono;
+extern crate clap;
 extern crate image;
 pub extern crate luminance;
 extern crate luminance_glfw;
@@ -62,9 +64,13 @@ extern crate vorbis;
 extern crate wavefront_obj;
 
 #[macro_use]
+#[macro_reexport(crate_authors, crate_name, crate_version)]
+pub mod crate_macros;
+#[macro_use]
 pub mod report;
 
 pub mod audio;
+#[macro_use]
 pub mod bootstrap;
 pub mod camera;
 pub mod compositing;
