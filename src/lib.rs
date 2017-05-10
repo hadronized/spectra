@@ -49,6 +49,7 @@ extern crate alto;
 extern crate any_cache;
 extern crate cgmath;
 extern crate chrono;
+#[macro_reexport(crate_authors, crate_name, crate_version)]
 extern crate clap;
 extern crate image;
 pub extern crate luminance;
@@ -63,9 +64,6 @@ extern crate serde_json;
 extern crate vorbis;
 extern crate wavefront_obj;
 
-#[macro_use]
-#[macro_reexport(crate_authors, crate_name, crate_version)]
-pub mod crate_macros;
 #[macro_use]
 pub mod report;
 

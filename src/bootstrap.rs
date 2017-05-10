@@ -221,12 +221,12 @@ impl Device {
 #[macro_export]
 macro_rules! bootstrap {
   ($def_width:expr, $def_height:expr, $win_opt:expr) => {{
-    $crate::Device::new($def_width,
-                        $def_height,
-                        $crate_version!(),
-                        $crate_authors!(),
-                        $crate_name!(),
-                        $win_opt)
+    $crate::bootstrap::Device::new($def_width,
+                                   $def_height,
+                                   crate_version!(),
+                                   crate_authors!(),
+                                   crate_name!(),
+                                   $win_opt)
   }}
 }
 
