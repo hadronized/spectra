@@ -129,6 +129,41 @@ impl ResCache {
     }
   }
 
+  /// Inject a new resource in the cache.
+  fn inject<P, T>(&mut self, path: P, resource: T, args: T::Args) -> Res<T> where P: AsRef<Path>, T: 'static + Any + Reload {
+    let res = Res(Rc::new(RefCell::new(resource)));
+    let res_ = res.clone();
+
+    let path = path.as_ref();
+    let path_buf = path.to_owned();
+    let path_buf_ = path_buf.clone();
+
+    // closure used to reload the object when needed
+    let on_reload: Box<for<'a> Fn(&'a mut ResCache)> = Box::new(move |cache_| {
+      match T::load(&path_buf_, cache_, args.clone()) {
+        Ok(new_resource) => {
+          // replace the current resource with the freshly loaded one
+          *res_.borrow_mut() = new_resource;
+          deb!("reloaded resource from {:?}", path_buf_);
+        },
+        Err(e) => {
+          warn!("reloading resource from {:?} has failed:\n{:#?}", path_buf_, e);
+        }
+      }
+    });
+
+    let metadata = ResMetaData {
+      on_reload: on_reload,
+      last_update_instant: Instant::now()
+    };
+
+    // cache the resource and its meta data
+    self.cache.save(path_buf.clone(), res.clone());
+    self.metadata.insert(path_buf, metadata);
+
+    res
+  }
+
   /// Get a resource from the cache.
   pub fn get<T>(&mut self, key: &str, args: T::Args) -> Option<Res<T>> where T: 'static + Any + Reload {
     let path_str = format!("data/{}/{}", T::TY_STR, key);
@@ -188,6 +223,19 @@ impl ResCache {
       }
     }
   }
+
+//   /// Get a resource from the cache. If it fails, a proxy version of it is used, which will get
+//   /// replaced by the resource once it’s avaible.
+//   pub fn get_proxied<T, P>(&mut self, key: &str, args: T::Args, proxy: P) -> Option<Res<T>>
+//       where T: 'static + Any + Reload,
+//             P: FnOnce() -> T {
+//     // riterite
+//     self.get::<T>().unwrap_or_else(|| {
+//       deb!("proxying resource {}", key);
+// 
+// 
+//     })
+//   }
 
   /// Synchronize the cache by updating the resource that ought to.
   pub fn sync(&mut self) {
