@@ -130,12 +130,10 @@ impl ResCache {
   }
 
   /// Inject a new resource in the cache.
-  fn inject<P, T>(&mut self, path: P, resource: T, args: T::Args) -> Res<T> where P: AsRef<Path>, T: 'static + Any + Reload {
+  fn inject<T>(&mut self, path_buf: &PathBuf, resource: T, args: T::Args) -> Res<T> where T: 'static + Any + Reload {
     let res = Res(Rc::new(RefCell::new(resource)));
     let res_ = res.clone();
 
-    let path = path.as_ref();
-    let path_buf = path.to_owned();
     let path_buf_ = path_buf.clone();
 
     // closure used to reload the object when needed
@@ -159,7 +157,7 @@ impl ResCache {
 
     // cache the resource and its meta data
     self.cache.save(path_buf.clone(), res.clone());
-    self.metadata.insert(path_buf, metadata);
+    self.metadata.insert(path_buf.clone(), metadata);
 
     res
   }
@@ -182,34 +180,7 @@ impl ResCache {
         if path.exists() {
           match T::load(&path, self, args.clone()) {
             Ok(resource) => {
-              let res = Res(Rc::new(RefCell::new(resource)));
-              let res_ = res.clone();
-
-              let path_buf_ = path_buf.clone();
-              // closure used to reload the object when needed
-              let on_reload: Box<for<'a> Fn(&'a mut ResCache)> = Box::new(move |cache_| {
-                match T::load(&path_buf_, cache_, args.clone()) {
-                  Ok(new_resource) => {
-                    // replace the current resource with the freshly loaded one
-                    *res_.borrow_mut() = new_resource;
-                    deb!("reloaded resource from {:?}", path_buf_);
-                  },
-                  Err(e) => {
-                    warn!("reloading resource from {:?} has failed:\n{:#?}", path_buf_, e);
-                  }
-                }
-              });
-
-              let metadata = ResMetaData {
-                on_reload: on_reload,
-                last_update_instant: Instant::now()
-              };
-
-              // cache the resource and its meta data
-              self.cache.save(path_buf.clone(), res.clone());
-              self.metadata.insert(path_buf, metadata);
-
-              Some(res)
+              Some(self.inject(&path_buf, resource, args))
             },
             Err(e) => {
               err!("unable to load resource from {}:\n{:#?}", path_str, e);
