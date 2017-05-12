@@ -1,3 +1,7 @@
+### 0.2.3
+
+- `ResCache::get_proxied` doesn’t return an `Option<T>` anymore but a `T`, as it should.
+
 ### 0.2.2
 
 - Made all `TextureImage`’s fields pub.
