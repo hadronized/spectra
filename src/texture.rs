@@ -48,8 +48,8 @@ pub fn save_rgba_texture<P>(texture: &TextureRGBA32F, path: P) where P: AsRef<Pa
 
 pub struct TextureImage {
   pub texture: TextureRGBA32F,
-  sampler: Sampler,
-  linearizer: Option<f32>,
+  pub sampler: Sampler,
+  pub linearizer: Option<f32>,
 }
 
 impl Deref for TextureImage {
