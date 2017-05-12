@@ -1,3 +1,7 @@
+### 0.2.2
+
+- Made all `TextureImage`’s fields pub.
+
 ### 0.2.1
 
 - Added several constructors for `Program`. Among them, `from_bufread` and `from_str`.
