@@ -192,7 +192,7 @@ impl ResCache {
     match self.get_(key, args) {
       Ok(resource) => Some(resource),
       Err(e) => {
-        err!("{:?}", e);
+        err!("cannot get resource {}: {:?}", key, e);
         None
       }
     }
@@ -206,7 +206,6 @@ impl ResCache {
     match self.get_::<T>(key, args.clone()) {
       Ok(resource) => Some(resource),
       Err(e) => {
-
         let path_str = format!("data/{}/{}", T::TY_STR, key);
         let path = Path::new(&path_str);
         let path_buf = path.to_owned();
