@@ -1,4 +1,10 @@
-# 0.2
+### 0.2.1
+
+- Added several constructors for `Program`. Among them, `from_bufread` and `from_str`.
+- Added `ResCache::get_proxied`, which takes an extra argument (regarding `ResCache::get`), a
+  closure, used to compute a proxy value that will be used if resource loading fails.
+
+## 0.2
 
 - Added a `bootstrap!` macro used to build a `Device` in a very simple way (relying on clap).
 - Fixed docs.rs link.
@@ -7,6 +13,6 @@
 - Switched to cgmath and dropped nalgebra.
 - Refactored all spectra code according to typed programs (luminance).
 
-# 0.1
+## 0.1
 
 - Initial revision.

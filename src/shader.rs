@@ -230,7 +230,7 @@ impl<In, Out, Uni> Program<In, Out, Uni> where In: Vertex, Uni: UniformInterface
   }
 
   /// Create a `Program` from a string – you can for instance use `str` or `String`.
-  pub fn from_str<S>(s: S) -> Result<Self, LoadError> where S: for<'a> Into<&'a str> {
+  pub fn from_str<'a, S>(s: S) -> Result<Self, LoadError> where S: Into<&'a str> {
     Self::from_bufread(s.into().as_bytes())
   }
 }
