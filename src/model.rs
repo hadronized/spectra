@@ -70,7 +70,7 @@ impl Load for Model {
 
     // load the data directly into memory; no buffering nor streaming
     {
-      let mut file = File::open(path).map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e)))?;
+      let mut file = File::open(path).map_err(|_| LoadError::FileNotFound(path.to_path_buf()))?;
       let _ = file.read_to_string(&mut input);
     }
 

@@ -66,7 +66,7 @@ impl<A> Load for Camera<A> where A: Default + Deserialize {
     info!("loading camera {:?}", path);
 
     let manifest: Manifest<A> = {
-      let file = File::open(path).map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e)))?;
+      let file = File::open(path).map_err(|_| LoadError::FileNotFound(path.to_path_buf()))?;
       from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?
     };
 

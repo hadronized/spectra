@@ -211,9 +211,7 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni> where In: Vertex, Uni: Uniform
           }
         )
       },
-      Err(e) => {
-        Err(LoadError::FileNotFound(path.to_owned(), format!("{:#?}", e)))
-      }
+      Err(_) => Err(LoadError::FileNotFound(path.to_owned()))
     }
   }
 }

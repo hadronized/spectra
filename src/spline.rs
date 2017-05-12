@@ -174,7 +174,7 @@ impl<T> Load for Spline<T> where T: SplineDeserializerAdapter {
 
     info!("loading spline: {:?}", path);
 
-    let file = File::open(path).map_err(|e| LoadError::FileNotFound(path.to_path_buf(), format!("{:?}", e)))?;
+    let file = File::open(path).map_err(|_| LoadError::FileNotFound(path.to_path_buf()))?;
     let keys: Vec<Key<T::Deserialized>> = from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?;
 
     Ok(Spline::from_keys(keys.into_iter().map(|key|

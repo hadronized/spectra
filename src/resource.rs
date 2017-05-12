@@ -40,7 +40,7 @@ impl<T> Reload for T where T: Load<Args=()> {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum LoadError {
-  FileNotFound(PathBuf, String),
+  FileNotFound(PathBuf),
   ParseFailed(String),
   ConversionFailed(String)
 }
@@ -181,7 +181,7 @@ impl ResCache {
           let resource = T::load(&path, self, args.clone())?;
           Ok(self.inject(&path_buf, resource, args))
         } else {
-          Err(LoadError::FileNotFound(path_buf, String::new()))
+          Err(LoadError::FileNotFound(path_buf))
         }
       }
     }
