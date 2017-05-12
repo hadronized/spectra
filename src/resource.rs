@@ -162,35 +162,38 @@ impl ResCache {
     res
   }
 
-  /// Get a resource from the cache.
-  pub fn get<T>(&mut self, key: &str, args: T::Args) -> Option<Res<T>> where T: 'static + Any + Reload {
+  /// Get a resource from the cache and return an error if loading failed.
+  fn get_<T>(&mut self, key: &str, args: T::Args) -> Result<Res<T>> where T: 'static + Any + Reload {
     let path_str = format!("data/{}/{}", T::TY_STR, key);
     let path = Path::new(&path_str);
     let path_buf = path.to_owned();
 
     match self.cache.get::<Res<T>>(&path_buf).cloned() {
-      r@Some(..) => {
+      Some(resource) => {
         deb!("cache hit for {} ({})", key, path_str);
-        r
+        Ok(resource)
       },
       None => {
         deb!("cache miss for {} ({})", key, path_str);
 
         // specific loading
         if path.exists() {
-          match T::load(&path, self, args.clone()) {
-            Ok(resource) => {
-              Some(self.inject(&path_buf, resource, args))
-            },
-            Err(e) => {
-              err!("unable to load resource from {}:\n{:#?}", path_str, e);
-              None
-            }
-          }
-        } else { // path doesn’t exist
-          err!("resource at {} cannot be found", path_str);
-          None
+          let resource = T::load(&path, self, args.clone())?;
+          Ok(self.inject(&path_buf, resource, args))
+        } else {
+          Err(LoadError::FileNotFound(path_buf, String::new()))
         }
+      }
+    }
+  }
+
+  /// Get a resource from the cache.
+  pub fn get<T>(&mut self, key: &str, args: T::Args) -> Option<Res<T>> where T: 'static + Any + Reload {
+    match self.get_(key, args) {
+      Ok(resource) => Some(resource),
+      Err(e) => {
+        err!("{:?}", e);
+        None
       }
     }
   }
@@ -200,14 +203,19 @@ impl ResCache {
   pub fn get_proxied<T, P>(&mut self, key: &str, args: T::Args, proxy: P) -> Option<Res<T>>
       where T: 'static + Any + Reload,
             P: FnOnce() -> T {
-    self.get::<T>(key, args.clone()).or_else(move || {
-      let path_str = format!("data/{}/{}", T::TY_STR, key);
-      let path = Path::new(&path_str);
-      let path_buf = path.to_owned();
+    match self.get_::<T>(key, args.clone()) {
+      Ok(resource) => Some(resource),
+      Err(e) => {
 
-      deb!("proxying resource {}", key);
-      Some(self.inject(&path_buf, proxy(), args))
-    })
+        let path_str = format!("data/{}/{}", T::TY_STR, key);
+        let path = Path::new(&path_str);
+        let path_buf = path.to_owned();
+
+        warn!("proxied resource {} because: {:?}", key, e);
+
+        Some(self.inject(&path_buf, proxy(), args))
+      }
+    }
   }
 
   /// Synchronize the cache by updating the resource that ought to.
