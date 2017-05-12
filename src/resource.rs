@@ -195,21 +195,20 @@ impl ResCache {
     }
   }
 
-   /// Get a resource from the cache. If it fails, a proxy version is used, which will get replaced
-   /// by the resource once it’s available.
-   pub fn get_proxied<T, P>(&mut self, key: &str, args: T::Args, proxy: P) -> Option<Res<T>>
-       where T: 'static + Any + Reload,
-             P: FnOnce() -> T {
-     // riterite
-     self.get::<T>(key, args.clone()).or_else(move || {
-       let path_str = format!("data/{}/{}", T::TY_STR, key);
-       let path = Path::new(&path_str);
-       let path_buf = path.to_owned();
+  /// Get a resource from the cache. If it fails, a proxy version is used, which will get replaced
+  /// by the resource once it’s available.
+  pub fn get_proxied<T, P>(&mut self, key: &str, args: T::Args, proxy: P) -> Option<Res<T>>
+      where T: 'static + Any + Reload,
+            P: FnOnce() -> T {
+    self.get::<T>(key, args.clone()).or_else(move || {
+      let path_str = format!("data/{}/{}", T::TY_STR, key);
+      let path = Path::new(&path_str);
+      let path_buf = path.to_owned();
 
-       deb!("proxying resource {}", key);
-       Some(self.inject(&path_buf, proxy(), args))
-     })
-   }
+      deb!("proxying resource {}", key);
+      Some(self.inject(&path_buf, proxy(), args))
+    })
+  }
 
   /// Synchronize the cache by updating the resource that ought to.
   pub fn sync(&mut self) {
