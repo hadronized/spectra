@@ -10,21 +10,21 @@ impl From<M44<f32>> for Transform {
   }
 }
 
-impl<'a> From<&'a M44<f32>> for Transform {
-  fn from(mat44: &'a M44<f32>) -> Self {
-    Transform(*mat44)
-  }
-}
-
 impl From<Transform> for M44<f32> {
   fn from(Transform(transform): Transform) -> Self {
     transform
   }
 }
 
-impl<'a> From<&'a Transform> for M44<f32> {
-  fn from(&Transform(transform): &Transform) -> Self {
-    transform
+impl From<[[f32; 4]; 4]> for Transform {
+  fn from(mat44: [[f32; 4]; 4]) -> Self {
+    Transform(mat44.into())
+  }
+}
+
+impl From<Transform> for [[f32; 4]; 4] {
+  fn from(Transform(transform): Transform) -> Self {
+    transform.into()
   }
 }
 

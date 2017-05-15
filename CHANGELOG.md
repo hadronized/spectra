@@ -1,3 +1,7 @@
+### 0.2.4
+
+- Added `From / Into` impls for `[[f32; 4]; 4]` for `Transform`.
+
 ### 0.2.3
 
 - `ResCache::get_proxied` doesn’t return an `Option<T>` anymore but a `T`, as it should.
