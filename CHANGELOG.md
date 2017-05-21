@@ -1,3 +1,7 @@
+### 0.2.5
+
+- luminance-0.2.5 fix.
+
 ### 0.2.4
 
 - Added `From / Into` impls for `[[f32; 4]; 4]` for `Transform`.

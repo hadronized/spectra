@@ -1,6 +1,6 @@
 use clap::{App, Arg};
 use luminance_glfw::{self, open_window};
-pub use luminance_glfw::{Action, DeviceError, Key, MouseButton, WindowDim, WindowOpt};
+pub use luminance_glfw::{Action, DeviceError, Key, MouseButton, WindowDim, WindowEvent, WindowOpt};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::thread;
@@ -154,28 +154,22 @@ impl Device {
   }
 
   /// Dispatch events to a handler.
-  pub fn dispatch_events<H>(&self, handler: &mut H) -> bool where H: EventHandler {
-    while let Ok((key, action)) = self.raw.kbd.try_recv() {
-      if handler.on_key(key, action) == EventSig::Aborted {
-        return false;
-      }
-    }
-
-    while let Ok((button, action)) = self.raw.mouse.try_recv() {
-      if handler.on_mouse_button(button, action) == EventSig::Aborted {
-        return false;
-      }
-    }
-
-    while let Ok(xy) = self.raw.cursor.try_recv() {
-      if handler.on_cursor_move(xy) == EventSig::Aborted {
-        return false;
-      }
-    }
-
-    while let Ok(xy) = self.raw.scroll.try_recv() {
-      if handler.on_scroll(xy) == EventSig::Aborted {
-        return false;
+  pub fn dispatch_events<H>(&mut self, handler: &mut H) -> bool where H: EventHandler {
+    for (_, event) in self.raw.events() {
+      match event {
+        WindowEvent::Key(key, _, action, _) => if handler.on_key(key, action) == EventSig::Aborted {
+          return false;
+        },
+        WindowEvent::MouseButton(button, action, _) => if handler.on_mouse_button(button, action) == EventSig::Aborted {
+          return false;
+        },
+        WindowEvent::CursorPos(x, y) => if handler.on_cursor_move([x as f32, y as f32]) == EventSig::Aborted {
+          return false;
+        },
+        WindowEvent::Scroll(x, y) => if handler.on_scroll([x as f32, y as f32]) == EventSig::Aborted {
+          return false;
+        },
+        _ => ()
       }
     }
 

@@ -1,6 +1,6 @@
 [package]
 name = "spectra"
-version = "0.2.4"
+version = "0.2.5"
 license = "BSD-3-Clause"
 authors = ["Dimitri Sabadie <dimitri.sabadie@gmail.com>"]
 description = "Demoscene framework"
@@ -24,7 +24,7 @@ cgmath = "0.14"
 chrono = "0.3"
 clap = "2.19"
 luminance = "0.21"
-luminance-glfw = "0.1"
+luminance-glfw = "0.2"
 image = "0.12"
 notify = "2.6"
 num-traits = "0.1"
