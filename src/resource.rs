@@ -1,7 +1,8 @@
 // FIXME: add the support of transient objects
 
 use any_cache::{Cache, HashCache};
-use notify::{self, RecommendedWatcher, Watcher};
+use notify::{Op, RawEvent, RecursiveMode, Watcher, raw_watcher};
+use notify::op::WRITE;
 use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -109,14 +110,19 @@ impl ResCache {
 
     let root = root.as_ref().to_owned();
     let (wsx, wrx) = channel();
-    let mut watcher: RecommendedWatcher = Watcher::new(wsx).unwrap();
+    let mut watcher = raw_watcher(wsx).unwrap();
 
     let join_handle = thread::spawn(move || {
-      let _ = watcher.watch(root);
+      let _ = watcher.watch(root, RecursiveMode::Recursive);
 
       for event in wrx.iter() {
-        if let notify::Event { path: Some(path), op: Ok(notify::op::WRITE) } = event {
-          dirty_.lock().unwrap().push((path.clone(), Instant::now()));
+        println!("event: {:?}", event);
+
+        match event {
+          RawEvent { path: Some(ref path), op: Ok(op), .. } if op | WRITE != Op::empty() => {
+            dirty_.lock().unwrap().push((path.clone(), Instant::now()));
+          },
+          _ => ()
         }
       }
     });
