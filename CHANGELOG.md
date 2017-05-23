@@ -1,3 +1,7 @@
+### 0.2.6
+
+- Hot reloading fix (especially, it works on Mac OSX now).
+
 ### 0.2.5
 
 - luminance-0.2.5 fix.
