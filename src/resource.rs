@@ -6,6 +6,7 @@ use notify::op::WRITE;
 use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fs::canonicalize;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -116,8 +117,6 @@ impl ResCache {
       let _ = watcher.watch(root, RecursiveMode::Recursive);
 
       for event in wrx.iter() {
-        println!("event: {:?}", event);
-
         match event {
           RawEvent { path: Some(ref path), op: Ok(op), .. } if op | WRITE != Op::empty() => {
             dirty_.lock().unwrap().push((path.clone(), Instant::now()));
@@ -172,7 +171,7 @@ impl ResCache {
   fn get_<T>(&mut self, key: &str, args: T::Args) -> Result<Res<T>> where T: 'static + Any + Reload {
     let path_str = format!("data/{}/{}", T::TY_STR, key);
     let path = Path::new(&path_str);
-    let path_buf = path.to_owned();
+    let path_buf = canonicalize(path).map_err(|_| LoadError::FileNotFound(path.to_owned()))?.to_owned();
 
     match self.cache.get::<Res<T>>(&path_buf).cloned() {
       Some(resource) => {
@@ -229,14 +228,14 @@ impl ResCache {
     let mut dirty_ = dirty.lock().unwrap();
 
     for &(ref path, ref instant) in dirty_.iter() {
-      let mut metadata = self.metadata.remove(path).unwrap();
+      if let Some(mut metadata) = self.metadata.remove(path) {
+        if instant.duration_since(metadata.last_update_instant) >= Duration::from_millis(UPDATE_AWAIT_TIME_MS) {
+          (metadata.on_reload)(self);
+        }
 
-      if instant.duration_since(metadata.last_update_instant) >= Duration::from_millis(UPDATE_AWAIT_TIME_MS) {
-        (metadata.on_reload)(self);
+        metadata.last_update_instant = *instant;
+        self.metadata.insert(path.clone(), metadata);
       }
-
-      metadata.last_update_instant = *instant;
-      self.metadata.insert(path.clone(), metadata);
     }
 
     dirty_.clear();
