@@ -205,19 +205,19 @@ impl ResCache {
 
   /// Get a resource from the cache. If it fails, a proxy version is used, which will get replaced
   /// by the resource once it’s available.
-  pub fn get_proxied<T, P>(&mut self, key: &str, args: T::Args, proxy: P) -> Res<T>
+  pub fn get_proxied<T, P>(&mut self, key: &str, args: T::Args, proxy: P) -> Result<Res<T>>
       where T: 'static + Any + Reload,
             P: FnOnce() -> T {
     match self.get_::<T>(key, args.clone()) {
-      Ok(resource) => resource,
+      Ok(resource) => Ok(resource),
       Err(e) => {
         let path_str = format!("data/{}/{}", T::TY_STR, key);
         let path = Path::new(&path_str);
-        let path_buf = path.to_owned();
+        let path_buf = canonicalize(path).map_err(|_| LoadError::FileNotFound(path.to_owned()))?.to_owned();
 
         warn!("proxied resource {} because: {:?}", key, e);
 
-        self.inject(&path_buf, proxy(), args)
+        Ok(self.inject(&path_buf, proxy(), args))
       }
     }
   }

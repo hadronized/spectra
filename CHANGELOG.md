@@ -1,3 +1,8 @@
+## 0.3
+
+- `ResCache::get_proxied` now returns `Result<_>` as well if the path points to something that
+  doesn’t exist (hot-reloading won’t work for that).
+
 ### 0.2.6
 
 - Hot reloading fix (especially, it works on Mac OSX now).
