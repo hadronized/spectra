@@ -4,7 +4,7 @@ use image;
 use std::ops::Deref;
 use std::path::Path;
 
-use resource::{Load, LoadError, Reload, ResCache, Result};
+use resource::{Load, LoadError, Reload, ResCache};
 
 // Common texture aliases.
 pub type TextureRGBA32F = Texture<Flat, Dim2, RGBA32F>;
@@ -14,7 +14,7 @@ pub type TextureDepth32F = Texture<Flat, Dim2, Depth32F>;
 ///
 /// The `linearizer` argument is an option that gives the factor to apply to linearize if needed. Pass
 /// `None` if the texture is already linearized.
-pub fn load_rgba_texture<P, L>(path: P, sampler: &Sampler, linearizer: L) -> Result<TextureRGBA32F> where P: AsRef<Path>, L: Into<Option<f32>> {
+pub fn load_rgba_texture<P, L>(path: P, sampler: &Sampler, linearizer: L) -> Result<TextureRGBA32F, LoadError> where P: AsRef<Path>, L: Into<Option<f32>> {
   info!("loading texture image: \x1b[35m{:?}", path.as_ref());
 
   let img = image::open(path).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?.flipv().to_rgba();
@@ -65,7 +65,7 @@ impl Load for TextureImage {
 
   const TY_STR: &'static str = "textures";
 
-  fn load<P>(path: P, _: &mut ResCache, (sampler, linearizer): Self::Args) -> Result<Self> where P: AsRef<Path> {
+  fn load<P>(path: P, _: &mut ResCache, (sampler, linearizer): Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     load_rgba_texture(path, &sampler, linearizer)
       .map(|tex| TextureImage {
         texture: tex,

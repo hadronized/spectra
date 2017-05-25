@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 
-use resource::{Load, LoadError, Result, ResCache};
+use resource::{Load, LoadError, ResCache};
 
 /// Time.
 pub type Time = f64;
@@ -173,7 +173,7 @@ impl Load for TimelineManifest {
 
   const TY_STR: &'static str = "edit";
 
-  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<Self> where P: AsRef<Path> {
+  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     info!("loading timeline: {:?}", path);
