@@ -1,3 +1,9 @@
+## 0.4
+
+- Implemented canonicalized resource cache. Such a cache can now fail when you create it if the root
+  path doesn’t exist. All resources are internally stored in a canonicalized way so that no
+  ambiguities can occur.
+
 ## 0.3
 
 - `ResCache::get_proxied` now returns `Result<_>` as well if the path points to something that
