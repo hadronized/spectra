@@ -1,3 +1,7 @@
+### 0.4.1
+
+- Support for luminance-glfw-0.3.
+
 ## 0.4
 
 - Implemented canonicalized resource cache. Such a cache can now fail when you create it if the root
