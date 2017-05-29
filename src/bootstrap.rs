@@ -1,5 +1,5 @@
 use clap::{App, Arg};
-use luminance_glfw::{self, open_window};
+use luminance_glfw;
 pub use luminance_glfw::{Action, DeviceError, Key, MouseButton, WindowDim, WindowEvent, WindowOpt};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -127,7 +127,7 @@ impl Device {
     info!("window mode: {:?}", win_dim);
     info!("window options: {:?}", win_opt);
 
-    let dev = open_window(win_dim, title, win_opt)?;
+    let dev = luminance_glfw::Device::new(win_dim, title, win_opt)?;
 
     info!("bootstrapping finished");
 
