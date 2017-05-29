@@ -49,6 +49,8 @@ pub trait EventHandler {
   fn on_cursor_move(&mut self, _: [f32; 2]) -> EventSig { EventSig::Ignored }
   /// Implement this function if you want to react to scroll events.
   fn on_scroll(&mut self, _: [f32; 2]) -> EventSig { EventSig::Ignored }
+  /// Implement this function if you want to react to size events.
+  fn on_resize(&mut self, _: [u32; 2]) -> EventSig { EventSig::Ignored }
 }
 
 /// Empty handler.
@@ -135,16 +137,10 @@ impl Device {
     })
   }
 
-  /// Width of the attached window.
+  /// Size of the attached window.
   #[inline]
-  pub fn width(&self) -> u32 {
-    self.raw.width()
-  }
-
-  /// Height of the attached window.
-  #[inline]
-  pub fn height(&self) -> u32 {
-    self.raw.height()
+  pub fn size(&self) -> [u32; 2] {
+    self.raw.size()
   }
 
   /// Current time, starting from the beginning of the creation of that object.
@@ -167,6 +163,9 @@ impl Device {
           return false;
         },
         WindowEvent::Scroll(x, y) => if handler.on_scroll([x as f32, y as f32]) == EventSig::Aborted {
+          return false;
+        },
+        WindowEvent::FramebufferSize(w, h) => if handler.on_resize([w as u32, h as u32]) == EventSig::Aborted {
           return false;
         },
         _ => ()
