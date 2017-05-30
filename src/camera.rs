@@ -1,5 +1,5 @@
 use cgmath::{ElementWise, InnerSpace, Rotation};
-use serde::Deserialize;
+use serde::de::DeserializeOwned;
 use serde_json::from_reader;
 use std::default::Default;
 use std::fs::File;
@@ -55,7 +55,7 @@ struct Manifest<P> {
   properties: P
 }
 
-impl<A> Load for Camera<A> where A: Default + Deserialize {
+impl<A> Load for Camera<A> where A: Default + DeserializeOwned {
   type Args = ();
 
   const TY_STR: &'static str = "cameras";

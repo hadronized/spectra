@@ -1,5 +1,5 @@
 use cgmath::{BaseFloat, InnerSpace};
-use serde::Deserialize;
+use serde::de::DeserializeOwned;
 use serde_json::from_reader;
 use std::f32::consts;
 use std::fs::File;
@@ -186,7 +186,7 @@ impl<T> Load for Spline<T> where T: SplineDeserializerAdapter {
 /// Spline deserializer adapter used to deserialize splines which keys’ values types don’t directly
 /// implement deserialization.
 pub trait SplineDeserializerAdapter {
-  type Deserialized: Deserialize;
+  type Deserialized: DeserializeOwned;
 
   fn from_deserialized(de: Self::Deserialized) -> Self;
 }
@@ -199,7 +199,7 @@ impl SplineDeserializerAdapter for f32 {
   }
 }
 
-impl<T> SplineDeserializerAdapter for V2<T> where T: BaseFloat + Deserialize {
+impl<T> SplineDeserializerAdapter for V2<T> where T: BaseFloat + DeserializeOwned {
   type Deserialized = [T; 2];
 
   fn from_deserialized(de: Self::Deserialized) -> Self {
@@ -207,7 +207,7 @@ impl<T> SplineDeserializerAdapter for V2<T> where T: BaseFloat + Deserialize {
   }
 }
 
-impl<T> SplineDeserializerAdapter for V3<T> where T: BaseFloat + Deserialize {
+impl<T> SplineDeserializerAdapter for V3<T> where T: BaseFloat + DeserializeOwned {
   type Deserialized = [T; 3];
 
   fn from_deserialized(de: Self::Deserialized) -> Self {
@@ -215,7 +215,7 @@ impl<T> SplineDeserializerAdapter for V3<T> where T: BaseFloat + Deserialize {
   }
 }
 
-impl<T> SplineDeserializerAdapter for V4<T> where T: BaseFloat + Deserialize {
+impl<T> SplineDeserializerAdapter for V4<T> where T: BaseFloat + DeserializeOwned {
   type Deserialized = [T; 4];
 
   fn from_deserialized(de: Self::Deserialized) -> Self {
@@ -223,7 +223,7 @@ impl<T> SplineDeserializerAdapter for V4<T> where T: BaseFloat + Deserialize {
   }
 }
 
-impl<T> SplineDeserializerAdapter for Quat<T> where T: BaseFloat + Deserialize {
+impl<T> SplineDeserializerAdapter for Quat<T> where T: BaseFloat + DeserializeOwned {
   type Deserialized = [T; 4];
 
   fn from_deserialized(de: Self::Deserialized) -> Self {
