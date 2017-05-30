@@ -125,26 +125,29 @@ impl ResCache {
     let dirty_ = dirty.clone();
 
     let root = root.as_ref().to_owned();
-    let canon_root = root.canonicalize().map_err(|_| ResCacheError::RootDoesDotExit(root.into()))?;
+    let root_ = root.clone();
+    let canon_root = root.canonicalize().map_err(|_| ResCacheError::RootDoesDotExit(root_.into()))?;
     let canon_root_ = canon_root.clone();
     let (wsx, wrx) = channel();
     let mut watcher = raw_watcher(wsx).unwrap();
 
     let join_handle = thread::spawn(move || {
-      let _ = watcher.watch(canon_root.clone(), RecursiveMode::Recursive);
+      let _ = watcher.watch(canon_root_.clone(), RecursiveMode::Recursive);
 
       for event in wrx.iter() {
         match event {
           RawEvent { path: Some(ref path), op: Ok(op), .. } if op | WRITE != Op::empty() => {
-            dirty_.lock().unwrap().push((path.strip_prefix(&canon_root).unwrap().to_owned(), Instant::now()));
+            dirty_.lock().unwrap().push((path.strip_prefix(&canon_root_).unwrap().to_owned(), Instant::now()));
           },
           _ => ()
         }
       }
     });
 
+    deb!("resource cache started and listens to file changes in {}", root.display());
+
     Ok(ResCache {
-      root: canon_root_,
+      root: canon_root,
       cache: HashCache::new(),
       metadata: HashMap::new(),
       dirty: dirty,
@@ -161,17 +164,20 @@ impl ResCache {
     let res_ = res.clone();
 
     let path = path.clone();
+    let key_ = key.clone();
 
     // closure used to reload the object when needed
     let on_reload: Box<for<'a> Fn(&'a mut ResCache)> = Box::new(move |cache| {
+      deb!("reloading {}", key_.display());
+
       match T::load(&path, cache, args.clone()) {
         Ok(new_resource) => {
           // replace the current resource with the freshly loaded one
           *res_.borrow_mut() = new_resource;
-          deb!("reloaded resource from {:?}", path);
+          deb!("reloaded {}", key_.display());
         },
         Err(e) => {
-          warn!("reloading resource from {:?} has failed:\n{:#?}", path, e);
+          warn!("{} failed to reload:\n{:#?}", key_.display(), e);
         }
       }
     });
@@ -181,9 +187,12 @@ impl ResCache {
       last_update_instant: Instant::now()
     };
 
+
     // cache the resource and its meta data
     self.cache.save(key.clone(), res.clone());
-    self.metadata.insert(key, metadata);
+    self.metadata.insert(key.clone(), metadata);
+
+    deb!("cached resource {}", key.display());
 
     res
   }
@@ -195,18 +204,19 @@ impl ResCache {
 
     match self.cache.get::<Res<T>>(&path).cloned() {
       Some(resource) => {
-        deb!("cache hit for {} ({})", key.display(), path.display());
+        deb!("cache hit for {}", key.display());
         Ok(resource)
       },
       None => {
-        deb!("cache miss for {} ({})", key.display(), path.display());
+        deb!("cache miss for {}", key.display());
 
         // specific loading
         if path.exists() {
+          info!("loading {}", key.display());
           let resource = T::load(&path, self, args.clone())?;
           Ok(self.inject(key, &path, resource, args))
         } else {
-          Err(LoadError::FileNotFound(path))
+          Err(LoadError::FileNotFound(key))
         }
       }
     }
@@ -214,10 +224,12 @@ impl ResCache {
 
   /// Get a resource from the cache for the given key.
   pub fn get<T>(&mut self, key: &str, args: T::Args) -> Option<Res<T>> where T: 'static + Any + Reload {
+    deb!("getting {}", key);
+
     match self.get_(key, args) {
       Ok(resource) => Some(resource),
       Err(e) => {
-        err!("cannot get resource {}: {:?}", key, e);
+        err!("cannot get {} because:\n{:#?}", key, e);
         None
       }
     }
@@ -234,7 +246,7 @@ impl ResCache {
         let key = PathBuf::from(format!("{}/{}", T::TY_STR, key));
         let path = self.root.join(&key);
 
-        warn!("proxied resource {} because: {:?}", key.display(), e);
+        warn!("proxied {} because:\n{:#?}", key.display(), e);
 
         Ok(self.inject(key, &path, proxy(), args))
       }

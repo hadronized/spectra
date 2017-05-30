@@ -64,8 +64,6 @@ impl Load for Model {
   fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
-    info!("loading model: {:?}", path);
-
     let mut input = String::new();
 
     // load the data directly into memory; no buffering nor streaming

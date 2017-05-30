@@ -243,8 +243,6 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni> where In: Vertex, Uni: Uniform
   fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
-    info!("loading shader: {:?}", path);
-
     enum CurrentStage {
       VS,
       FS,

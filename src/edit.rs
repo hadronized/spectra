@@ -176,8 +176,6 @@ impl Load for TimelineManifest {
   fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
-    info!("loading timeline: {:?}", path);
-
     let file = File::open(path).map_err(|_| LoadError::FileNotFound(path.to_path_buf()))?;
     from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))
   }

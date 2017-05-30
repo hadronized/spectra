@@ -52,8 +52,6 @@ impl Load for Object {
   fn load<P>(path: P, cache: &mut ResCache, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
-    info!("loading object {:?}", path);
-
     // read the manifest
     let manifest: ObjectManifest = {
       let file = File::open(path).map_err(|_| LoadError::FileNotFound(path.to_path_buf()))?;
