@@ -1,3 +1,8 @@
+### 0.4.2
+
+- Support for serde{,-*}-1.0.
+- Support for image-0.13.
+
 ### 0.4.1
 
 - Support for luminance-glfw-0.3.
