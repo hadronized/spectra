@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 /// A shader module.
@@ -8,22 +8,18 @@ struct ShaderModule {
   symbols: HashMap<Identifier, ShadingCode>
 }
 
-/// A semigroup version of Vec.
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct NonEmpty<T>(Vec<T>);
-
 /// Spectra Shading Language AST.
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum SSL {
   /// An `export list_of_identifiers_` statement.
-  Export(NonEmpty<Identifier>),
+  Export(ExportList),
   /// A `from module use list of identifiers` statement.
-  FromUse(Module, NonEmpty<Identifier>),
+  FromUse(ImportList),
   /// A `pipeline { list_of_pipeline_attributes }` statement.
-  Pipeline(Vec<PipelineAttribute>),
+  Pipeline(PipelineStatement),
   /// A yield statement, valid in geometry shaders.
   Yield(GeometryYieldExpression),
-  /// Some legacy GLSL code.
+  /// Some legacy GLSL code.
   GLSL(ShadingCode),
   /// Some more SSL code.
   SSL(Box<SSL>)
@@ -37,6 +33,25 @@ type Identifier = String;
 type ShadingCode = String;
 /// An expression.
 type Expression = String;
+
+/// An export non-empty list.
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ExportList {
+  list: HashSet<Identifier>
+}
+
+/// An import non-empty list.
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ImportList {
+  module: Module,
+  list: HashSet<Identifier>
+}
+
+/// A pipeline statement.
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct PipelineStatement {
+  attributes: Vec<PipelineAttribute>
+}
 
 /// Attributes that can be set in a pipeline.
 #[derive(Clone, Debug, Eq, PartialEq)]
