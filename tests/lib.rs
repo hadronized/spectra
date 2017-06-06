@@ -2,7 +2,7 @@ extern crate rand;
 extern crate spectra;
 
 use rand::{Rng, thread_rng};
-use spectra::linear::{UnitQuaternion, Quaternion};
+use spectra::linear::Quaternion;
 use spectra::spline::*;
 
 #[test]

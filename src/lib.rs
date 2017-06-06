@@ -86,6 +86,7 @@ pub mod projection;
 pub mod resource;
 pub mod scale;
 pub mod shader;
+pub mod ssl;
 pub mod spline;
 pub mod text;
 pub mod texture;
