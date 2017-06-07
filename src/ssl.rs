@@ -19,10 +19,6 @@ enum SSL {
   Pipeline(PipelineStatement),
   /// A yield statement, valid in geometry shaders.
   Yield(GeometryYieldExpression),
-  /// Some legacy GLSL code.
-  GLSL(ShadingCode),
-  /// Some more SSL code.
-  SSL(Box<SSL>)
 }
 
 /// A module.
