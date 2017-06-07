@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::str::FromStr;
 
 /// A shader module.
 ///
@@ -72,79 +71,35 @@ enum GeometryYieldExpression {
 enum ParseError {
   ExpressionError(String)
 }
-
-impl FromStr for PipelineAttribute {
-  type Err = ParseError;
-
-  fn from_str(s: &str) -> Result<Self, Self::Err> {
-    let equal_sign_idx = s.find('=').ok_or(ParseError::ExpressionError("cannot find =".into()))?;
-    let (key, value) = s.split_at(equal_sign_idx);
-
-    if value.len() <= 1 {
-      return Err(ParseError::ExpressionError("no value".into()));
-    }
-
-    match key.trim() {
-      "geometry_shader_max_vertices" => {
-        let value = (&value[1..]).trim();
-        let max_vertices = value.parse().map_err(|_| ParseError::ExpressionError(format!("unable to parse geometry_shader_max_vertices, found {}", value)))?;
-        Ok(PipelineAttribute::GeometryShaderMaxVertices(max_vertices))
-      },
-      "geometry_shader_invokations" => {
-        let value = (&value[1..]).trim();
-        let invokations = value.parse().map_err(|_| ParseError::ExpressionError(format!("unable to parse geometry_shader_invokation, found {}", value)))?;
-        Ok(PipelineAttribute::GeometryShaderInvokations(invokations))
-      },
-      _ => Err(ParseError::ExpressionError(format!("expected a valid pipeline attribute, found {}", key)))
-    }
-  }
-}
-
-impl FromStr for GeometryYieldExpression {
-  type Err = ParseError;
-
-  fn from_str(s: &str) -> Result<Self, Self::Err> {
-    match s {
-      "yieldprim" => Ok(GeometryYieldExpression::YieldPrimitive),
-      _ if s.starts_with("yield ") && s.len() > "yield ".len() => {
-        let expr = &s["yield ".len() ..];
-        Ok(GeometryYieldExpression::YieldFoldVertex(expr.into()))
-      },
-      _ => {
-        Err(ParseError::ExpressionError(format!("expected yield, found {}", s)))
-      }
-    }
-  }
-}
  
-// FIXME: move that into a specific module
-#[test]
-fn parse_pipeline_attribute() {
-  let geo_max_vertices  = "geometry_shader_max_vertices = 3";
-  let geo_max_vertices1 = "geometry_shader_max_vertices =3";
-  let geo_max_vertices2 = "geometry_shader_max_vertices =";
-  let geo_max_vertices3 = "geometry_shader_max_vertices = ";
-  let geo_invokations  = "geometry_shader_invokations = 1";
-  let geo_invokations1 = "geometry_shader_invokations =1";
-  let geo_invokations2 = "geometry_shader_invokations =";
-  let geo_invokations3 = "geometry_shader_invokations = ";
-
-  assert_eq!(geo_max_vertices.parse::<PipelineAttribute>(), Ok(PipelineAttribute::GeometryShaderMaxVertices(3)));
-  assert_eq!(geo_max_vertices1.parse::<PipelineAttribute>(), Ok(PipelineAttribute::GeometryShaderMaxVertices(3)));
-  assert!(geo_max_vertices2.parse::<PipelineAttribute>().is_err());
-  assert!(geo_max_vertices3.parse::<PipelineAttribute>().is_err());
-  assert_eq!(geo_invokations.parse::<PipelineAttribute>(), Ok(PipelineAttribute::GeometryShaderInvokations(1)));
-  assert_eq!(geo_invokations1.parse::<PipelineAttribute>(), Ok(PipelineAttribute::GeometryShaderInvokations(1)));
-  assert!(geo_invokations2.parse::<PipelineAttribute>().is_err());
-  assert!(geo_invokations3.parse::<PipelineAttribute>().is_err());
-}
-
-// FIXME: move that into a specific module
-#[test]
-fn parse_geometry_yield_expression() {
-  let yieldprim = "yieldprim";
-  let yield_1 = "yield FoldVertex(vertex[i].color)";
-
-  assert_eq!(yieldprim.parse::<GeometryYieldExpression>(), Ok(GeometryYieldExpression::YieldPrimitive));
-  assert_eq!(yield_1.parse::<GeometryYieldExpression>(), Ok(GeometryYieldExpression::YieldFoldVertex("FoldVertex(vertex[i].color)".into())));
-}
+// // FIXME: move that into a specific module
+// #[test]
+// fn parse_pipeline_attribute() {
+//   let geo_max_vertices  = "geometry_shader_max_vertices = 3";
+//   let geo_max_vertices1 = "geometry_shader_max_vertices =3";
+//   let geo_max_vertices2 = "geometry_shader_max_vertices =";
+//   let geo_max_vertices3 = "geometry_shader_max_vertices = ";
+//   let geo_invokations  = "geometry_shader_invokations = 1";
+//   let geo_invokations1 = "geometry_shader_invokations =1";
+//   let geo_invokations2 = "geometry_shader_invokations =";
+//   let geo_invokations3 = "geometry_shader_invokations = ";
+// 
+//   assert_eq!(geo_max_vertices.parse::<PipelineAttribute>(), Ok(PipelineAttribute::GeometryShaderMaxVertices(3)));
+//   assert_eq!(geo_max_vertices1.parse::<PipelineAttribute>(), Ok(PipelineAttribute::GeometryShaderMaxVertices(3)));
+//   assert!(geo_max_vertices2.parse::<PipelineAttribute>().is_err());
+//   assert!(geo_max_vertices3.parse::<PipelineAttribute>().is_err());
+//   assert_eq!(geo_invokations.parse::<PipelineAttribute>(), Ok(PipelineAttribute::GeometryShaderInvokations(1)));
+//   assert_eq!(geo_invokations1.parse::<PipelineAttribute>(), Ok(PipelineAttribute::GeometryShaderInvokations(1)));
+//   assert!(geo_invokations2.parse::<PipelineAttribute>().is_err());
+//   assert!(geo_invokations3.parse::<PipelineAttribute>().is_err());
+// }
+// 
+// // FIXME: move that into a specific module
+// #[test]
+// fn parse_geometry_yield_expression() {
+//   let yieldprim = "yieldprim";
+//   let yield_1 = "yield FoldVertex(vertex[i].color)";
+// 
+//   assert_eq!(yieldprim.parse::<GeometryYieldExpression>(), Ok(GeometryYieldExpression::YieldPrimitive));
+//   assert_eq!(yield_1.parse::<GeometryYieldExpression>(), Ok(GeometryYieldExpression::YieldFoldVertex("FoldVertex(vertex[i].color)".into())));
+// }
