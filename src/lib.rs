@@ -54,6 +54,8 @@ extern crate clap;
 extern crate image;
 pub extern crate luminance;
 extern crate luminance_glfw;
+#[macro_use]
+extern crate nom;
 extern crate notify;
 extern crate num_traits;
 extern crate rusttype;
