@@ -43,16 +43,14 @@ named!(module_list<&[u8], Vec<Vec<&[u8]>>>,
   )
 );
 
-// /// Parse an export list.
-// named!(export_list<&[u8], ExportList>,
-//   ws!(do_parse!(
-//     tag!("export") >>
-//     modules: module_list >>
-//     (ExportList {
-//       exported_list: modules.into_iter().collect()
-//     })
-//   ))
-// );
+/// Parse an export list.
+named!(export_list<&[u8], Vec<Vec<&[u8]>>>,
+  ws!(do_parse!(
+    tag!("export") >>
+    modules: module_list >>
+    (modules)
+  ))
+);
 
 #[test]
 fn test_module_sep_n_name() {
@@ -79,9 +77,19 @@ fn test_module_path_several() {
 #[test]
 fn test_module_list() {
   assert_eq!(module_list(&b"(foo,bar,zoo.woo)"[..]), IResult::Done(&b""[..], vec![vec![&b"foo"[..]], vec![&b"bar"[..]], vec![&b"zoo"[..], &b"woo"[..]]]));
-  assert_eq!(module_list(&b"( foo,bar,zoo.woo  )"[..]), IResult::Done(&b""[..], vec![vec![&b"foo"[..]], vec![&b"bar"[..]], vec![&b"zoo"[..], &b"woo"[..]]]));
+  assert_eq!(module_list(&b" ( foo,bar,zoo.woo  ) "[..]), IResult::Done(&b""[..], vec![vec![&b"foo"[..]], vec![&b"bar"[..]], vec![&b"zoo"[..], &b"woo"[..]]]));
   assert_eq!(module_list(&b"( foo, bar ,   zoo.woo  )"[..]), IResult::Done(&b""[..], vec![vec![&b"foo"[..]], vec![&b"bar"[..]], vec![&b"zoo"[..], &b"woo"[..]]]));
   assert_eq!(module_list(&b"(,bar,zoo.woo)"[..]), IResult::Error(ErrorKind::Char));
   assert_eq!(module_list(&b"("[..]), IResult::Incomplete(Needed::Unknown));
   assert_eq!(module_list(&b"  ("[..]), IResult::Incomplete(Needed::Unknown));
+}
+
+#[test]
+fn test_export_list() {
+  assert_eq!(export_list(&b"export (foo,bar,zoo.woo)"[..]), IResult::Done(&b""[..], vec![vec![&b"foo"[..]], vec![&b"bar"[..]], vec![&b"zoo"[..], &b"woo"[..]]]));
+  assert_eq!(export_list(&b"   export ( foo,bar,zoo.woo  )  "[..]), IResult::Done(&b""[..], vec![vec![&b"foo"[..]], vec![&b"bar"[..]], vec![&b"zoo"[..], &b"woo"[..]]]));
+  assert_eq!(export_list(&b"export ( foo, bar ,   zoo.woo  )"[..]), IResult::Done(&b""[..], vec![vec![&b"foo"[..]], vec![&b"bar"[..]], vec![&b"zoo"[..], &b"woo"[..]]]));
+  assert_eq!(export_list(&b"export (,bar,zoo.woo)"[..]), IResult::Error(ErrorKind::Char));
+  assert_eq!(export_list(&b"export ("[..]), IResult::Incomplete(Needed::Unknown));
+  assert_eq!(export_list(&b"export   ("[..]), IResult::Incomplete(Needed::Unknown));
 }
