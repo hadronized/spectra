@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 /// A shader module.
 ///
@@ -32,20 +32,20 @@ type Expression = String;
 /// An export non-empty list.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExportList {
-  pub export_list: HashSet<ModulePath>
+  pub export_list: Vec<ModulePath>
 }
 
 /// An import non-empty list.
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct ImportList {
   module: ModuleName,
-  list: HashSet<ModulePath>
+  list: Vec<ModulePath>
 }
 
 /// A module path is a list of module(s), representing a hierarchy.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct ModulePath {
-  hierarchy: Vec<ModuleName>
+  pub path: Vec<ModuleName>
 }
 
 /// A pipeline statement.
