@@ -21,7 +21,7 @@ enum SSL {
 }
 
 /// A module.
-type Module = String;
+type ModuleName = String;
 /// An identifier.
 type Identifier = String;
 /// Some opaque shading code.
@@ -32,14 +32,20 @@ type Expression = String;
 /// An export non-empty list.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExportList {
-  pub export_list: HashSet<Identifier>
+  pub export_list: HashSet<ModulePath>
 }
 
 /// An import non-empty list.
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct ImportList {
-  module: Module,
-  list: HashSet<Identifier>
+  module: ModuleName,
+  list: HashSet<ModulePath>
+}
+
+/// A module path is a list of module(s), representing a hierarchy.
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+pub struct ModulePath {
+  hierarchy: Vec<ModuleName>
 }
 
 /// A pipeline statement.
