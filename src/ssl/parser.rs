@@ -128,6 +128,10 @@ named!(pipeline_statement<&[u8], syntax::PipelineStatement>,
   ))
 );
 
+/// Parse a yield primitive expression.
+named!(yieldprim<&[u8], syntax::GeometryYieldExpression>,
+  value!(syntax::GeometryYieldExpression::YieldPrimitive, tag!("yieldprim")));
+
 // Turn a &[u8] into a String.
 #[inline]
 fn bytes_to_string(bytes: &[u8]) -> String {
@@ -235,4 +239,9 @@ fn test_pipeline_stmt() {
                 }";
 
   assert_eq!(pipeline_statement(&input[..]), IResult::Done(&b""[..], expected));
+}
+
+#[test]
+fn test_yieldprim() {
+  assert_eq!(yieldprim(&b"yieldprim"[..]), IResult::Done(&b""[..], syntax::GeometryYieldExpression::YieldPrimitive));
 }

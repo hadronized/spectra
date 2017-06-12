@@ -65,7 +65,7 @@ pub enum PipelineAttribute {
 
 /// Expressions that can be yielded in a geometry shader.
 #[derive(Clone, Debug, Eq, PartialEq)]
-enum GeometryYieldExpression {
+pub enum GeometryYieldExpression {
   /// Yield a primitive.
   YieldPrimitive,
   /// Yield a primitive’s vertex (fold vertex).
