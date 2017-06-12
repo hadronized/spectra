@@ -40,13 +40,13 @@ named!(module_sep_n_name,
 named!(module_path<&[u8], syntax::ModulePath>,
   do_parse!(
     // recognize at least one module name
-    base: alphanumeric >>
+    base: identifier >>
     // recognize the rest of the path, if any
     rest: many0!(module_sep_n_name) >>
 
     ({
       let mut rest = rest.clone(); // FIXME: meh?
-      rest.insert(0, base);
+      rest.insert(0, base.as_bytes());
 
       syntax::ModulePath {
         path: rest.into_iter().map(bytes_to_string).collect()
@@ -81,7 +81,7 @@ named!(export_list<&[u8], syntax::ExportList>,
 named!(import_list<&[u8], syntax::ImportList>,
   ws!(do_parse!(
     tag!("from") >>
-    from_module: identifier >>
+    from_module: module_path >>
     tag!("import") >>
     modules: module_list >>
     (syntax::ImportList { module: from_module, list: modules })
@@ -135,7 +135,7 @@ fn test_module_path_simple() {
   assert_eq!(module_path(&b"foo"[..]), IResult::Done(&b""[..], syntax::ModulePath { path: vec!["foo".into()] }));
   assert_eq!(module_path(&b"foo "[..]), IResult::Done(&b" "[..], syntax::ModulePath { path: vec!["foo".into()] }));
   assert_eq!(module_path(&b"foo."[..]), IResult::Incomplete(Needed::Unknown));
-  assert_eq!(module_path(&b" foo"[..]), IResult::Error(ErrorKind::AlphaNumeric));
+  assert_eq!(module_path(&b" foo"[..]), IResult::Error(ErrorKind::TakeWhile1));
 }
 
 #[test]
@@ -154,8 +154,8 @@ fn test_module_list() {
   assert_eq!(module_list(&b" ( foo,bar,zoo.woo  ) "[..]), IResult::Done(&b""[..], list.clone()));
   assert_eq!(module_list(&b"( foo, bar ,   zoo.woo  )"[..]), IResult::Done(&b""[..], list.clone()));
   assert_eq!(module_list(&b"(,bar,zoo.woo)"[..]), IResult::Error(ErrorKind::Char));
-  assert_eq!(module_list(&b"("[..]), IResult::Incomplete(Needed::Unknown));
-  assert_eq!(module_list(&b"  ("[..]), IResult::Incomplete(Needed::Unknown));
+  assert_eq!(module_list(&b"("[..]), IResult::Incomplete(Needed::Size(2)));
+  assert_eq!(module_list(&b"  ("[..]), IResult::Incomplete(Needed::Size(4)));
 }
 
 #[test]
@@ -169,6 +169,14 @@ fn test_export_list() {
   assert_eq!(export_list(&b"   export ( foo,bar,zoo.woo  )  "[..]), IResult::Done(&b""[..], list.clone()));
   assert_eq!(export_list(&b"export ( foo, bar ,   zoo.woo  )"[..]), IResult::Done(&b""[..], list.clone()));
   assert_eq!(export_list(&b"export (,bar,zoo.woo)"[..]), IResult::Error(ErrorKind::Char));
-  assert_eq!(export_list(&b"export ("[..]), IResult::Incomplete(Needed::Unknown));
-  assert_eq!(export_list(&b"export   ("[..]), IResult::Incomplete(Needed::Unknown));
+  assert_eq!(export_list(&b"export ("[..]), IResult::Incomplete(Needed::Size(9)));
+  assert_eq!(export_list(&b"export   ("[..]), IResult::Incomplete(Needed::Size(11)));
 }
+
+//#[test]
+//fn test_import_list() {
+//  let foo = syntax::ModulePath { path: vec!["foo".into()] };
+//  let bar = syntax::ModulePath { path: vec!["bar".into()] };
+//  let zoo_woo = syntax::ModulePath { path: vec!["zoo".into(), "woo".into()] };
+//  let import_list = syntax::ImportList { module: zoo_woo, list: vec![foo, bar] };
+//}

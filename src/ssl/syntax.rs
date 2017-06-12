@@ -38,7 +38,7 @@ pub struct ExportList {
 /// An import non-empty list.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ImportList {
-  pub module: ModuleName,
+  pub module: ModulePath,
   pub list: Vec<ModulePath>
 }
 
