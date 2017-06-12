@@ -23,7 +23,7 @@ enum SSL {
 /// A module.
 type ModuleName = String;
 /// An identifier.
-type Identifier = String;
+pub type Identifier = String;
 /// Some opaque shading code.
 type ShadingCode = String;
 /// An expression.
@@ -39,7 +39,7 @@ pub struct ExportList {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct ImportList {
   module: ModuleName,
-  list: Vec<ModulePath>
+  list: Vec<Identifier>
 }
 
 /// A module path is a list of module(s), representing a hierarchy.

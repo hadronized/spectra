@@ -1,7 +1,26 @@
-use nom::{ErrorKind, IResult, Needed, alphanumeric};
+use nom::{ErrorKind, IResult, Needed, alphanumeric, anychar};
 use std::str::from_utf8_unchecked;
 
 use ssl::syntax;
+
+/// Parse an identifier.
+named!(identifier<&[u8], syntax::Identifier>,
+  do_parse!(
+    name: verify!(take_while1!(identifier_pred), verify_identifier) >>
+    (bytes_to_string(name))
+  )
+);
+
+#[inline]
+fn identifier_pred(c: u8) -> bool {
+  let ch = char::from(c);
+  ch.is_alphanumeric() || ch == '_'
+}
+
+#[inline]
+fn verify_identifier(s: &[u8]) -> bool {
+  !char::from(s[0]).is_digit(10)
+}
 
 /// Parse a module separator and a module name.
 named!(module_sep_n_name,
@@ -60,6 +79,14 @@ named!(export_list<&[u8], syntax::ExportList>,
     )
   ))
 );
+
+///// Parse an import list.
+//named!(import_list,
+//  ws!(do_parse!(
+//    tag!("from") >>
+//    module:
+//  ))
+//);
 
 // Turn a &[u8] into a String.
 fn bytes_to_string(bytes: &[u8]) -> String {
