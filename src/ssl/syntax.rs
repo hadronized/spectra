@@ -56,7 +56,7 @@ struct PipelineStatement {
 
 /// Attributes that can be set in a pipeline.
 #[derive(Clone, Debug, Eq, PartialEq)]
-enum PipelineAttribute {
+pub enum PipelineAttribute {
   /// Maximum vertices that the geometry shader can output.
   GeometryShaderMaxVertices(u32),
   /// Number of times the geometry shader must be invoked.

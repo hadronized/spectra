@@ -1,5 +1,6 @@
-use nom::{ErrorKind, IResult, Needed, alphanumeric};
-use std::str::from_utf8_unchecked;
+use nom::{ErrorKind, IResult, Needed, alphanumeric, digit};
+use std::fmt::Debug;
+use std::str::{FromStr, from_utf8_unchecked};
 
 use ssl::syntax;
 
@@ -87,9 +88,37 @@ named!(import_list<&[u8], syntax::ImportList>,
   ))
 );
 
+/// Parse a geometry shader max vertices pipeline attribute.
+named!(pipe_attr_gs_max_verts<&[u8], syntax::PipelineAttribute>,
+  ws!(do_parse!(
+    tag!("geometry_shader_max_vertices") >>
+    char!('=') >>
+    value: natural >>
+    (syntax::PipelineAttribute::GeometryShaderMaxVertices(value))
+  ))
+);
+
+/// Parse a geometry shader invokations pipeline attribute.
+named!(pipe_attr_gs_invokations<&[u8], syntax::PipelineAttribute>,
+  ws!(do_parse!(
+    tag!("geometry_shader_invokations") >>
+    char!('=') >>
+    value: natural >>
+    (syntax::PipelineAttribute::GeometryShaderMaxVertices(value))
+  ))
+);
+
 // Turn a &[u8] into a String.
+#[inline]
 fn bytes_to_string(bytes: &[u8]) -> String {
   unsafe { from_utf8_unchecked(bytes).to_owned() }
+}
+
+/// Parse a natural number.
+#[inline]
+fn natural<T>(s: &[u8]) -> IResult<&[u8], T> where T: FromStr, <T as FromStr>::Err: Debug {
+  let (s1, utf8_s) = unsafe { try_parse!(s, map!(digit, from_utf8_unchecked)) };
+  IResult::Done(s1, utf8_s.parse().unwrap())
 }
 
 #[test]
