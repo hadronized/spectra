@@ -104,7 +104,7 @@ named!(pipe_attr_gs_invokations<&[u8], syntax::PipelineAttribute>,
     tag!("geometry_shader_invokations") >>
     char!('=') >>
     value: natural >>
-    (syntax::PipelineAttribute::GeometryShaderMaxVertices(value))
+    (syntax::PipelineAttribute::GeometryShaderInvokations(value))
   ))
 );
 
@@ -173,10 +173,33 @@ fn test_export_list() {
   assert_eq!(export_list(&b"export   ("[..]), IResult::Incomplete(Needed::Size(11)));
 }
 
-//#[test]
-//fn test_import_list() {
-//  let foo = syntax::ModulePath { path: vec!["foo".into()] };
-//  let bar = syntax::ModulePath { path: vec!["bar".into()] };
-//  let zoo_woo = syntax::ModulePath { path: vec!["zoo".into(), "woo".into()] };
-//  let import_list = syntax::ImportList { module: zoo_woo, list: vec![foo, bar] };
-//}
+#[test]
+fn test_import_list() {
+  let foo = syntax::ModulePath { path: vec!["foo".into()] };
+  let bar = syntax::ModulePath { path: vec!["bar".into()] };
+  let zoo_woo = syntax::ModulePath { path: vec!["zoo".into(), "woo".into()] };
+  let expected = syntax::ImportList { module: zoo_woo, list: vec![foo, bar] };
+
+  assert_eq!(import_list(&b"from zoo.woo import (foo, bar)"[..]), IResult::Done(&b""[..], expected.clone()));
+  assert_eq!(import_list(&b" from    zoo.woo   import  (   foo  ,   bar  )"[..]), IResult::Done(&b""[..], expected.clone()));
+  assert_eq!(import_list(&b"from zoo.woo import foo, bar"[..]), IResult::Error(ErrorKind::Char));
+  assert_eq!(import_list(&b"from zoo.woo import (foo,\nbar)"[..]), IResult::Done(&b""[..], expected.clone()));
+}
+
+#[test]
+fn test_pipe_attr_gs_max_verts() {
+  let expected = syntax::PipelineAttribute::GeometryShaderMaxVertices(42);
+
+  assert_eq!(pipe_attr_gs_max_verts(&b"geometry_shader_max_vertices = 42"[..]), IResult::Done(&b""[..], expected.clone()));
+  assert_eq!(pipe_attr_gs_max_verts(&b" geometry_shader_max_vertices   =\n42   "[..]), IResult::Done(&b""[..], expected.clone()));
+  assert_eq!(pipe_attr_gs_max_verts(&b"geometry_shader_max_vertices=42"[..]), IResult::Done(&b""[..], expected));
+}
+
+#[test]
+fn test_pipe_attr_gs_invokations() {
+  let expected = syntax::PipelineAttribute::GeometryShaderInvokations(3);
+
+  assert_eq!(pipe_attr_gs_invokations(&b"geometry_shader_invokations = 3"[..]), IResult::Done(&b""[..], expected.clone()));
+  assert_eq!(pipe_attr_gs_invokations(&b" geometry_shader_invokations   =\n3   "[..]), IResult::Done(&b""[..], expected.clone()));
+  assert_eq!(pipe_attr_gs_invokations(&b"geometry_shader_invokations=3"[..]), IResult::Done(&b""[..], expected));
+}
