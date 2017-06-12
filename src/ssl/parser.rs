@@ -1,4 +1,4 @@
-use nom::{ErrorKind, IResult, Needed, alphanumeric, anychar};
+use nom::{ErrorKind, IResult, Needed, alphanumeric};
 use std::str::from_utf8_unchecked;
 
 use ssl::syntax;
