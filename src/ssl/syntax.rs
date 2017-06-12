@@ -12,7 +12,7 @@ struct ShaderModule {
 enum SSL {
   /// An `export list_of_identifiers_` statement.
   Export(ExportList),
-  /// A `from module use list of identifiers` statement.
+  /// A `from module import list of identifiers` statement.
   FromUse(ImportList),
   /// A `pipeline { list_of_pipeline_attributes }` statement.
   Pipeline(PipelineStatement),
@@ -37,9 +37,9 @@ pub struct ExportList {
 
 /// An import non-empty list.
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct ImportList {
-  module: ModuleName,
-  list: Vec<Identifier>
+pub struct ImportList {
+  pub module: ModuleName,
+  pub list: Vec<ModulePath>
 }
 
 /// A module path is a list of module(s), representing a hierarchy.

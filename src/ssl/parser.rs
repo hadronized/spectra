@@ -72,21 +72,20 @@ named!(export_list<&[u8], syntax::ExportList>,
     tag!("export") >>
     modules: module_list >>
 
-    (
-      syntax::ExportList {
-        export_list: modules
-      }
-    )
+    (syntax::ExportList { export_list: modules })
   ))
 );
 
-///// Parse an import list.
-//named!(import_list,
-//  ws!(do_parse!(
-//    tag!("from") >>
-//    module:
-//  ))
-//);
+/// Parse an import list.
+named!(import_list<&[u8], syntax::ImportList>,
+  ws!(do_parse!(
+    tag!("from") >>
+    from_module: identifier >>
+    tag!("import") >>
+    modules: module_list >>
+    (syntax::ImportList { module: from_module, list: modules })
+  ))
+);
 
 // Turn a &[u8] into a String.
 fn bytes_to_string(bytes: &[u8]) -> String {
