@@ -13,7 +13,7 @@ enum SSL {
   /// An `export list_of_identifiers_` statement.
   Export(ExportList),
   /// A `from module import list of identifiers` statement.
-  FromUse(ImportList),
+  Import(ImportList),
   /// A `pipeline { list_of_pipeline_attributes }` statement.
   Pipeline(PipelineStatement),
   /// A yield statement, valid in geometry shaders.
