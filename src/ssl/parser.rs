@@ -108,6 +108,26 @@ named!(pipe_attr_gs_invokations<&[u8], syntax::PipelineAttribute>,
   ))
 );
 
+/// Parse a pipeline attribute.
+named!(pipeline_attribute<&[u8], syntax::PipelineAttribute>,
+  alt!(
+    pipe_attr_gs_max_verts |
+    pipe_attr_gs_invokations
+  )
+);
+
+/// Parse a pipeline statement.
+named!(pipeline_statement<&[u8], syntax::PipelineStatement>,
+  ws!(do_parse!(
+    tag!("pipeline") >>
+    attributes: delimited!(char!('{'),
+                           separated_list!(char!(','), pipeline_attribute),
+                           char!('}')) >>
+
+    (syntax::PipelineStatement { attributes: attributes })
+  ))
+);
+
 // Turn a &[u8] into a String.
 #[inline]
 fn bytes_to_string(bytes: &[u8]) -> String {
@@ -202,4 +222,17 @@ fn test_pipe_attr_gs_invokations() {
   assert_eq!(pipe_attr_gs_invokations(&b"geometry_shader_invokations = 3"[..]), IResult::Done(&b""[..], expected.clone()));
   assert_eq!(pipe_attr_gs_invokations(&b" geometry_shader_invokations   =\n3   "[..]), IResult::Done(&b""[..], expected.clone()));
   assert_eq!(pipe_attr_gs_invokations(&b"geometry_shader_invokations=3"[..]), IResult::Done(&b""[..], expected));
+}
+
+#[test]
+fn test_pipeline_stmt() {
+  let gs_invokations = syntax::PipelineAttribute::GeometryShaderInvokations(3);
+  let gs_max_vertices = syntax::PipelineAttribute::GeometryShaderMaxVertices(42);
+  let expected = syntax::PipelineStatement { attributes: vec![gs_max_vertices, gs_invokations] };
+  let input = b"pipeline {
+                  geometry_shader_max_vertices = 42,
+                  geometry_shader_invokations = 3
+                }";
+
+  assert_eq!(pipeline_statement(&input[..]), IResult::Done(&b""[..], expected));
 }

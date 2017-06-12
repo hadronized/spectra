@@ -50,8 +50,8 @@ pub struct ModulePath {
 
 /// A pipeline statement.
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct PipelineStatement {
-  attributes: Vec<PipelineAttribute>
+pub struct PipelineStatement {
+  pub attributes: Vec<PipelineAttribute>
 }
 
 /// Attributes that can be set in a pipeline.
