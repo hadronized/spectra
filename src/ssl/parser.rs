@@ -4,6 +4,19 @@ use std::str::{FromStr, from_utf8_unchecked};
 
 use ssl::syntax;
 
+// Turn a &[u8] into a String.
+#[inline]
+fn bytes_to_string(bytes: &[u8]) -> String {
+  unsafe { from_utf8_unchecked(bytes).to_owned() }
+}
+
+/// Parse a natural number.
+#[inline]
+fn natural<T>(s: &[u8]) -> IResult<&[u8], T> where T: FromStr, <T as FromStr>::Err: Debug {
+  let (s1, utf8_s) = unsafe { try_parse!(s, map!(digit, from_utf8_unchecked)) };
+  IResult::Done(s1, utf8_s.parse().unwrap())
+}
+
 /// Parse an identifier.
 named!(identifier<&[u8], syntax::Identifier>,
   do_parse!(
@@ -132,18 +145,16 @@ named!(pipeline_statement<&[u8], syntax::PipelineStatement>,
 named!(yieldprim<&[u8], syntax::GeometryYieldExpression>,
   value!(syntax::GeometryYieldExpression::YieldPrimitive, tag!("yieldprim")));
 
-// Turn a &[u8] into a String.
-#[inline]
-fn bytes_to_string(bytes: &[u8]) -> String {
-  unsafe { from_utf8_unchecked(bytes).to_owned() }
-}
+/// Parse the void type.
+named!(void_ty, tag!("void"));
 
-/// Parse a natural number.
-#[inline]
-fn natural<T>(s: &[u8]) -> IResult<&[u8], T> where T: FromStr, <T as FromStr>::Err: Debug {
-  let (s1, utf8_s) = unsafe { try_parse!(s, map!(digit, from_utf8_unchecked)) };
-  IResult::Done(s1, utf8_s.parse().unwrap())
-}
+/// Parse a return type.
+named!(ret_ty<&[u8], Option<syntax::RetTy>>,
+  alt!(
+    value!(None, void_ty) |
+    map!(identifier, Some)
+  )
+);
 
 #[test]
 fn test_module_sep_n_name() {

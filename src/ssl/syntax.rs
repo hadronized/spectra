@@ -1,15 +1,22 @@
+//! Syntax of the language.
+//!
+//! For now, most of the language is an EDSL describing an augmented GLSL with a few keywords.
+//! The idea is to converge to something able to recognize all tokens used in the source input but
+//! in order to make things easier at first, we’ll consider some “opaque” code that we won’t be
+//! using as tokens. For instance, if the user defines a function that is not a special function
+//! we’re interested in, we’ll just parse the whole of it until we hit the end of its body.
 use std::collections::HashMap;
 
 /// A shader module.
 ///
 /// A shader module is a container that associates some shading code to several identifiers.
 struct ShaderModule {
-  symbols: HashMap<Identifier, ShadingCode>
+  symbols: HashMap<Identifier, String>
 }
 
-/// Spectra Shading Language AST.
+/// Token.
 #[derive(Clone, Debug, Eq, PartialEq)]
-enum SSL {
+enum Token {
   /// An `export list_of_identifiers_` statement.
   Export(ExportList),
   /// A `from module import list of identifiers` statement.
@@ -18,15 +25,11 @@ enum SSL {
   Pipeline(PipelineStatement),
   /// A yield statement, valid in geometry shaders.
   Yield(GeometryYieldExpression),
+  /// A function definition.
+  FunDef(FunSig, FunBody)
 }
 
-/// A module.
-type ModuleName = String;
-/// An identifier.
 pub type Identifier = String;
-/// Some opaque shading code.
-type ShadingCode = String;
-/// An expression.
 type Expression = String;
 
 /// An export non-empty list.
@@ -47,6 +50,8 @@ pub struct ImportList {
 pub struct ModulePath {
   pub path: Vec<ModuleName>
 }
+
+type ModuleName = String;
 
 /// A pipeline statement.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -72,8 +77,33 @@ pub enum GeometryYieldExpression {
   YieldFoldVertex(Expression)
 }
 
-/// Error that can occur when parsing SSL code.
+/// A function signature.
 #[derive(Clone, Debug, Eq, PartialEq)]
-enum ParseError {
-  ExpressionError(String)
+struct FunSig {
+  ret_ty: Option<RetTy>,
+  ident: Identifier,
+  args: FunArgList
 }
+
+// TODO: use an enum here instead
+pub type RetTy = String;
+
+/// Arguments list of a function signature.
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct FunArgList {
+  list: Vec<FunArg>
+}
+
+/// An argument in the argument list of a function
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct FunArg {
+  qualifier: Option<FunArgQualifier>,
+  ty: FunArgTy,
+  ident: Identifier
+}
+
+// TODO: use enums here instead
+type FunArgQualifier = String;
+type FunArgTy = String;
+
+type FunBody = String;
