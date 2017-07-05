@@ -4,7 +4,7 @@ use image;
 use std::ops::Deref;
 use std::path::Path;
 
-use resource::{Load, LoadError, Reload, ResCache};
+use resource::{Load, LoadError, LoadResult, Reload, ResCache};
 
 // Common texture aliases.
 pub type TextureRGBA32F = Texture<Flat, Dim2, RGBA32F>;
@@ -63,13 +63,13 @@ impl Load for TextureImage {
 
   const TY_STR: &'static str = "textures";
 
-  fn load<P>(path: P, _: &mut ResCache, (sampler, linearizer): Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  fn load<P>(path: P, _: &mut ResCache, (sampler, linearizer): Self::Args) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     load_rgba_texture(path, &sampler, linearizer)
-      .map(|tex| TextureImage {
+      .map(|tex| (TextureImage {
         texture: tex,
         sampler: sampler,
         linearizer: linearizer
-      })
+      }).into())
   }
 }
 

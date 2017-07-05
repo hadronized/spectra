@@ -7,7 +7,7 @@ use std::ops::{Add, Div, Mul, Sub};
 use std::path::Path;
 
 use linear::{Scale, Quat, V2, V3, V4};
-use resource::{Load, LoadError, ResCache};
+use resource::{Load, LoadError, LoadResult, ResCache};
 
 /// Time used as sampling type in splines.
 pub type Time = f32;
@@ -80,7 +80,7 @@ impl<T> Spline<T> {
     keys.sort_by(|k0, k1| k0.t.partial_cmp(&k1.t).unwrap());
 
     Spline {
-      keys: keys 
+      keys: keys
     }
   }
 
@@ -169,7 +169,7 @@ impl<T> Load for Spline<T> where T: SplineDeserializerAdapter {
 
   const TY_STR: &'static str = "splines";
 
-  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     let file = File::open(path).map_err(|_| LoadError::FileNotFound(path.to_path_buf()))?;
@@ -177,7 +177,7 @@ impl<T> Load for Spline<T> where T: SplineDeserializerAdapter {
 
     Ok(Spline::from_keys(keys.into_iter().map(|key|
       Key::new(key.t, T::from_deserialized(key.value), key.interpolation)
-    ).collect()))
+    ).collect()).into())
   }
 }
 
@@ -312,7 +312,7 @@ impl Interpolate for V3<f32> {
   }
 }
 
-impl Interpolate for V4<f32> { 
+impl Interpolate for V4<f32> {
   fn lerp(a: Self, b: Self, t: Time) -> Self {
     a.lerp(b, t)
   }
