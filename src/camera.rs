@@ -7,7 +7,7 @@ use std::path::Path;
 
 use linear::{M44, Quat, V3};
 use projection::{Perspective, Projectable, Projection};
-use resource::{Load, LoadError, ResCache};
+use resource::{Load, LoadError, LoadResult, ResCache};
 use transform::{Transform, Transformable};
 
 #[derive(Clone, Debug)]
@@ -60,7 +60,7 @@ impl<A> Load for Camera<A> where A: Default + DeserializeOwned {
 
   const TY_STR: &'static str = "cameras";
 
-  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     let manifest: Manifest<A> = {
@@ -68,11 +68,11 @@ impl<A> Load for Camera<A> where A: Default + DeserializeOwned {
       from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?
     };
 
-    Ok(Camera {
+    Ok((Camera {
       position: manifest.position.into(),
       orientation: manifest.orientation.into(),
       properties: manifest.properties
-    })
+    }).into())
   }
 }
 

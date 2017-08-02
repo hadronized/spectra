@@ -9,7 +9,7 @@ pub use luminance::shader::program::{ProgramError, Uniform, Uniformable, Uniform
                                      UniformInterface, UniformWarning};
 use luminance::vertex::Vertex;
 
-use resource::{Load, LoadError, ResCache};
+use resource::{Load, LoadError, LoadResult, ResCache};
 
 #[derive(Debug)]
 pub enum ShaderError {
@@ -240,7 +240,7 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni> where In: Vertex, Uni: Uniform
 
   const TY_STR: &'static str = "shaders";
 
-  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     enum CurrentStage {
@@ -348,9 +348,9 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni> where In: Vertex, Uni: Uniform
         }
 
         Ok(
-          Program {
+          (Program {
             program: program
-          }
+          }).into()
         )
       },
       Err(_) => Err(LoadError::FileNotFound(path.to_owned()))
