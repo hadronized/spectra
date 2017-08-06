@@ -22,9 +22,26 @@ pub trait Load: Sized {
   /// Static string representing the name of the type (used in filesystem caching).
   const TY_STR: &'static str;
 
-  /// Load a resource at path `path` with arguments `args` – standardized way to express *no
-  /// arguments*. The `ResCache` can be used to load additional resource dependencies.
-  fn load<P>(path: P, cache: &mut ResCache, args: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path>;
+  /// Load a resource at path `path` with arguments `args`. The `ResCache` can be used to load
+  /// or declare additional resource dependencies.
+  fn load<P>(path: P, cache: &mut ResCache, args: Self::Args) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path>;
+}
+
+/// Result
+pub struct LoadResult<T> {
+  /// The loaded object.
+  res: T,
+  /// The list of dependencies declared by that object.
+  dependencies: Vec<PathBuf>
+}
+
+impl<T> From<T> for LoadResult<T> {
+  fn from(t: T) -> Self {
+    LoadResult {
+      res: t,
+      dependencies: Vec::new()
+    }
+  }
 }
 
 /// Class of types that can be reloaded.
@@ -100,15 +117,18 @@ pub struct ResCache {
   cache: HashCache<PathBuf>,
   // contains all metadata on resources
   metadata: HashMap<PathBuf, ResMetaData>,
+  // dependencies, mapping a dependency to its observers
+  dependencies: HashMap<PathBuf, PathBuf>,
   // vector of pair (path, timestamp) giving indication on resources to reload
   dirty: Arc<Mutex<Vec<(PathBuf, Instant)>>>,
   #[allow(dead_code)]
   watcher_thread: thread::JoinHandle<()>
 }
 
+/// Meta data about a resource.
 struct ResMetaData {
-  on_reload: Box<Fn(&mut ResCache)>,
-  last_update_instant: Instant
+  on_reload: Box<Fn(&mut ResCache) -> Result<(), LoadError>>,
+  last_update_instant: Instant,
 }
 
 /// Error that might happen when creating a resource cache.
@@ -150,6 +170,7 @@ impl ResCache {
       root: canon_root,
       cache: HashCache::new(),
       metadata: HashMap::new(),
+      dependencies: HashMap::new(),
       dirty: dirty,
       watcher_thread: join_handle
     })
@@ -159,32 +180,35 @@ impl ResCache {
   ///
   /// `key` is used to cache the resource and `path` is the path to where to reload the
   /// resource.
-  fn inject<T>(&mut self, key: PathBuf, path: &PathBuf, resource: T, args: T::Args) -> Res<T> where T: 'static + Any + Reload {
+  fn inject<T>(&mut self, key: PathBuf, path: &PathBuf, resource: T, dependencies: Vec<PathBuf>, args: T::Args) -> Res<T> where T: 'static + Any + Reload {
     let res = Res(Rc::new(RefCell::new(resource)));
     let res_ = res.clone();
 
     let path = path.clone();
+    let path_ = path.clone();
     let key_ = key.clone();
 
     // closure used to reload the object when needed
-    let on_reload: Box<for<'a> Fn(&'a mut ResCache)> = Box::new(move |cache| {
+    let on_reload: Box<for<'a> Fn(&'a mut ResCache) -> Result<(), LoadError>> = Box::new(move |cache| {
       deb!("reloading {}", key_.display());
 
-      match T::load(&path, cache, args.clone()) {
-        Ok(new_resource) => {
+      match T::load(&path_, cache, args.clone()) {
+        Ok(load_result) => {
           // replace the current resource with the freshly loaded one
-          *res_.borrow_mut() = new_resource;
+          *res_.borrow_mut() = load_result.res;
           deb!("reloaded {}", key_.display());
+          Ok(())
         },
         Err(e) => {
           warn!("{} failed to reload:\n{:#?}", key_.display(), e);
+          Err(e)
         }
       }
     });
 
     let metadata = ResMetaData {
       on_reload: on_reload,
-      last_update_instant: Instant::now()
+      last_update_instant: Instant::now(),
     };
 
 
@@ -193,6 +217,11 @@ impl ResCache {
     self.metadata.insert(key.clone(), metadata);
 
     deb!("cached resource {}", key.display());
+
+    // register the resource as an observer of its dependencies in the dependencies graph
+    for dep_key in dependencies {
+      self.dependencies.insert(dep_key, path.clone());
+    }
 
     res
   }
@@ -213,8 +242,8 @@ impl ResCache {
         // specific loading
         if path.exists() {
           info!("loading {}", key.display());
-          let resource = T::load(&path, self, args.clone())?;
-          Ok(self.inject(key, &path, resource, args))
+          let load_result = T::load(&path, self, args.clone())?;
+          Ok(self.inject(key, &path, load_result.res, load_result.dependencies, args))
         } else {
           Err(LoadError::FileNotFound(key))
         }
@@ -248,7 +277,8 @@ impl ResCache {
 
         warn!("proxied {} because:\n{:#?}", key.display(), e);
 
-        Ok(self.inject(key, &path, proxy(), args))
+        // FIXME: we set the dependencies to none here, which is silly; find a better design
+        Ok(self.inject(key, &path, proxy(), Vec::new(), args))
       }
     }
   }
@@ -261,7 +291,16 @@ impl ResCache {
     for &(ref path, ref instant) in dirty_.iter() {
       if let Some(mut metadata) = self.metadata.remove(path) {
         if instant.duration_since(metadata.last_update_instant) >= Duration::from_millis(UPDATE_AWAIT_TIME_MS) {
-          (metadata.on_reload)(self);
+          if (metadata.on_reload)(self).is_ok() {
+            // if we have successfully reloaded the resource, notify the observers that this
+            // dependency has changed
+            for dep in self.dependencies.get(path.as_path()).cloned() {
+              if let Some(mut obs_metadata) = self.metadata.remove(dep.as_path()) {
+                (obs_metadata.on_reload)(self);
+                self.metadata.insert(dep, obs_metadata);
+              }
+            }
+          }
         }
 
         metadata.last_update_instant = *instant;

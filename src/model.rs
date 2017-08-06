@@ -8,7 +8,7 @@ use std::path::Path;
 use std::vec;
 use wavefront_obj::obj;
 
-use resource::{Load, LoadError, ResCache};
+use resource::{Load, LoadError, LoadResult, ResCache};
 
 pub type Vertex = (VertexPos, VertexNor, VertexTexCoord);
 pub type VertexPos = [f32; 3];
@@ -61,7 +61,7 @@ impl Load for Model {
 
   const TY_STR: &'static str = "models";
 
-  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     let mut input = String::new();
@@ -75,7 +75,7 @@ impl Load for Model {
     // parse the obj file and convert it
     let obj_set = obj::parse(input).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?;
 
-    convert_obj(obj_set).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))
+    convert_obj(obj_set).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e))).map(Into::into)
   }
 }
 

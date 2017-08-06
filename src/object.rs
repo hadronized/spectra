@@ -4,7 +4,7 @@ use std::fs::File;
 
 use linear::{M44, Quat, V3};
 use model::Model;
-use resource::{Load, LoadError, Res, ResCache};
+use resource::{Load, LoadError, LoadResult, Res, ResCache};
 use scale::Scale;
 use transform::{Transform, Transformable};
 
@@ -49,7 +49,7 @@ impl Load for Object {
 
   const TY_STR: &'static str = "objects";
 
-  fn load<P>(path: P, cache: &mut ResCache, _: Self::Args) -> Result<Self, LoadError> where P: AsRef<Path> {
+  fn load<P>(path: P, cache: &mut ResCache, _: Self::Args) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     // read the manifest
@@ -60,12 +60,12 @@ impl Load for Object {
 
     let model = cache.get(&manifest.model, ()).ok_or(LoadError::ConversionFailed(format!("unable to find model {} for object at {:?}", manifest.model, path)))?;
 
-    Ok(Object {
+    Ok((Object {
       model: model,
       position: manifest.position.into(),
       orientation: manifest.orientation.into(),
       scale: manifest.scale.into()
-    })
+    }).into())
   }
 }
 
