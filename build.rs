@@ -16,7 +16,7 @@ fn main() {
   let mut resources: Vec<PathBuf> = Vec::new();
 
   visit_dirs("spectra/data", &mut |entry| {
-    resources.push(Path::new("../..").join(entry.path()));
+    resources.push(Path::new("../../../../..").join(entry.path()));
   }).unwrap();
 
   write!(&mut manifest, "use std::path::PathBuf;\n").unwrap();

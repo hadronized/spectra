@@ -2,38 +2,13 @@ use nom::{ErrorKind, IResult, Needed, alphanumeric, digit};
 use std::fmt::Debug;
 use std::str::{FromStr, from_utf8_unchecked};
 
+use glsl::parser::{identifier};
 use ssl::syntax;
 
 // Turn a &[u8] into a String.
 #[inline]
 fn bytes_to_string(bytes: &[u8]) -> String {
   unsafe { from_utf8_unchecked(bytes).to_owned() }
-}
-
-/// Parse a natural number.
-#[inline]
-fn natural<T>(s: &[u8]) -> IResult<&[u8], T> where T: FromStr, <T as FromStr>::Err: Debug {
-  let (s1, utf8_s) = unsafe { try_parse!(s, map!(digit, from_utf8_unchecked)) };
-  IResult::Done(s1, utf8_s.parse().unwrap())
-}
-
-/// Parse an identifier.
-named!(identifier<&[u8], syntax::Identifier>,
-  do_parse!(
-    name: verify!(take_while1!(identifier_pred), verify_identifier) >>
-    (bytes_to_string(name))
-  )
-);
-
-#[inline]
-fn identifier_pred(c: u8) -> bool {
-  let ch = char::from(c);
-  ch.is_alphanumeric() || ch == '_'
-}
-
-#[inline]
-fn verify_identifier(s: &[u8]) -> bool {
-  !char::from(s[0]).is_digit(10)
 }
 
 /// Parse a module separator and a module name.
@@ -101,61 +76,6 @@ named!(import_list<&[u8], syntax::ImportList>,
   ))
 );
 
-/// Parse a geometry shader max vertices pipeline attribute.
-named!(pipe_attr_gs_max_verts<&[u8], syntax::PipelineAttribute>,
-  ws!(do_parse!(
-    tag!("geometry_shader_max_vertices") >>
-    char!('=') >>
-    value: natural >>
-    (syntax::PipelineAttribute::GeometryShaderMaxVertices(value))
-  ))
-);
-
-/// Parse a geometry shader invokations pipeline attribute.
-named!(pipe_attr_gs_invokations<&[u8], syntax::PipelineAttribute>,
-  ws!(do_parse!(
-    tag!("geometry_shader_invokations") >>
-    char!('=') >>
-    value: natural >>
-    (syntax::PipelineAttribute::GeometryShaderInvokations(value))
-  ))
-);
-
-/// Parse a pipeline attribute.
-named!(pipeline_attribute<&[u8], syntax::PipelineAttribute>,
-  alt!(
-    pipe_attr_gs_max_verts |
-    pipe_attr_gs_invokations
-  )
-);
-
-/// Parse a pipeline statement.
-named!(pipeline_statement<&[u8], syntax::PipelineStatement>,
-  ws!(do_parse!(
-    tag!("pipeline") >>
-    attributes: delimited!(char!('{'),
-                           separated_list!(char!(','), pipeline_attribute),
-                           char!('}')) >>
-
-    (syntax::PipelineStatement { attributes: attributes })
-  ))
-);
-
-/// Parse a yield primitive expression.
-named!(yieldprim<&[u8], syntax::GeometryYieldExpression>,
-  value!(syntax::GeometryYieldExpression::YieldPrimitive, tag!("yieldprim")));
-
-/// Parse the void type.
-named!(void_ty, tag!("void"));
-
-/// Parse a return type.
-named!(ret_ty<&[u8], Option<syntax::RetTy>>,
-  alt!(
-    value!(None, void_ty) |
-    map!(identifier, Some)
-  )
-);
-
 #[test]
 fn test_module_sep_n_name() {
   assert_eq!(module_sep_n_name(&b".foo"[..]), IResult::Done(&b""[..], &b"foo"[..]));
@@ -219,40 +139,4 @@ fn test_import_list() {
   assert_eq!(import_list(&b" from    zoo.woo   import  (   foo  ,   bar  )"[..]), IResult::Done(&b""[..], expected.clone()));
   assert_eq!(import_list(&b"from zoo.woo import foo, bar"[..]), IResult::Error(ErrorKind::Char));
   assert_eq!(import_list(&b"from zoo.woo import (foo,\nbar)"[..]), IResult::Done(&b""[..], expected.clone()));
-}
-
-#[test]
-fn test_pipe_attr_gs_max_verts() {
-  let expected = syntax::PipelineAttribute::GeometryShaderMaxVertices(42);
-
-  assert_eq!(pipe_attr_gs_max_verts(&b"geometry_shader_max_vertices = 42"[..]), IResult::Done(&b""[..], expected.clone()));
-  assert_eq!(pipe_attr_gs_max_verts(&b" geometry_shader_max_vertices   =\n42   "[..]), IResult::Done(&b""[..], expected.clone()));
-  assert_eq!(pipe_attr_gs_max_verts(&b"geometry_shader_max_vertices=42"[..]), IResult::Done(&b""[..], expected));
-}
-
-#[test]
-fn test_pipe_attr_gs_invokations() {
-  let expected = syntax::PipelineAttribute::GeometryShaderInvokations(3);
-
-  assert_eq!(pipe_attr_gs_invokations(&b"geometry_shader_invokations = 3"[..]), IResult::Done(&b""[..], expected.clone()));
-  assert_eq!(pipe_attr_gs_invokations(&b" geometry_shader_invokations   =\n3   "[..]), IResult::Done(&b""[..], expected.clone()));
-  assert_eq!(pipe_attr_gs_invokations(&b"geometry_shader_invokations=3"[..]), IResult::Done(&b""[..], expected));
-}
-
-#[test]
-fn test_pipeline_stmt() {
-  let gs_invokations = syntax::PipelineAttribute::GeometryShaderInvokations(3);
-  let gs_max_vertices = syntax::PipelineAttribute::GeometryShaderMaxVertices(42);
-  let expected = syntax::PipelineStatement { attributes: vec![gs_max_vertices, gs_invokations] };
-  let input = b"pipeline {
-                  geometry_shader_max_vertices = 42,
-                  geometry_shader_invokations = 3
-                }";
-
-  assert_eq!(pipeline_statement(&input[..]), IResult::Done(&b""[..], expected));
-}
-
-#[test]
-fn test_yieldprim() {
-  assert_eq!(yieldprim(&b"yieldprim"[..]), IResult::Done(&b""[..], syntax::GeometryYieldExpression::YieldPrimitive));
 }
