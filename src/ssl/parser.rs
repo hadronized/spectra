@@ -2,7 +2,7 @@ use nom::{IResult, alphanumeric, digit};
 use std::fmt::Debug;
 use std::str::{FromStr, from_utf8_unchecked};
 
-use glsl::parser::{identifier};
+use glsl::parser::{external_declaration, identifier};
 use ssl::syntax;
 
 // Turn a &[u8] into a String.
@@ -25,7 +25,7 @@ named!(module_sep_n_name,
 /// foo
 /// foo.bar
 /// foo.bar.zoo
-named!(module_path<&[u8], syntax::ModulePath>,
+named!(pub module_path<&[u8], syntax::ModulePath>,
   do_parse!(
     // recognize at least one module name
     base: identifier >>
@@ -46,7 +46,7 @@ named!(module_path<&[u8], syntax::ModulePath>,
 /// Parse a module list.
 ///
 ///     ( item0, item1, item2, …)
-named!(module_list<&[u8], Vec<syntax::ModulePath>>,
+named!(pub module_list<&[u8], Vec<syntax::ModulePath>>,
   ws!(
     delimited!(char!('('),
                separated_list!(char!(','), module_path),
@@ -56,7 +56,7 @@ named!(module_list<&[u8], Vec<syntax::ModulePath>>,
 );
 
 /// Parse an export list.
-named!(export_list<&[u8], syntax::ExportList>,
+named!(pub export_list<&[u8], syntax::ExportList>,
   ws!(do_parse!(
     tag!("export") >>
     modules: module_list >>
@@ -66,13 +66,22 @@ named!(export_list<&[u8], syntax::ExportList>,
 );
 
 /// Parse an import list.
-named!(import_list<&[u8], syntax::ImportList>,
+named!(pub import_list<&[u8], syntax::ImportList>,
   ws!(do_parse!(
     tag!("from") >>
     from_module: module_path >>
     tag!("import") >>
     modules: module_list >>
     (syntax::ImportList { module: from_module, list: modules })
+  ))
+);
+
+/// Parse a module or a pipeline.
+named!(pub module_or_pipeline<&[u8], syntax::Module>,
+  many0!(alt!(
+    map!(export_list, syntax::Lang::Export) |
+    map!(import_list, syntax::Lang::Import) |
+    map!(external_declaration, syntax::Lang::GLSL)
   ))
 );
 

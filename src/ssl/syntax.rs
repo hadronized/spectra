@@ -5,7 +5,7 @@ use glsl::syntax::ExternalDeclaration;
 
 /// Our shading language.
 #[derive(Clone, Debug, PartialEq)]
-enum Lang {
+pub enum Lang {
   /// An `export list_of_identifiers_` statement.
   Export(ExportList),
   /// A `from module import list of identifiers` statement.
@@ -13,6 +13,8 @@ enum Lang {
   /// A GLSL external declaration.
   GLSL(ExternalDeclaration)
 }
+
+pub type Module = Vec<Lang>;
 
 pub type Identifier = String;
 
