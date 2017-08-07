@@ -27,7 +27,6 @@ luminance = "0.21"
 luminance-glfw = "0.3"
 image = "0.13"
 glsl = "0.4.2"
-nom = "3.0"
 notify = "4.0"
 num-traits = "0.1"
 rusttype = "0.2"
@@ -36,6 +35,10 @@ serde_derive = "1.0"
 serde_json = "1.0"
 vorbis = "0.1"
 wavefront_obj = "5.0"
+
+[dependencies.nom]
+version = "3.2"
+features = ["verbose-errors"]
 
 [dev-dependencies]
 rand = "0.3" # for unit tests

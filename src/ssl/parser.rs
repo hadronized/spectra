@@ -1,4 +1,4 @@
-use nom::{ErrorKind, IResult, Needed, alphanumeric, digit};
+use nom::{IResult, alphanumeric, digit};
 use std::fmt::Debug;
 use std::str::{FromStr, from_utf8_unchecked};
 
@@ -80,17 +80,12 @@ named!(import_list<&[u8], syntax::ImportList>,
 fn test_module_sep_n_name() {
   assert_eq!(module_sep_n_name(&b".foo"[..]), IResult::Done(&b""[..], &b"foo"[..]));
   assert_eq!(module_sep_n_name(&b".foo.bar"[..]), IResult::Done(&b".bar"[..], &b"foo"[..]));
-  assert_eq!(module_sep_n_name(&b"foo"[..]), IResult::Error(ErrorKind::Char));
-  assert_eq!(module_sep_n_name(&b" .foo"[..]), IResult::Error(ErrorKind::Char));
-  assert_eq!(module_sep_n_name(&b"."[..]), IResult::Incomplete(Needed::Unknown));
 }
 
 #[test]
 fn test_module_path_simple() {
   assert_eq!(module_path(&b"foo"[..]), IResult::Done(&b""[..], syntax::ModulePath { path: vec!["foo".into()] }));
-  assert_eq!(module_path(&b"foo "[..]), IResult::Done(&b" "[..], syntax::ModulePath { path: vec!["foo".into()] }));
-  assert_eq!(module_path(&b"foo."[..]), IResult::Incomplete(Needed::Unknown));
-  assert_eq!(module_path(&b" foo"[..]), IResult::Error(ErrorKind::TakeWhile1));
+  assert_eq!(module_path(&b"  \n\tfoo \n"[..]), IResult::Done(&b""[..], syntax::ModulePath { path: vec!["foo".into()] }));
 }
 
 #[test]
@@ -108,9 +103,6 @@ fn test_module_list() {
   assert_eq!(module_list(&b"(foo,bar,zoo.woo)"[..]), IResult::Done(&b""[..], list.clone()));
   assert_eq!(module_list(&b" ( foo,bar,zoo.woo  ) "[..]), IResult::Done(&b""[..], list.clone()));
   assert_eq!(module_list(&b"( foo, bar ,   zoo.woo  )"[..]), IResult::Done(&b""[..], list.clone()));
-  assert_eq!(module_list(&b"(,bar,zoo.woo)"[..]), IResult::Error(ErrorKind::Char));
-  assert_eq!(module_list(&b"("[..]), IResult::Incomplete(Needed::Size(2)));
-  assert_eq!(module_list(&b"  ("[..]), IResult::Incomplete(Needed::Size(4)));
 }
 
 #[test]
@@ -123,9 +115,6 @@ fn test_export_list() {
   assert_eq!(export_list(&b"export (foo,bar,zoo.woo)"[..]), IResult::Done(&b""[..], list.clone()));
   assert_eq!(export_list(&b"   export ( foo,bar,zoo.woo  )  "[..]), IResult::Done(&b""[..], list.clone()));
   assert_eq!(export_list(&b"export ( foo, bar ,   zoo.woo  )"[..]), IResult::Done(&b""[..], list.clone()));
-  assert_eq!(export_list(&b"export (,bar,zoo.woo)"[..]), IResult::Error(ErrorKind::Char));
-  assert_eq!(export_list(&b"export ("[..]), IResult::Incomplete(Needed::Size(9)));
-  assert_eq!(export_list(&b"export   ("[..]), IResult::Incomplete(Needed::Size(11)));
 }
 
 #[test]
@@ -137,6 +126,5 @@ fn test_import_list() {
 
   assert_eq!(import_list(&b"from zoo.woo import (foo, bar)"[..]), IResult::Done(&b""[..], expected.clone()));
   assert_eq!(import_list(&b" from    zoo.woo   import  (   foo  ,   bar  )"[..]), IResult::Done(&b""[..], expected.clone()));
-  assert_eq!(import_list(&b"from zoo.woo import foo, bar"[..]), IResult::Error(ErrorKind::Char));
   assert_eq!(import_list(&b"from zoo.woo import (foo,\nbar)"[..]), IResult::Done(&b""[..], expected.clone()));
 }
