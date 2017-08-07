@@ -1,67 +1,20 @@
+//! Bootstrap your application!
+//!
+//! This module is used to create an application with spectra. Its aim is to quickly setup a spectra
+//! app so that you can start working on interesting things.
 use clap::{App, Arg};
 use luminance_glfw;
-pub use luminance_glfw::{Action, DeviceError, Key, MouseButton, WindowDim, WindowEvent, WindowOpt};
+pub use luminance_glfw::{DeviceError, Key, MouseButton, WindowDim, WindowOpt};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::thread;
 use std::time::{Duration, Instant};
 
 use camera::{Camera, Freefly};
+pub use event::WindowEvent;
 use linear::V3;
 
-type Time = f64;
-
-/// Signals events can pass up back to their handlers to notify them how they have processed an
-/// event. They’re three kinds of signals:
-///
-/// - `EventSig::Ignored`:  the event should be passed to other handlers the parents knows about –
-///    if any – because it wasn’t handled (ignored);
-///
-/// - `EventSig::Handled`: the event has been correctly handled;
-///
-/// - `EventSig::Focused`: the event has been correctly handled, and the parent should consider that
-///    the this handler has now an exclusive focus on that event;
-///
-/// - `EventSig::Aborted`: the event has been correctly handled and the parent handler should be
-///    aborted. This signal is typically used to kill all the handlers chain and thus quit the
-///    application.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum EventSig {
-  Ignored,
-  Handled,
-  Focused,
-  Aborted
-}
-
-/// Class of event handlers.
-///
-/// All functions return a special object of type `EventSig`. An event report gives information
-/// about how a handler has handled the event. See the documentation of `EventSig` for further
-/// information.
-///
-/// All functions’ implementations default to `EventSig::Ignored`.
-pub trait EventHandler {
-  /// Implement this function if you want to react to key strokes.
-  fn on_key(&mut self, _: Key, _: Action) -> EventSig { EventSig::Ignored }
-  /// Implement this function if you want to react to mouse button events.
-  fn on_mouse_button(&mut self, _: MouseButton, _: Action) -> EventSig { EventSig::Ignored }
-  /// Implement this function if you want to react to cursor moves.
-  fn on_cursor_move(&mut self, _: [f32; 2]) -> EventSig { EventSig::Ignored }
-  /// Implement this function if you want to react to scroll events.
-  fn on_scroll(&mut self, _: [f32; 2]) -> EventSig { EventSig::Ignored }
-  /// Implement this function if you want to react to size events.
-  fn on_resize(&mut self, _: [u32; 2]) -> EventSig { EventSig::Ignored }
-}
-
-/// Empty handler.
-///
-/// This handler will just let pass all events without doing anything. It’s only useful for debug
-/// purposes when you don’t want to bother with interaction – it doesn’t even let you close the
-/// application!
-#[derive(Clone, Copy, Eq, Debug, PartialEq)]
-pub struct Unhandled;
-
-impl EventHandler for Unhandled {}
+pub type Time = f64;
 
 /// Device object.
 ///
@@ -149,30 +102,9 @@ impl Device {
     elapsed.as_secs() as f64 + elapsed.subsec_nanos() as f64 * 1e-9
   }
 
-  /// Dispatch events to a handler.
-  pub fn dispatch_events<H>(&mut self, handler: &mut H) -> bool where H: EventHandler {
-    for (_, event) in self.raw.events() {
-      match event {
-        WindowEvent::Key(key, _, action, _) => if handler.on_key(key, action) == EventSig::Aborted {
-          return false;
-        },
-        WindowEvent::MouseButton(button, action, _) => if handler.on_mouse_button(button, action) == EventSig::Aborted {
-          return false;
-        },
-        WindowEvent::CursorPos(x, y) => if handler.on_cursor_move([x as f32, y as f32]) == EventSig::Aborted {
-          return false;
-        },
-        WindowEvent::Scroll(x, y) => if handler.on_scroll([x as f32, y as f32]) == EventSig::Aborted {
-          return false;
-        },
-        WindowEvent::FramebufferSize(w, h) => if handler.on_resize([w as u32, h as u32]) == EventSig::Aborted {
-          return false;
-        },
-        _ => ()
-      }
-    }
-
-    true
+  /// Get the last event and pop it from the event queue. Supposed to be called in a loop.
+  pub fn events<'a>(&'a mut self) -> impl Iterator<Item = WindowEvent> + 'a {
+    self.raw.events().map(|(_, e)| e)
   }
 
   /// Step function.
@@ -221,89 +153,4 @@ macro_rules! bootstrap {
                                    crate_name!(),
                                    $win_opt)
   }}
-}
-
-/// Freefly handler.
-///
-/// This handler is very neat as it provides freefly interaction.
-pub struct FreeflyHandler {
-  camera: Rc<RefCell<Camera<Freefly>>>,
-  left_down: bool,
-  right_down: bool,
-  last_cursor: [f32; 2]
-}
-
-impl FreeflyHandler {
-  pub fn new(camera: Rc<RefCell<Camera<Freefly>>>) -> Self {
-    FreeflyHandler {
-      camera: camera,
-      left_down: false,
-      right_down: false,
-      last_cursor: [0., 0.]
-    }
-  }
-
-  fn move_camera_on_event(&mut self, key: Key) {
-    let camera = &mut self.camera.borrow_mut();
-
-    match key {
-      Key::W => camera.mv(V3::new(0., 0., 1.)),
-      Key::S => camera.mv(V3::new(0., 0., -1.)),
-      Key::A => camera.mv(V3::new(1., 0., 0.)),
-      Key::D => camera.mv(V3::new(-1., 0., 0.)),
-      Key::Q => camera.mv(V3::new(0., -1., 0.)),
-      Key::E => camera.mv(V3::new(0., 1., 0.)),
-      _ => ()
-    }
-  }
-
-  fn orient_camera_on_event(&mut self, cursor: [f32; 2]) {
-    let camera = &mut self.camera.borrow_mut();
-
-    if self.left_down {
-      let (dx, dy) = (cursor[0] - self.last_cursor[0], cursor[1] - self.last_cursor[1]);
-      camera.look_around(V3::new(dy, dx, 0.));
-    } else if self.right_down {
-      let (dx, _) = (cursor[0] - self.last_cursor[0], cursor[1] - self.last_cursor[1]);
-      camera.look_around(V3::new(0., 0., dx));
-    }
-
-    self.last_cursor = cursor;
-  }
-}
-
-impl EventHandler for FreeflyHandler {
-  fn on_key(&mut self, key: Key, action: Action) -> EventSig {
-    match action {
-      Action::Press | Action::Repeat => self.move_camera_on_event(key),
-      Action::Release => if key == Key::Escape { return EventSig::Aborted }
-    }
-
-    EventSig::Handled
-  }
-
-  fn on_mouse_button(&mut self, button: MouseButton, action: Action) -> EventSig {
-    match (button, action) {
-      (MouseButton::Button1, Action::Press) => {
-        self.left_down = true;
-      },
-      (MouseButton::Button1, Action::Release) => {
-        self.left_down = false;
-      },
-      (MouseButton::Button2, Action::Press) => {
-        self.right_down = true;
-      },
-      (MouseButton::Button2, Action::Release) => {
-        self.right_down = false;
-      },
-      _ => ()
-    }
-
-    EventSig::Handled
-  }
-
-  fn on_cursor_move(&mut self, dir: [f32; 2]) -> EventSig {
-    self.orient_camera_on_event(dir);
-    EventSig::Handled
-  }
 }

@@ -20,9 +20,9 @@ pub struct Camera<P> {
 impl<P> Camera<P> {
   pub fn new(position: V3<f32>, orientation: Quat<f32>, properties: P) -> Self {
     Camera {
-      position: position,
-      orientation: orientation,
-      properties: properties
+      position,
+      orientation,
+      properties
     }
   }
 }

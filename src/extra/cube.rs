@@ -6,12 +6,12 @@ pub type Vertex = ([f32; 3], [f32; 3], [f32; 2]);
 /// A unit cube.
 ///
 /// ```ignore
-///     ×-----×
+///     x-----x
 ///    /|    /|
-///   ×-+---× |
-///   | ×---+-×
+///   x-+---x |
+///   | x---+-x
 ///   |/    |/
-///   ×-----×
+///   x-----x
 /// ```
 pub fn new_cube() -> Tess<Vertex> {
   let vertices = [
