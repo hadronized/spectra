@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use std::str::{FromStr, from_utf8_unchecked};
 
 use glsl::parser::{external_declaration, identifier};
+pub use glsl::parser::{parse, parse_str};
 use ssl::syntax;
 
 // Turn a &[u8] into a String.
