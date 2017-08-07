@@ -1,37 +1,28 @@
 //! Syntax of the language.
 //!
 //! For now, most of the language is an EDSL describing an augmented GLSL with a few keywords.
-//! The idea is to converge to something able to recognize all tokens used in the source input but
-//! in order to make things easier at first, we’ll consider some “opaque” code that we won’t be
-//! using as tokens. For instance, if the user defines a function that is not a special function
-//! we’re interested in, we’ll just parse the whole of it until we hit the end of its body.
-use std::collections::HashMap;
+use glsl::syntax::ExternalDeclaration;
 
-/// A shader module.
-///
-/// A shader module is a container that associates some shading code to several identifiers.
-struct ShaderModule {
-  symbols: HashMap<Identifier, String>
-}
-
-/// Token.
-#[derive(Clone, Debug, Eq, PartialEq)]
-enum Token {
+/// Our shading language.
+#[derive(Clone, Debug, PartialEq)]
+enum Lang {
   /// An `export list_of_identifiers_` statement.
   Export(ExportList),
   /// A `from module import list of identifiers` statement.
-  Import(ImportList)
+  Import(ImportList),
+  /// A GLSL external declaration.
+  GLSL(ExternalDeclaration)
 }
 
 pub type Identifier = String;
 
-/// An export non-empty list.
+/// An non-empty export list.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExportList {
   pub export_list: Vec<ModulePath>
 }
 
-/// An import non-empty list.
+/// A non-empty import list.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ImportList {
   pub module: ModulePath,

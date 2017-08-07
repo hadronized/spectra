@@ -77,24 +77,24 @@ named!(import_list<&[u8], syntax::ImportList>,
 );
 
 #[test]
-fn test_module_sep_n_name() {
+fn parse_module_sep_n_name() {
   assert_eq!(module_sep_n_name(&b".foo"[..]), IResult::Done(&b""[..], &b"foo"[..]));
   assert_eq!(module_sep_n_name(&b".foo.bar"[..]), IResult::Done(&b".bar"[..], &b"foo"[..]));
 }
 
 #[test]
-fn test_module_path_simple() {
+fn parse_module_path_simple() {
   assert_eq!(module_path(&b"foo"[..]), IResult::Done(&b""[..], syntax::ModulePath { path: vec!["foo".into()] }));
   assert_eq!(module_path(&b"  \n\tfoo \n"[..]), IResult::Done(&b""[..], syntax::ModulePath { path: vec!["foo".into()] }));
 }
 
 #[test]
-fn test_module_path_several() {
+fn parse_module_path_several() {
   assert_eq!(module_path(&b"foo.bar.zoo"[..]), IResult::Done(&b""[..], syntax::ModulePath { path: vec!["foo".into(), "bar".into(), "zoo".into()] }));
 }
 
 #[test]
-fn test_module_list() {
+fn parse_module_list() {
   let foo = syntax::ModulePath { path: vec!["foo".into()] };
   let bar = syntax::ModulePath { path: vec!["bar".into()] };
   let zoo_woo = syntax::ModulePath { path: vec!["zoo".into(), "woo".into()] };
@@ -106,7 +106,7 @@ fn test_module_list() {
 }
 
 #[test]
-fn test_export_list() {
+fn parse_export_list() {
   let foo = syntax::ModulePath { path: vec!["foo".into()] };
   let bar = syntax::ModulePath { path: vec!["bar".into()] };
   let zoo_woo = syntax::ModulePath { path: vec!["zoo".into(), "woo".into()] };
@@ -118,7 +118,7 @@ fn test_export_list() {
 }
 
 #[test]
-fn test_import_list() {
+fn parse_import_list() {
   let foo = syntax::ModulePath { path: vec!["foo".into()] };
   let bar = syntax::ModulePath { path: vec!["bar".into()] };
   let zoo_woo = syntax::ModulePath { path: vec!["zoo".into(), "woo".into()] };
