@@ -1,7 +1,7 @@
 //! Syntax of the language.
 //!
 //! For now, most of the language is an EDSL describing an augmented GLSL with a few keywords.
-use glsl::syntax::ExternalDeclaration;
+pub use glsl::syntax::*;
 
 /// Our shading language.
 #[derive(Clone, Debug, PartialEq)]
@@ -15,8 +15,6 @@ pub enum Lang {
 }
 
 pub type Module = Vec<Lang>;
-
-pub type Identifier = String;
 
 /// An non-empty export list.
 #[derive(Clone, Debug, Eq, PartialEq)]
