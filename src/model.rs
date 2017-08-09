@@ -15,23 +15,17 @@ pub enum ModelTree<Leaf> {
   Node(Vec<ModelTree<Leaf>>)
 }
 
-impl<Leaf> Debug for ModelTree<Leaf> where Leaf: Debug {
-  fn fmt(&self, f: &mut Formatter) -> Result<(), fmt::Error> {
-    match *self {
-      ModelTree::Leaf(_) => f.write_str("Tess"),
-      ModelTree::Node(ref trees) => trees.fmt(f)
-    }
-  } 
-}
-
 impl<I, L> From<I> for ModelTree<L> where I: Iterator<Item = L> {
-  fn from(leaves: I) -> Self {
-    ModelTree::Node(leaves.map(ModelTree::Leaf).collect())
+  fn from(nodes: I) -> Self {
+    ModelTree::Node(nodes.map(ModelTree::Leaf).collect())
   }
 }
 
-/// A tessellated model, which is a tree that contains `Tess<V>`. Here, `V` is the type of the
-/// carried vertex.
+/// A tessellated model, which is a model tree which leaves contain `Tess<V>`. Here, `V` is the type
+/// of the carried vertex.
+///
+/// This type is supposed to be zipped with a material model (model tree which leaves contain a
+/// material object).
 pub type TessModel<V> = ModelTree<Tess<V>>;
 
 pub type ObjModel = TessModel<ObjVertex>;

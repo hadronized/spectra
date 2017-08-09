@@ -86,6 +86,7 @@ pub mod linear;
 pub mod model;
 pub mod object;
 pub mod overlay;
+pub mod pipeline;
 pub mod projection;
 pub mod resource;
 pub mod scale;
