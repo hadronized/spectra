@@ -3,21 +3,23 @@ use std::path::Path;
 use std::fs::File;
 
 use linear::{M44, Quat, V3};
-use model::Model;
+use model::{ObjVertex, Model};
 use resource::{Load, LoadError, LoadResult, Res, ResCache};
 use scale::Scale;
 use transform::{Transform, Transformable};
 
+type ObjObject = Object<ObjVertex>;
+
 #[derive(Clone, Debug)]
-pub struct Object {
-  pub model: Res<Model>,
+pub struct Object<Vertex> {
+  pub model: Res<Model<Vertex>>,
   pub position: V3<f32>,
   pub orientation: Quat<f32>,
   pub scale: Scale
 }
 
-impl Object {
-  pub fn new(model: Res<Model>, position: V3<f32>, orientation: Quat<f32>, scale: Scale) -> Self {
+impl<Vertex> Object<Vertex> {
+  pub fn new(model: Res<Model<Vertex>>, position: V3<f32>, orientation: Quat<f32>, scale: Scale) -> Self {
     Object {
       model: model,
       position: position,
@@ -27,7 +29,7 @@ impl Object {
   }
 }
 
-impl Transformable for Object {
+impl<Vertex> Transformable for Object<Vertex> {
   fn transform(&self) -> Transform {
     (M44::from_translation(-self.position) * M44::from(self.scale) * M44::from(self.orientation)).into()
   }
@@ -44,7 +46,7 @@ pub struct ObjectManifest {
   scale: [f32; 3]
 }
 
-impl Load for Object {
+impl Load for ObjObject {
   type Args = ();
 
   const TY_STR: &'static str = "objects";

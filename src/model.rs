@@ -1,62 +1,42 @@
 use luminance::tess::{Mode, Tess, TessVertices};
 use std::collections::BTreeMap;
-use std::fmt::{self, Debug, Formatter};
 use std::fs::File;
+use std::fmt::{self, Debug, Formatter};
 use std::io::Read;
-use std::iter::IntoIterator;
 use std::path::Path;
 use std::vec;
 use wavefront_obj::obj;
 
 use resource::{Load, LoadError, LoadResult, ResCache};
 
-pub type Vertex = (VertexPos, VertexNor, VertexTexCoord);
-pub type VertexPos = [f32; 3];
-pub type VertexNor = [f32; 3];
-pub type VertexTexCoord = [f32; 2];
-
-#[derive(Debug)]
-pub struct Model {
-  pub parts: Vec<Part>
+/// A model is a tree of (possibly) nested tessellations.
+pub enum Model<Vertex> {
+  Tess(Tess<Vertex>),
+  Parts(Vec<Model<Vertex>>)
 }
 
-impl Model {
-  pub fn from_parts(parts: Vec<Part>) -> Self {
-    Model {
-      parts: parts
+impl<Vertex> Debug for Model<Vertex> {
+  fn fmt(&self, f: &mut Formatter) -> Result<(), fmt::Error> {
+    match *self {
+      Model::Tess(_) => f.write_str("Tess"),
+      Model::Parts(ref parts) => parts.fmt(f)
     }
+  } 
+}
+
+impl<Vertex> From<Vec<Tess<Vertex>>> for Model<Vertex> {
+  fn from(tess: Vec<Tess<Vertex>>) -> Self {
+    Model::Parts(tess.into_iter().map(Model::Tess).collect())
   }
 }
 
-impl IntoIterator for Model {
-  type Item = Part;
-  type IntoIter = vec::IntoIter<Part>;
+pub type ObjModel = Model<ObjVertex>;
+pub type ObjVertex = (ObjVertexPos, ObjVertexNor, ObjVertexTexCoord);
+pub type ObjVertexPos = [f32; 3];
+pub type ObjVertexNor = [f32; 3];
+pub type ObjVertexTexCoord = [f32; 2];
 
-  fn into_iter(self) -> Self::IntoIter {
-    self.parts.into_iter()
-  }
-}
-
-pub struct Part {
-  pub tess: Tess<Vertex>,
-  // TODO: add material index
-}
-
-impl Part {
-  pub fn new(tess: Tess<Vertex>) -> Self {
-    Part {
-      tess: tess,
-    }
-  }
-}
-
-impl Debug for Part {
-  fn fmt(&self, fmt: &mut Formatter) -> Result<(), fmt::Error> {
-    fmt.write_str("Part { ... }")
-  }
-}
-
-impl Load for Model {
+impl Load for ObjModel {
   type Args = ();
 
   const TY_STR: &'static str = "models";
@@ -80,7 +60,7 @@ impl Load for Model {
 }
 
 // Turn a wavefront obj object into a `Model`
-fn convert_obj(obj_set: obj::ObjSet) -> Result<Model, ModelError> {
+fn convert_obj(obj_set: obj::ObjSet) -> Result<ObjModel, ModelError> {
   let mut parts = Vec::new();
 
   info!("{} objects to convert…", obj_set.objects.len());
@@ -91,19 +71,19 @@ fn convert_obj(obj_set: obj::ObjSet) -> Result<Model, ModelError> {
     for geometry in &obj.geometry {
       info!("    {} vertices, {} normals, {} tex vertices", obj.vertices.len(), obj.normals.len(), obj.tex_vertices.len());
       let (vertices, indices, mode) = convert_geometry(geometry, &obj.vertices, &obj.normals, &obj.tex_vertices)?;
-      let part = Part::new(Tess::new(mode, TessVertices::Fill(&vertices), &indices[..])); // FIXME: material
+      let part = Tess::new(mode, TessVertices::Fill(&vertices), &indices[..]);
       parts.push(part);
     }
   }
 
-  Ok(Model::from_parts(parts))
+  Ok(parts.into())
 }
 
 // Convert wavefront_obj’s Geometry into a pair of vertices and indices.
 //
 // This function will regenerate the indices on the fly based on which are used in the shapes in the
 // geometry. It’s used to create independent tessellation.
-fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[obj::Normal], tvertices: &[obj::TVertex]) -> Result<(Vec<Vertex>, Vec<u32>, Mode), ModelError> {
+fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[obj::Normal], tvertices: &[obj::TVertex]) -> Result<(Vec<ObjVertex>, Vec<u32>, Mode), ModelError> {
   if geo.shapes.is_empty() {
     return Err(ModelError::NoShape);
   }
@@ -172,19 +152,19 @@ fn vtnindex_to_key(i: obj::VTNIndex) -> Result<(usize, usize, Option<usize>), Mo
   }
 }
 
-fn interleave_vertex(p: &obj::Vertex, n: &obj::Normal, t: Option<&obj::TVertex>) -> Vertex {
+fn interleave_vertex(p: &obj::Vertex, n: &obj::Normal, t: Option<&obj::TVertex>) -> ObjVertex {
   (convert_vertex(p), convert_nor(n), t.map_or([0., 0.], convert_tvertex))
 }
 
-fn convert_vertex(v: &obj::Vertex) -> VertexPos {
+fn convert_vertex(v: &obj::Vertex) -> ObjVertexPos {
   [v.x as f32, v.y as f32, v.z as f32]
 }
 
-fn convert_nor(n: &obj::Normal) -> VertexNor {
+fn convert_nor(n: &obj::Normal) -> ObjVertexNor {
   convert_vertex(n)
 }
 
-fn convert_tvertex(t: &obj::TVertex) -> VertexTexCoord {
+fn convert_tvertex(t: &obj::TVertex) -> ObjVertexTexCoord {
   [t.u as f32, t.v as f32]
 }
 
