@@ -9,28 +9,32 @@ use wavefront_obj::obj;
 
 use resource::{Load, LoadError, LoadResult, ResCache};
 
-/// A model is a tree of (possibly) nested tessellations.
-pub enum Model<Vertex> {
-  Tess(Tess<Vertex>),
-  Parts(Vec<Model<Vertex>>)
+/// A tree representing the structure of a model.
+pub enum ModelTree<Leaf> {
+  Leaf(Leaf),
+  Node(Vec<ModelTree<Leaf>>)
 }
 
-impl<Vertex> Debug for Model<Vertex> {
+impl<Leaf> Debug for ModelTree<Leaf> where Leaf: Debug {
   fn fmt(&self, f: &mut Formatter) -> Result<(), fmt::Error> {
     match *self {
-      Model::Tess(_) => f.write_str("Tess"),
-      Model::Parts(ref parts) => parts.fmt(f)
+      ModelTree::Leaf(_) => f.write_str("Tess"),
+      ModelTree::Node(ref trees) => trees.fmt(f)
     }
   } 
 }
 
-impl<Vertex> From<Vec<Tess<Vertex>>> for Model<Vertex> {
-  fn from(tess: Vec<Tess<Vertex>>) -> Self {
-    Model::Parts(tess.into_iter().map(Model::Tess).collect())
+impl<I, L> From<I> for ModelTree<L> where I: Iterator<Item = L> {
+  fn from(leaves: I) -> Self {
+    ModelTree::Node(leaves.map(ModelTree::Leaf).collect())
   }
 }
 
-pub type ObjModel = Model<ObjVertex>;
+/// A tessellated model, which is a tree that contains `Tess<V>`. Here, `V` is the type of the
+/// carried vertex.
+pub type TessModel<V> = ModelTree<Tess<V>>;
+
+pub type ObjModel = TessModel<ObjVertex>;
 pub type ObjVertex = (ObjVertexPos, ObjVertexNor, ObjVertexTexCoord);
 pub type ObjVertexPos = [f32; 3];
 pub type ObjVertexNor = [f32; 3];
@@ -76,7 +80,7 @@ fn convert_obj(obj_set: obj::ObjSet) -> Result<ObjModel, ModelError> {
     }
   }
 
-  Ok(parts.into())
+  Ok(parts.into_iter().into())
 }
 
 // Convert wavefront_obj’s Geometry into a pair of vertices and indices.
