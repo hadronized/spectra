@@ -3,23 +3,23 @@ use std::path::Path;
 use std::fs::File;
 
 use linear::{M44, Quat, V3};
-use model::{ObjVertex, TessModel};
+use model::ObjModel;
 use resource::{Load, LoadError, LoadResult, Res, ResCache};
 use scale::Scale;
 use transform::{Transform, Transformable};
 
-type ObjObject = Object<ObjVertex>;
+type ObjObject = Object<ObjModel>;
 
 #[derive(Clone)]
-pub struct Object<Vertex> {
-  pub model: Res<TessModel<Vertex>>,
+pub struct Object<M> {
+  pub model: Res<M>,
   pub position: V3<f32>,
   pub orientation: Quat<f32>,
   pub scale: Scale
 }
 
-impl<Vertex> Object<Vertex> {
-  pub fn new(model: Res<TessModel<Vertex>>, position: V3<f32>, orientation: Quat<f32>, scale: Scale) -> Self {
+impl<M> Object<M> {
+  pub fn new(model: Res<M>, position: V3<f32>, orientation: Quat<f32>, scale: Scale) -> Self {
     Object {
       model: model,
       position: position,

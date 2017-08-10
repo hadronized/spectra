@@ -10,6 +10,7 @@ use wavefront_obj::obj;
 use resource::{Load, LoadError, LoadResult, ResCache};
 
 /// A tree representing the structure of a model.
+#[derive(Debug, Eq, PartialEq)]
 pub enum ModelTree<Leaf> {
   Leaf(Leaf),
   Node(Vec<ModelTree<Leaf>>)
@@ -21,14 +22,22 @@ impl<I, L> From<I> for ModelTree<L> where I: Iterator<Item = L> {
   }
 }
 
-/// A tessellated model, which is a model tree which leaves contain `Tess<V>`. Here, `V` is the type
-/// of the carried vertex.
-///
-/// This type is supposed to be zipped with a material model (model tree which leaves contain a
-/// material object).
-pub type TessModel<V> = ModelTree<Tess<V>>;
+impl<L> ModelTree<L> {
+  /// Traverse two model trees at the same time, zipping them together.
+  pub fn traverse_zipped<F, R>(&self, rhs: &ModelTree<R>, mut f: F) where F: FnMut(&L, &R) {
+    match (self, rhs) {
+      (&ModelTree::Leaf(ref l), &ModelTree::Leaf(ref r)) => f(l, r),
+      (&ModelTree::Node(ref lnodes), &ModelTree::Node(ref rnodes)) => {
+        for (l, r) in lnodes.iter().zip(rnodes) {
+          l.traverse_zipped(r, &mut f);
+        }
+      },
+      _ => ()
+    }
+  }
+}
 
-pub type ObjModel = TessModel<ObjVertex>;
+pub type ObjModel = ModelTree<Tess<ObjVertex>>;
 pub type ObjVertex = (ObjVertexPos, ObjVertexNor, ObjVertexTexCoord);
 pub type ObjVertexPos = [f32; 3];
 pub type ObjVertexNor = [f32; 3];
