@@ -8,7 +8,7 @@ use resource::{Load, LoadError, LoadResult, Res, ResCache};
 use scale::Scale;
 use transform::{Transform, Transformable};
 
-type ObjObject = Object<ObjModel>;
+pub type ObjObject = Object<ObjModel>;
 
 #[derive(Clone)]
 pub struct Object<M> {
