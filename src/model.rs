@@ -7,37 +7,20 @@ use std::path::Path;
 use std::vec;
 use wavefront_obj::obj;
 
+use aabb::AABB;
+use linear::V3;
 use resource::{Load, LoadError, LoadResult, ResCache};
 
 /// A tree representing the structure of a model.
-#[derive(Debug, Eq, PartialEq)]
-pub enum ModelTree<Leaf> {
-  Leaf(Leaf),
-  Node(Vec<ModelTree<Leaf>>)
+///
+/// It carries `Tess` on the leaves and 'AABB` on the nodes and leaves.
+#[derive(Debug, PartialEq)]
+pub enum ModelTree<V> {
+  Leaf(AABB, Tess<V>),
+  Node(AABB, Vec<ModelTree<V>>)
 }
 
-impl<I, L> From<I> for ModelTree<L> where I: Iterator<Item = L> {
-  fn from(nodes: I) -> Self {
-    ModelTree::Node(nodes.map(ModelTree::Leaf).collect())
-  }
-}
-
-impl<L> ModelTree<L> {
-  /// Traverse two model trees at the same time, zipping them together.
-  pub fn traverse_zipped<F, R>(&self, rhs: &ModelTree<R>, mut f: F) where F: FnMut(&L, &R) {
-    match (self, rhs) {
-      (&ModelTree::Leaf(ref l), &ModelTree::Leaf(ref r)) => f(l, r),
-      (&ModelTree::Node(ref lnodes), &ModelTree::Node(ref rnodes)) => {
-        for (l, r) in lnodes.iter().zip(rnodes) {
-          l.traverse_zipped(r, &mut f);
-        }
-      },
-      _ => ()
-    }
-  }
-}
-
-pub type ObjModel = ModelTree<Tess<ObjVertex>>;
+pub type ObjModel = ModelTree<ObjVertex>;
 pub type ObjVertex = (ObjVertexPos, ObjVertexNor, ObjVertexTexCoord);
 pub type ObjVertexPos = [f32; 3];
 pub type ObjVertexNor = [f32; 3];
@@ -77,20 +60,25 @@ fn convert_obj(obj_set: obj::ObjSet) -> Result<ObjModel, ModelError> {
     // convert all the geometries
     for geometry in &obj.geometry {
       info!("    {} vertices, {} normals, {} tex vertices", obj.vertices.len(), obj.normals.len(), obj.tex_vertices.len());
-      let (vertices, indices, mode) = convert_geometry(geometry, &obj.vertices, &obj.normals, &obj.tex_vertices)?;
-      let part = Tess::new(mode, TessVertices::Fill(&vertices), &indices[..]);
+      let (vertices, indices, mode, aabb) = convert_geometry(geometry, &obj.vertices, &obj.normals, &obj.tex_vertices)?;
+      let part = (aabb, Tess::new(mode, TessVertices::Fill(&vertices), &indices[..]));
       parts.push(part);
     }
   }
 
-  Ok(parts.into_iter().into())
+  let model_aabb = AABB::from_aabbs(parts.iter().map(|&(aabb, _)| aabb));
+  let nodes = parts.into_iter().map(|(aabb, tess)| ModelTree::Leaf(aabb, tess)).collect();
+
+  model_aabb.map(|aabb| ModelTree::Node(aabb, nodes)).ok_or(ModelError::NoGeometry)
 }
 
 // Convert wavefront_obj’s Geometry into a pair of vertices and indices.
 //
 // This function will regenerate the indices on the fly based on which are used in the shapes in the
 // geometry. It’s used to create independent tessellation.
-fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[obj::Normal], tvertices: &[obj::TVertex]) -> Result<(Vec<ObjVertex>, Vec<u32>, Mode), ModelError> {
+//
+// It also provides the AABB enclosing the geometry.
+fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[obj::Normal], tvertices: &[obj::TVertex]) -> Result<(Vec<ObjVertex>, Vec<u32>, Mode, AABB), ModelError> {
   if geo.shapes.is_empty() {
     return Err(ModelError::NoShape);
   }
@@ -126,7 +114,9 @@ fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[o
     }
   }
 
-  Ok((vertices, indices, mode))
+  AABB::from_vertices(vertices.iter().map(|v| v.0.into()))
+    .map(|aabb| (vertices, indices, mode, aabb))
+    .ok_or(ModelError::NoVertex)
 }
 
 // Create triplet keys from wavefront_obj primitives. If any primitive doesn’t have all the triplet
@@ -186,5 +176,7 @@ fn guess_mode(prim: obj::Primitive) -> Mode {
 #[derive(Debug)]
 pub enum ModelError {
   UnsupportedVertex,
+  NoVertex,
+  NoGeometry,
   NoShape
 }
