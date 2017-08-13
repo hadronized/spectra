@@ -11,7 +11,7 @@ use aabb::AABB;
 use linear::V3;
 use resource::{Load, LoadError, LoadResult, ResCache};
 
-/// A tree representing the structure of a model.
+/// A model tree representing the structure of a model.
 ///
 /// It carries `Tess` on the leaves and 'AABB` on the nodes and leaves.
 #[derive(Debug, PartialEq)]
@@ -20,8 +20,13 @@ pub enum ModelTree<V> {
   Node(AABB, Vec<ModelTree<V>>)
 }
 
+/// An OBJ model.
 pub type ObjModel = ModelTree<ObjVertex>;
+
+/// Vertex type used by OBJ models. It’s a triplet of vertex position, vertex normals and textures
+/// coordinates.
 pub type ObjVertex = (ObjVertexPos, ObjVertexNor, ObjVertexTexCoord);
+
 pub type ObjVertexPos = [f32; 3];
 pub type ObjVertexNor = [f32; 3];
 pub type ObjVertexTexCoord = [f32; 2];
@@ -179,4 +184,32 @@ pub enum ModelError {
   NoVertex,
   NoGeometry,
   NoShape
+}
+
+/// A material tree representing a possible interpretation of a model tree.
+///
+/// Only the leaves carry information about materials. The inner nodes are only used to match
+/// against the model tree to represent.
+pub enum MaterialTree<M> {
+  Leaf(M),
+  Node(Vec<MaterialTree<M>>)
+}
+
+impl<M> MaterialTree<M> {
+  /// Traverse a model tree and represent it by zipping both trees to each other.
+  ///
+  /// If the zip is not total (partial zipping), non-matching nodes are just ignored.
+  pub fn represent<V, F>(&self, model_tree: &ModelTree<V>, f: &mut F) where F: FnMut(&M, &Tess<V>) {
+    match (self, model_tree) {
+      (&MaterialTree::Leaf(ref material), &ModelTree::Leaf(_, ref tess)) => f(material, tess),
+
+      (&MaterialTree::Node(ref material_nodes), &ModelTree::Node(_, ref model_nodes)) => {
+        for (material, model) in material_nodes.iter().zip(model_nodes) {
+          material.represent(model, f);
+        }
+      }
+
+      _ => ()
+    }
+  }
 }

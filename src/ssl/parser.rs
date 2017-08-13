@@ -1,6 +1,5 @@
 use nom::{IResult, alphanumeric, digit};
-use std::fmt::Debug;
-use std::str::{FromStr, from_utf8_unchecked};
+use std::str::from_utf8_unchecked;
 
 use glsl::parser::{external_declaration, identifier};
 pub use glsl::parser::{parse, parse_str};
