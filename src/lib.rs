@@ -70,6 +70,7 @@ extern crate wavefront_obj;
 #[macro_use]
 pub mod report;
 
+pub mod aabb;
 pub mod audio;
 #[macro_use]
 pub mod bootstrap;
@@ -86,6 +87,7 @@ pub mod linear;
 pub mod model;
 pub mod object;
 pub mod overlay;
+pub mod pipeline;
 pub mod projection;
 pub mod resource;
 pub mod scale;

@@ -1,62 +1,37 @@
 use luminance::tess::{Mode, Tess, TessVertices};
 use std::collections::BTreeMap;
-use std::fmt::{self, Debug, Formatter};
 use std::fs::File;
+use std::fmt::{self, Debug, Formatter};
 use std::io::Read;
-use std::iter::IntoIterator;
 use std::path::Path;
 use std::vec;
 use wavefront_obj::obj;
 
+use aabb::AABB;
+use linear::V3;
 use resource::{Load, LoadError, LoadResult, ResCache};
 
-pub type Vertex = (VertexPos, VertexNor, VertexTexCoord);
-pub type VertexPos = [f32; 3];
-pub type VertexNor = [f32; 3];
-pub type VertexTexCoord = [f32; 2];
-
-#[derive(Debug)]
-pub struct Model {
-  pub parts: Vec<Part>
+/// A model tree representing the structure of a model.
+///
+/// It carries `Tess` on the leaves and 'AABB` on the nodes and leaves.
+#[derive(Debug, PartialEq)]
+pub enum ModelTree<V> {
+  Leaf(AABB, Tess<V>),
+  Node(AABB, Vec<ModelTree<V>>)
 }
 
-impl Model {
-  pub fn from_parts(parts: Vec<Part>) -> Self {
-    Model {
-      parts: parts
-    }
-  }
-}
+/// An OBJ model.
+pub type ObjModel = ModelTree<ObjVertex>;
 
-impl IntoIterator for Model {
-  type Item = Part;
-  type IntoIter = vec::IntoIter<Part>;
+/// Vertex type used by OBJ models. It’s a triplet of vertex position, vertex normals and textures
+/// coordinates.
+pub type ObjVertex = (ObjVertexPos, ObjVertexNor, ObjVertexTexCoord);
 
-  fn into_iter(self) -> Self::IntoIter {
-    self.parts.into_iter()
-  }
-}
+pub type ObjVertexPos = [f32; 3];
+pub type ObjVertexNor = [f32; 3];
+pub type ObjVertexTexCoord = [f32; 2];
 
-pub struct Part {
-  pub tess: Tess<Vertex>,
-  // TODO: add material index
-}
-
-impl Part {
-  pub fn new(tess: Tess<Vertex>) -> Self {
-    Part {
-      tess: tess,
-    }
-  }
-}
-
-impl Debug for Part {
-  fn fmt(&self, fmt: &mut Formatter) -> Result<(), fmt::Error> {
-    fmt.write_str("Part { ... }")
-  }
-}
-
-impl Load for Model {
+impl Load for ObjModel {
   type Args = ();
 
   const TY_STR: &'static str = "models";
@@ -80,7 +55,7 @@ impl Load for Model {
 }
 
 // Turn a wavefront obj object into a `Model`
-fn convert_obj(obj_set: obj::ObjSet) -> Result<Model, ModelError> {
+fn convert_obj(obj_set: obj::ObjSet) -> Result<ObjModel, ModelError> {
   let mut parts = Vec::new();
 
   info!("{} objects to convert…", obj_set.objects.len());
@@ -90,20 +65,25 @@ fn convert_obj(obj_set: obj::ObjSet) -> Result<Model, ModelError> {
     // convert all the geometries
     for geometry in &obj.geometry {
       info!("    {} vertices, {} normals, {} tex vertices", obj.vertices.len(), obj.normals.len(), obj.tex_vertices.len());
-      let (vertices, indices, mode) = convert_geometry(geometry, &obj.vertices, &obj.normals, &obj.tex_vertices)?;
-      let part = Part::new(Tess::new(mode, TessVertices::Fill(&vertices), &indices[..])); // FIXME: material
+      let (vertices, indices, mode, aabb) = convert_geometry(geometry, &obj.vertices, &obj.normals, &obj.tex_vertices)?;
+      let part = (aabb, Tess::new(mode, TessVertices::Fill(&vertices), &indices[..]));
       parts.push(part);
     }
   }
 
-  Ok(Model::from_parts(parts))
+  let model_aabb = AABB::from_aabbs(parts.iter().map(|&(aabb, _)| aabb));
+  let nodes = parts.into_iter().map(|(aabb, tess)| ModelTree::Leaf(aabb, tess)).collect();
+
+  model_aabb.map(|aabb| ModelTree::Node(aabb, nodes)).ok_or(ModelError::NoGeometry)
 }
 
 // Convert wavefront_obj’s Geometry into a pair of vertices and indices.
 //
 // This function will regenerate the indices on the fly based on which are used in the shapes in the
 // geometry. It’s used to create independent tessellation.
-fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[obj::Normal], tvertices: &[obj::TVertex]) -> Result<(Vec<Vertex>, Vec<u32>, Mode), ModelError> {
+//
+// It also provides the AABB enclosing the geometry.
+fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[obj::Normal], tvertices: &[obj::TVertex]) -> Result<(Vec<ObjVertex>, Vec<u32>, Mode, AABB), ModelError> {
   if geo.shapes.is_empty() {
     return Err(ModelError::NoShape);
   }
@@ -139,7 +119,9 @@ fn convert_geometry(geo: &obj::Geometry, positions: &[obj::Vertex], normals: &[o
     }
   }
 
-  Ok((vertices, indices, mode))
+  AABB::from_vertices(vertices.iter().map(|v| v.0.into()))
+    .map(|aabb| (vertices, indices, mode, aabb))
+    .ok_or(ModelError::NoVertex)
 }
 
 // Create triplet keys from wavefront_obj primitives. If any primitive doesn’t have all the triplet
@@ -172,19 +154,19 @@ fn vtnindex_to_key(i: obj::VTNIndex) -> Result<(usize, usize, Option<usize>), Mo
   }
 }
 
-fn interleave_vertex(p: &obj::Vertex, n: &obj::Normal, t: Option<&obj::TVertex>) -> Vertex {
+fn interleave_vertex(p: &obj::Vertex, n: &obj::Normal, t: Option<&obj::TVertex>) -> ObjVertex {
   (convert_vertex(p), convert_nor(n), t.map_or([0., 0.], convert_tvertex))
 }
 
-fn convert_vertex(v: &obj::Vertex) -> VertexPos {
+fn convert_vertex(v: &obj::Vertex) -> ObjVertexPos {
   [v.x as f32, v.y as f32, v.z as f32]
 }
 
-fn convert_nor(n: &obj::Normal) -> VertexNor {
+fn convert_nor(n: &obj::Normal) -> ObjVertexNor {
   convert_vertex(n)
 }
 
-fn convert_tvertex(t: &obj::TVertex) -> VertexTexCoord {
+fn convert_tvertex(t: &obj::TVertex) -> ObjVertexTexCoord {
   [t.u as f32, t.v as f32]
 }
 
@@ -199,5 +181,35 @@ fn guess_mode(prim: obj::Primitive) -> Mode {
 #[derive(Debug)]
 pub enum ModelError {
   UnsupportedVertex,
+  NoVertex,
+  NoGeometry,
   NoShape
+}
+
+/// A material tree representing a possible interpretation of a model tree.
+///
+/// Only the leaves carry information about materials. The inner nodes are only used to match
+/// against the model tree to represent.
+pub enum MaterialTree<M> {
+  Leaf(M),
+  Node(Vec<MaterialTree<M>>)
+}
+
+impl<M> MaterialTree<M> {
+  /// Traverse a model tree and represent it by zipping both trees to each other.
+  ///
+  /// If the zip is not total (partial zipping), non-matching nodes are just ignored.
+  pub fn represent<V, F>(&self, model_tree: &ModelTree<V>, f: &mut F) where F: FnMut(&M, &Tess<V>) {
+    match (self, model_tree) {
+      (&MaterialTree::Leaf(ref material), &ModelTree::Leaf(_, ref tess)) => f(material, tess),
+
+      (&MaterialTree::Node(ref material_nodes), &ModelTree::Node(_, ref model_nodes)) => {
+        for (material, model) in material_nodes.iter().zip(model_nodes) {
+          material.represent(model, f);
+        }
+      }
+
+      _ => ()
+    }
+  }
 }

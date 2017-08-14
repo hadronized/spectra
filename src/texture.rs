@@ -44,6 +44,7 @@ pub fn save_rgba_texture<P>(texture: &TextureRGBA32F, path: P) where P: AsRef<Pa
   let _ = image::save_buffer(path, &output, w, h, image::ColorType::RGBA(8));
 }
 
+#[derive(Debug)]
 pub struct TextureImage {
   pub texture: TextureRGBA32F,
   pub sampler: Sampler,
