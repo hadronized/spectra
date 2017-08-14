@@ -1,17 +1,16 @@
 use luminance::blending::{Equation, Factor};
-use luminance::pipeline::Pipeline;
+use luminance::pipeline::{BoundTexture, Gpu, pipeline};
 use luminance::shader::program;
 use luminance::tess::{Mode, Tess, TessRender, TessVertices};
-use luminance::texture::{Dim2, Flat, Unit};
+use luminance::texture::{Dim2, Flat};
 use luminance::vertex::{Vertex, VertexFormat};
 use std::cell::RefCell;
 
-use compositing::{ColorMap, DepthMap};
 use framebuffer::Framebuffer2D;
 use resource::{Res, ResCache};
 use shader::{Program, Uniform, UniformBuilder, UniformInterface, UniformWarning, UnwrapOrUnbound};
 use text::TextTexture;
-use texture::{RGBA32F, Texture};
+use texture::{Depth32F, R32F, RGBA32F, Texture};
 
 /// Vertex used in overlay’s objects. Position coordinates are in *window space*.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -118,7 +117,7 @@ impl UniformInterface for DiscUniforms {
 }
 
 struct TextUniforms {
-  sampler: Uniform<Unit>,
+  sampler: Uniform<BoundTexture<Texture<Flat, Dim2, R32F>>>,
   pos: Uniform<[f32; 3]>,
   size: Uniform<[f32; 2]>,
   scale: Uniform<f32>,
@@ -212,7 +211,7 @@ impl Overlay {
     (tri_i, disc_i)
   }
 
-  pub fn render(&self, framebuffer: &Framebuffer2D<ColorMap, DepthMap>, input: &RenderInput) {
+  pub fn render(&self, gpu: &Gpu, framebuffer: &Framebuffer2D<Texture<Flat, Dim2, RGBA32F>, Texture<Flat, Dim2, Depth32F>>, input: &RenderInput) {
     let (tri_vert_nb, disc_vert_nb) = self.dispatch(input);
  
     let tris_ref = self.tris.borrow();
@@ -227,35 +226,37 @@ impl Overlay {
     let disc_program = self.disc_program.borrow();
     let text_program = self.text_program.borrow();
 
-    Pipeline::new(framebuffer, [0., 0., 0., 0.], &[], &[]).enter(|shd_gate| {
-      shd_gate.new(&tri_program, &[], &[]).enter(|rdr_gate, _| {
-        rdr_gate.new(None, true, &[], &[]).enter(|tess_gate| {
-          tess_gate.render(tris, &[], &[]);
+    pipeline(framebuffer, [0., 0., 0., 0.], |shd_gate| {
+      shd_gate.shade(&tri_program, |rdr_gate, _| {
+        rdr_gate.render(None, true, |tess_gate| {
+          tess_gate.render(tris);
         });
       });
 
-      shd_gate.new(&disc_program, &[], &[]).enter(|rdr_gate, uniforms| {
+      shd_gate.shade(&disc_program, |rdr_gate, uniforms| {
         uniforms.screen_ratio.update(self.ratio);
 
-        rdr_gate.new(None, true, &[], &[]).enter(|tess_gate| {
-          tess_gate.render(discs, &[], &[]);
+        rdr_gate.render(None, true, |tess_gate| {
+          tess_gate.render(discs);
         });
       });
 
       if let Some((texts, text_scale)) = input.texts {
-        shd_gate.new(&text_program, &[], &[]).enter(|rdr_gate, uniforms| {
+        shd_gate.shade(&text_program, |rdr_gate, uniforms| {
           for text in texts {
             let blending = (Equation::Additive, Factor::One, Factor::SrcAlphaComplement);
             let [tex_w, tex_h] = text.text_texture.size();
 
-            uniforms.sampler.update(Unit::new(0));
+            let texture = gpu.bind_texture(&**text.text_texture);
+
+            uniforms.sampler.update(texture);
             uniforms.pos.update(text.left_lower.to_clip_space(&self.unit_converter).pos);
             uniforms.size.update(self.unit_converter.from_win_dim(tex_w as f32, tex_h as f32));
             uniforms.scale.update(text_scale);
             uniforms.color.update(text.left_lower.color);
 
-            rdr_gate.new(blending, true, &[&***text.text_texture], &[]).enter(|tess_gate| {
-              tess_gate.render(text_quad.clone(), &[], &[]);
+            rdr_gate.render(blending, true, |tess_gate| {
+              tess_gate.render(text_quad.clone());
             });
           }
         });
