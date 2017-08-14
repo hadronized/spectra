@@ -5,14 +5,10 @@
 use clap::{App, Arg};
 use luminance_glfw;
 pub use luminance_glfw::{DeviceError, Key, MouseButton, WindowDim, WindowOpt};
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use camera::{Camera, Freefly};
 pub use event::WindowEvent;
-use linear::V3;
 
 pub type Time = f64;
 

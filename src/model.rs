@@ -1,14 +1,11 @@
 use luminance::tess::{Mode, Tess, TessVertices};
 use std::collections::BTreeMap;
 use std::fs::File;
-use std::fmt::{self, Debug, Formatter};
 use std::io::Read;
 use std::path::Path;
-use std::vec;
 use wavefront_obj::obj;
 
 use aabb::AABB;
-use linear::V3;
 use resource::{Load, LoadError, LoadResult, ResCache};
 
 /// A model tree representing the structure of a model.

@@ -1,5 +1,9 @@
-use nom::{IResult, alphanumeric, digit};
+use nom::alphanumeric;
 use std::str::from_utf8_unchecked;
+
+#[cfg(test)]
+use nom::{IResult, digit};
+
 
 use glsl::parser::{external_declaration, identifier};
 pub use glsl::parser::{parse, parse_str};

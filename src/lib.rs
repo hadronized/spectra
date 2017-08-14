@@ -39,7 +39,6 @@
 //! - **shader**: provides 
 //! - **extra**: some extra (but not mandatory) other modules
 
-#![feature(associated_consts)]
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(macro_reexport)]

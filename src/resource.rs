@@ -295,8 +295,11 @@ impl ResCache {
             // if we have successfully reloaded the resource, notify the observers that this
             // dependency has changed
             for dep in self.dependencies.get(path.as_path()).cloned() {
-              if let Some(mut obs_metadata) = self.metadata.remove(dep.as_path()) {
-                (obs_metadata.on_reload)(self);
+              if let Some(obs_metadata) = self.metadata.remove(dep.as_path()) {
+                if let Err(e) = (obs_metadata.on_reload)(self) {
+                  warn!("cannot reload {:?} {:?}", dep, e);
+                }
+
                 self.metadata.insert(dep, obs_metadata);
               }
             }
