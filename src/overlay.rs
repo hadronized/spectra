@@ -117,7 +117,7 @@ impl UniformInterface for DiscUniforms {
 }
 
 struct TextUniforms {
-  sampler: Uniform<BoundTexture<Texture<Flat, Dim2, R32F>>>,
+  sampler: Uniform<BoundTexture<'static, Texture<Flat, Dim2, R32F>>>,
   pos: Uniform<[f32; 3]>,
   size: Uniform<[f32; 2]>,
   scale: Uniform<f32>,
