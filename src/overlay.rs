@@ -7,7 +7,7 @@ use luminance::vertex::{Vertex, VertexFormat};
 use std::cell::RefCell;
 
 use framebuffer::Framebuffer2D;
-use resource::{Res, ResCache};
+use resource::{Res, Store};
 use shader::{Program, Uniform, UniformBuilder, UniformInterface, UniformWarning, UnwrapOrUnbound};
 use text::TextTexture;
 use texture::{Depth32F, R32F, RGBA32F, Texture};
@@ -152,14 +152,14 @@ pub struct Overlay {
 }
 
 impl Overlay {
-  pub fn new(w: u32, h: u32, max_tris: usize, max_quads: usize, max_discs: usize, cache: &mut ResCache) -> Self {
-    let tri_program = cache.get("spectra/overlay/triangle.glsl", ()).unwrap();
+  pub fn new(w: u32, h: u32, max_tris: usize, max_quads: usize, max_discs: usize, cache: &mut Store) -> Self {
+    let tri_program = cache.get(&"spectra/overlay/triangle.glsl".into()).unwrap();
     let tris = Tess::new(Mode::Triangle, TessVertices::Reserve::<Vert>(max_tris * 3 + max_quads * 4), None);
 
-    let disc_program = cache.get("spectra/overlay/disc.glsl", ()).unwrap();
+    let disc_program = cache.get(&"spectra/overlay/disc.glsl".into()).unwrap();
     let discs = Tess::new(Mode::Point, TessVertices::Reserve::<Disc>(max_discs), None);
 
-    let text_program = cache.get("spectra/overlay/text.glsl", ()).unwrap();
+    let text_program = cache.get(&"spectra/overlay/text.glsl".into()).unwrap();
 
     let text_quad = Tess::attributeless(Mode::TriangleStrip, 4);
 

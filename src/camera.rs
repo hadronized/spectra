@@ -2,12 +2,15 @@ use cgmath::{ElementWise, InnerSpace, Rotation};
 use serde::de::DeserializeOwned;
 use serde_json::from_reader;
 use std::default::Default;
+use std::fmt;
 use std::fs::File;
-use std::path::Path;
+use std::hash;
+use std::marker::PhantomData;
+use std::path::{Path, PathBuf};
 
 use linear::{M44, Quat, V3};
 use projection::{Perspective, Projectable, Projection};
-use resource::{Load, LoadError, LoadResult, ResCache};
+use resource::{CacheKey, Load, LoadError, LoadResult, Store};
 use transform::{Transform, Transformable};
 
 #[derive(Clone, Debug)]
@@ -55,12 +58,54 @@ struct Manifest<P> {
   properties: P
 }
 
-impl<A> Load for Camera<A> where A: Default + DeserializeOwned {
-  type Args = ();
+#[derive(Eq, PartialEq)]
+pub struct CameraKey<A> {
+  pub key: String,
+  _a: PhantomData<*const A>
+}
 
-  const TY_STR: &'static str = "cameras";
+impl<A> CameraKey<A> {
+  pub fn new(key: &str) -> Self {
+    CameraKey {
+      key: key.to_owned(),
+      _a: PhantomData
+    }
+  }
+}
 
-  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
+impl<A> Clone for CameraKey<A> {
+  fn clone(&self) -> Self {
+    CameraKey {
+      key: self.key.clone(),
+      ..*self
+    }
+  }
+}
+
+impl<A> fmt::Debug for CameraKey<A> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    self.key.fmt(f)
+  }
+}
+
+impl<A> hash::Hash for CameraKey<A> {
+  fn hash<H>(&self, hasher: &mut H) where H: hash::Hasher {
+    self.key.hash(hasher)
+  }
+}
+
+impl<A> CacheKey for CameraKey<A> {
+  type Target = Camera<A>;
+}
+
+impl<A> Load for Camera<A> where A: 'static + Default + DeserializeOwned {
+  type Key = CameraKey<A>;
+
+  fn key_to_path(key: &Self::Key) -> PathBuf {
+    key.key.clone().into()
+  }
+
+  fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     let manifest: Manifest<A> = {

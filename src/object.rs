@@ -1,10 +1,10 @@
 use serde_json::from_reader;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::fs::File;
 
 use linear::{M44, Quat, V3};
-use model::ObjModel;
-use resource::{Load, LoadError, LoadResult, Res, ResCache};
+use model::{ObjModel, ObjModelKey};
+use resource::{CacheKey, Load, LoadError, LoadResult, Res, Store};
 use scale::Scale;
 use transform::{Transform, Transformable};
 
@@ -46,12 +46,21 @@ pub struct ObjectManifest {
   scale: [f32; 3]
 }
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct ObjObjectKey(pub String);
+
+impl CacheKey for ObjObjectKey {
+  type Target = ObjObject;
+}
+
 impl Load for ObjObject {
-  type Args = ();
+  type Key = ObjObjectKey;
 
-  const TY_STR: &'static str = "objects";
+  fn key_to_path(key: &Self::Key) -> PathBuf {
+    key.0.clone().into()
+  }
 
-  fn load<P>(path: P, cache: &mut ResCache, _: Self::Args) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
+  fn load<P>(path: P, cache: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     // read the manifest
@@ -60,7 +69,7 @@ impl Load for ObjObject {
       from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?
     };
 
-    let model = cache.get(&manifest.model, ()).ok_or(LoadError::ConversionFailed(format!("unable to find model {} for object at {:?}", manifest.model, path)))?;
+    let model = cache.get(&ObjModelKey::new(&manifest.model)).ok_or(LoadError::ConversionFailed(format!("unable to find model {} for object at {:?}", manifest.model, path)))?;
 
     Ok((Object {
       model: model,

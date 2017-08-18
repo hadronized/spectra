@@ -1,9 +1,9 @@
 use serde_json::from_reader;
 use std::collections::HashMap;
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use resource::{Load, LoadError, LoadResult, ResCache};
+use resource::{CacheKey, Load, LoadError, LoadResult, Store};
 
 /// Time.
 pub type Time = f64;
@@ -168,12 +168,21 @@ pub struct TimelineManifest {
   pub tracks: Vec<TrackManifest>
 }
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct TimelineManifestKey(pub String);
+
+impl CacheKey for TimelineManifestKey {
+  type Target = TimelineManifest;
+}
+
 impl Load for TimelineManifest {
-  type Args = ();
+  type Key = TimelineManifestKey;
 
-  const TY_STR: &'static str = "edit";
+  fn key_to_path(key: &Self::Key) -> PathBuf {
+    key.0.clone().into()
+  }
 
-  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
+  fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     let file = File::open(path).map_err(|_| LoadError::FileNotFound(path.to_path_buf()))?;

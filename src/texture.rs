@@ -2,9 +2,9 @@ pub use luminance::pixel::{Depth32F, R32F, RGBA32F};
 pub use luminance::texture::{Dim2, Flat, MagFilter, MinFilter, Sampler, Texture, Wrap};
 use image;
 use std::ops::Deref;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use resource::{Load, LoadError, LoadResult, Reload, ResCache};
+use resource::{CacheKey, Load, LoadError, LoadResult, Store};
 
 // Common texture aliases.
 pub type TextureRGBA32F = Texture<Flat, Dim2, RGBA32F>;
@@ -14,16 +14,14 @@ pub type TextureDepth32F = Texture<Flat, Dim2, Depth32F>;
 ///
 /// The `linearizer` argument is an option that gives the factor to apply to linearize if needed. Pass
 /// `None` if the texture is already linearized.
-pub fn load_rgba_texture<P, L>(path: P, sampler: &Sampler, linearizer: L) -> Result<TextureRGBA32F, LoadError> where P: AsRef<Path>, L: Into<Option<f32>> {
+pub fn load_rgba_texture<P>(path: P) -> Result<TextureRGBA32F, LoadError> where P: AsRef<Path> {
   let img = image::open(path).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?.flipv().to_rgba();
   let (w, h) = img.dimensions();
-  let linearizer = linearizer.into();
   let raw: Vec<f32> = img.into_raw().into_iter().map(|x| {
-    let y = x as f32 / 255.;
-    linearizer.map_or(y, |factor| y.powf(1. / factor))
+    x as f32 / 255.
   }).collect();
 
-  let tex = Texture::new([w, h], 0, sampler).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?;
+  let tex = Texture::new([w, h], 0, &Sampler::default()).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?;
   tex.upload_raw(false, &raw);
 
   Ok(tex)
@@ -45,37 +43,32 @@ pub fn save_rgba_texture<P>(texture: &TextureRGBA32F, path: P) where P: AsRef<Pa
 }
 
 #[derive(Debug)]
-pub struct TextureImage {
-  pub texture: TextureRGBA32F,
-  pub sampler: Sampler,
-  pub linearizer: Option<f32>,
-}
+pub struct TextureImage(pub TextureRGBA32F);
 
 impl Deref for TextureImage {
   type Target = TextureRGBA32F;
 
   fn deref(&self) -> &Self::Target {
-    &self.texture
+    &self.0
   }
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct TextureKey(pub String);
+
+impl CacheKey for TextureKey {
+  type Target = TextureImage;
 }
 
 impl Load for TextureImage {
-  type Args = (Sampler, Option<f32>);
+  type Key = TextureKey;
 
-  const TY_STR: &'static str = "textures";
-
-  fn load<P>(path: P, _: &mut ResCache, (sampler, linearizer): Self::Args) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
-    load_rgba_texture(path, &sampler, linearizer)
-      .map(|tex| (TextureImage {
-        texture: tex,
-        sampler: sampler,
-        linearizer: linearizer
-      }).into())
+  fn key_to_path(key: &Self::Key) -> PathBuf {
+    key.0.clone().into()
   }
-}
 
-impl Reload for TextureImage {
-  fn reload_args(&self) -> Self::Args {
-    (self.sampler, self.linearizer)
+  fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
+    let result = load_rgba_texture(path).map(TextureImage)?.into();
+    Ok(result)
   }
 }

@@ -1,15 +1,18 @@
 use luminance::shader::program::Program as LProgram;
 use luminance::shader::stage::{Stage, StageError, Type};
+use std::fmt;
 use std::fs::File;
+use std::hash;
 use std::io::{BufRead, BufReader};
+use std::marker::PhantomData;
 use std::ops::Deref;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub use luminance::shader::program::{ProgramError, Uniform, Uniformable, UniformBuilder,
                                      UniformInterface, UniformWarning};
 use luminance::vertex::Vertex;
 
-use resource::{Load, LoadError, LoadResult, ResCache};
+use resource::{CacheKey, Load, LoadError, LoadResult, Store};
 
 #[derive(Debug)]
 pub enum ShaderError {
@@ -235,12 +238,67 @@ impl<In, Out, Uni> Program<In, Out, Uni> where In: Vertex, Uni: UniformInterface
   }
 }
 
-impl<In, Out, Uni> Load for Program<In, Out, Uni> where In: Vertex, Uni: UniformInterface {
-  type Args = ();
+#[derive(Eq, PartialEq)]
+pub struct ProgramKey<In, Out, Uni> {
+  pub key: String,
+  _in: PhantomData<*const In>,
+  _out: PhantomData<*const Out>,
+  _uni: PhantomData<*const Uni>
+}
 
-  const TY_STR: &'static str = "shaders";
+impl<In, Out, Uni> ProgramKey<In, Out, Uni> {
+  pub fn new(key: &str) -> Self {
+    ProgramKey {
+      key: key.to_owned(),
+      _in: PhantomData,
+      _out: PhantomData,
+      _uni: PhantomData
+    }
+  }
+}
 
-  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
+impl<In, Out, Uni> Clone for ProgramKey<In, Out, Uni> {
+  fn clone(&self) -> Self {
+    ProgramKey {
+      key: self.key.clone(),
+      ..*self
+    }
+  }
+}
+
+impl<In, Out, Uni> fmt::Debug for ProgramKey<In, Out, Uni> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    self.key.fmt(f)
+  }
+}
+
+impl<In, Out, Uni> hash::Hash for ProgramKey<In, Out, Uni> {
+  fn hash<H>(&self, hasher: &mut H) where H: hash::Hasher {
+    self.key.hash(hasher)
+  }
+}
+
+impl<'a, In, Out, Uni> From<&'a str> for ProgramKey<In, Out, Uni> {
+  fn from(key: &str) -> Self {
+    ProgramKey::new(key)
+  }
+}
+
+impl<In, Out, Uni> CacheKey for ProgramKey<In, Out, Uni> {
+  type Target = Program<In, Out, Uni>;
+}
+
+impl<In, Out, Uni> Load for Program<In, Out, Uni>
+    where In: 'static + Vertex,
+          Out: 'static,
+          Uni: 'static + UniformInterface {
+  type Key = ProgramKey<In, Out, Uni>;
+
+  fn key_to_path(key: &Self::Key) -> PathBuf {
+    key.key.clone().into()
+  }
+
+  fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     enum CurrentStage {

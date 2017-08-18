@@ -2,11 +2,11 @@ use luminance::tess::{Mode, Tess, TessVertices};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use wavefront_obj::obj;
 
 use aabb::AABB;
-use resource::{Load, LoadError, LoadResult, ResCache};
+use resource::{CacheKey, Load, LoadError, LoadResult, Store};
 
 /// A model tree representing the structure of a model.
 ///
@@ -28,12 +28,27 @@ pub type ObjVertexPos = [f32; 3];
 pub type ObjVertexNor = [f32; 3];
 pub type ObjVertexTexCoord = [f32; 2];
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct ObjModelKey(pub String);
+
+impl ObjModelKey {
+  pub fn new(key: &str) -> Self {
+    ObjModelKey(key.to_owned())
+  }
+}
+
+impl CacheKey for ObjModelKey {
+  type Target = ObjModel;
+}
+
 impl Load for ObjModel {
-  type Args = ();
+  type Key = ObjModelKey;
 
-  const TY_STR: &'static str = "models";
+  fn key_to_path(key: &Self::Key) -> PathBuf {
+    key.0.clone().into()
+  }
 
-  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
+  fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     let mut input = String::new();

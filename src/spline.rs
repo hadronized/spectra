@@ -3,11 +3,14 @@ use serde::de::DeserializeOwned;
 use serde_json::from_reader;
 use std::f32::consts;
 use std::fs::File;
+use std::fmt;
+use std::hash;
+use std::marker::PhantomData;
 use std::ops::{Add, Div, Mul, Sub};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use linear::{Scale, Quat, V2, V3, V4};
-use resource::{Load, LoadError, LoadResult, ResCache};
+use resource::{CacheKey, Load, LoadError, LoadResult, Store};
 
 /// Time used as sampling type in splines.
 pub type Time = f32;
@@ -164,12 +167,54 @@ impl<T> Spline<T> {
   }
 }
 
-impl<T> Load for Spline<T> where T: SplineDeserializerAdapter {
-  type Args = ();
+#[derive(Eq, PartialEq)]
+pub struct SplineKey<T> {
+  pub key: String, 
+  _t: PhantomData<*const T>
+}
 
-  const TY_STR: &'static str = "splines";
+impl<T> SplineKey<T> {
+  pub fn new(key: &str) -> Self {
+    SplineKey {
+      key: key.to_owned(),
+      _t: PhantomData
+    }
+  }
+}
 
-  fn load<P>(path: P, _: &mut ResCache, _: Self::Args) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
+impl<T> Clone for SplineKey<T> {
+  fn clone(&self) -> Self {
+    SplineKey {
+      key: self.key.clone(),
+      ..*self
+    }
+  }
+}
+
+impl<T> fmt::Debug for SplineKey<T> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    self.key.fmt(f)
+  }
+}
+
+impl<T> hash::Hash for SplineKey<T> {
+  fn hash<H>(&self, hasher: &mut H) where H: hash::Hasher {
+    self.key.hash(hasher)
+  }
+}
+
+impl<T> CacheKey for SplineKey<T> where {
+  type Target = Spline<T>;
+}
+
+impl<T> Load for Spline<T> where T: 'static + SplineDeserializerAdapter {
+  type Key = SplineKey<T>;
+
+  fn key_to_path(key: &Self::Key) -> PathBuf {
+    key.key.clone().into()
+  }
+
+  fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
     let file = File::open(path).map_err(|_| LoadError::FileNotFound(path.to_path_buf()))?;
