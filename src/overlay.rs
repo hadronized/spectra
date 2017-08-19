@@ -146,8 +146,8 @@ pub struct Overlay {
   tris: RefCell<Tess<Vert>>,
   disc_program: Res<Program<Disc, (), DiscUniforms>>,
   discs: RefCell<Tess<Disc>>,
-  text_program: Res<Program<[f32; 2], (), TextUniforms>>,
-  text_quad: Tess<[f32; 2]>,
+  text_program: Res<Program<(), (), TextUniforms>>,
+  text_quad: Tess<()>,
   unit_converter: UnitConverter,
 }
 

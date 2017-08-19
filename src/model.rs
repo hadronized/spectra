@@ -1,4 +1,4 @@
-use luminance::tess::{Mode, Tess, TessVertices};
+pub use luminance::tess::{Mode, Tess, TessVertices};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
@@ -34,6 +34,12 @@ pub struct ObjModelKey(pub String);
 impl ObjModelKey {
   pub fn new(key: &str) -> Self {
     ObjModelKey(key.to_owned())
+  }
+}
+
+impl<'a> From<&'a str> for ObjModelKey {
+  fn from(key: &str) -> Self {
+    ObjModelKey::new(key)
   }
 }
 

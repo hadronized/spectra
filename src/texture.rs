@@ -56,6 +56,18 @@ impl Deref for TextureImage {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct TextureKey(pub String);
 
+impl TextureKey {
+  pub fn new(key: &str) -> Self {
+    TextureKey(key.to_owned())
+  }
+}
+
+impl<'a> From<&'a str> for TextureKey {
+  fn from(key: &str) -> Self {
+    TextureKey::new(key)
+  }
+}
+
 impl CacheKey for TextureKey {
   type Target = TextureImage;
 }
