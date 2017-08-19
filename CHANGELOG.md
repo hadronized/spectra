@@ -1,3 +1,7 @@
+# 0.6
+
+- New resource system, with types keys, lasers, ninja and shit.
+
 # 0.5
 
 - Support for luminance-0.22.
