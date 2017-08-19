@@ -236,7 +236,8 @@ impl Store {
     let mut dirty_ = dirty.lock().unwrap();
 
     for &(ref path, ref instant) in dirty_.iter() {
-      if let Some(mut metadata) = self.metadata.remove(path) {
+      let path = self.root.join(path);
+      if let Some(mut metadata) = self.metadata.remove(&path) {
         if instant.duration_since(metadata.last_update_instant) >= Duration::from_millis(UPDATE_AWAIT_TIME_MS) {
           if (metadata.on_reload)(self).is_ok() {
             // if we have successfully reloaded the resource, notify the observers that this

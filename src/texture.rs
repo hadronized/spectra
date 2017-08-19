@@ -8,6 +8,7 @@ use resource::{CacheKey, Load, LoadError, LoadResult, Store};
 
 // Common texture aliases.
 pub type TextureRGBA32F = Texture<Flat, Dim2, RGBA32F>;
+pub type TextureR32F = Texture<Flat, Dim2, R32F>;
 pub type TextureDepth32F = Texture<Flat, Dim2, Depth32F>;
 
 /// Load an RGBA texture from an image at a path.
