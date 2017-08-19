@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
-use resource::{CacheKey, Load, LoadError, LoadResult, Store};
+use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store};
 
 /// Time.
 pub type Time = f64;

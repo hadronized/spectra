@@ -12,7 +12,7 @@ pub use luminance::shader::program::{ProgramError, Uniform, Uniformable, Uniform
                                      UniformInterface, UniformWarning};
 use luminance::vertex::Vertex;
 
-use resource::{CacheKey, Load, LoadError, LoadResult, Store};
+use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store};
 
 #[derive(Debug)]
 pub enum ShaderError {
@@ -428,3 +428,4 @@ impl<T> UnwrapOrUnbound<T> for Result<Uniform<T>, UniformWarning> {
     })
   }
 }
+

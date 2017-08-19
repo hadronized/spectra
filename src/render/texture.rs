@@ -4,7 +4,7 @@ use image;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
-use resource::{CacheKey, Load, LoadError, LoadResult, Store};
+use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store};
 
 // Common texture aliases.
 pub type TextureRGB32F = Texture<Flat, Dim2, RGB32F>;

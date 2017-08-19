@@ -10,7 +10,7 @@ use std::ops::{Add, Div, Mul, Sub};
 use std::path::{Path, PathBuf};
 
 use linear::{Scale, Quat, V2, V3, V4};
-use resource::{CacheKey, Load, LoadError, LoadResult, Store};
+use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store};
 
 /// Time used as sampling type in splines.
 pub type Time = f32;

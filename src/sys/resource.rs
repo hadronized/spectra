@@ -1,4 +1,21 @@
-// FIXME: add the support of transient objects
+//! Resource system.
+//!
+//! Currently, a resource is a disk-cached object that can be hot-reloaded while you use it.
+//! Resource can be serialized and deserialized as you see fit. The concept of *caching* and
+//! *loading* are split in different code location so that you can easily compose both – provide
+//! the loading code and ask the resource system to cache it for you.
+//!
+//! This great flexibility is exposed in the public interface so that the cache can be augmented
+//! with user-provided objects. You might be interested in implementing `Load`, `CacheKey` – from
+//! the [any-cache](https://crates.io/crates/any-cache) crate — as well as providing a type wrapper
+//! over the key to access to your resource.
+//!
+//! # Note on keys
+//!
+//! If you use the resource system, your resources will be cached and accessible by their key. The
+//! key type is not enforced. Resource’s keys are typed to enable namespacing: if you have two
+//! resources which ID is `34`, because the key type is different, you can safely cache the resource
+//! with the ID `34` without any clashing or undefined behaviors. More in the any-cache crate.
 
 use any_cache::{Cache, HashCache};
 pub use any_cache::CacheKey;

@@ -8,7 +8,7 @@ pub use luminance_glfw::{DeviceError, Key, MouseButton, WindowDim, WindowOpt};
 use std::thread;
 use std::time::{Duration, Instant};
 
-pub use event::WindowEvent;
+pub use sys::event::WindowEvent;
 
 pub type Time = f64;
 
@@ -142,11 +142,11 @@ impl Device {
 #[macro_export]
 macro_rules! bootstrap {
   ($def_width:expr, $def_height:expr, $win_opt:expr) => {{
-    $crate::bootstrap::Device::new($def_width,
-                                   $def_height,
-                                   crate_version!(),
-                                   crate_authors!(),
-                                   crate_name!(),
-                                   $win_opt)
+    $crate::sys::bootstrap::Device::new($def_width,
+                                        $def_height,
+                                        crate_version!(),
+                                        crate_authors!(),
+                                        crate_name!(),
+                                        $win_opt)
   }}
 }

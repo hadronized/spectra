@@ -3,7 +3,7 @@ use std::default::Default;
 use std::ops::Mul;
 
 use linear::M44;
-use transform::{Transform, Transformable};
+use scene::transform::{Transform, Transformable};
 
 /// Arbritrary scale.
 #[derive(Clone, Copy, Debug, PartialEq)]

@@ -5,8 +5,8 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use wavefront_obj::obj;
 
-use aabb::AABB;
-use resource::{CacheKey, Load, LoadError, LoadResult, Store};
+use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store};
+use scene::aabb::AABB;
 
 /// A model tree representing the structure of a model.
 ///

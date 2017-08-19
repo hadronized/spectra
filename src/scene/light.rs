@@ -1,6 +1,7 @@
-use color::RGB;
-use linear::V3;
 use std::default::Default;
+
+use linear::V3;
+use render::color::RGB;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LightProp {

@@ -1,7 +1,7 @@
 pub use cgmath::{Matrix4, Vector2, Vector3, Vector4, Quaternion};
 pub use num_traits::{One, Zero};
 
-pub use scale::*;
+pub use scene::scale::*;
 
 // some useful aliases
 pub type V2<T> = Vector2<T>;

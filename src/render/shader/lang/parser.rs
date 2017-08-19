@@ -7,7 +7,7 @@ use nom::{IResult, digit};
 
 use glsl::parser::{external_declaration, identifier};
 pub use glsl::parser::{parse, parse_str};
-use ssl::syntax;
+use render::shader::lang::syntax;
 
 // Turn a &[u8] into a String.
 #[inline]
