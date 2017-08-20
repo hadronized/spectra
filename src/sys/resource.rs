@@ -66,10 +66,16 @@ pub struct LoadResult<T> {
   dependencies: Vec<PathBuf>
 }
 
+impl<T> LoadResult<T> {
+  pub fn with_dependencies(res: T, dependencies: Vec<PathBuf>) -> Self {
+    LoadResult { res, dependencies }
+  }
+}
+
 impl<T> From<T> for LoadResult<T> {
-  fn from(t: T) -> Self {
+  fn from(res: T) -> Self {
     LoadResult {
-      res: t,
+      res,
       dependencies: Vec::new()
     }
   }
