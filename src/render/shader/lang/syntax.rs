@@ -3,23 +3,10 @@
 //! For now, most of the language is an EDSL describing an augmented GLSL with a few keywords.
 pub use glsl::syntax::*;
 
-/// Our shading language.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Lang {
-  /// An `export list_of_identifiers_` statement.
-  Export(ExportList),
-  /// A `from module import list of identifiers` statement.
-  Import(ImportList),
-  /// A GLSL external declaration.
-  GLSL(ExternalDeclaration)
-}
-
-pub type Module = Vec<Lang>;
-
-/// An non-empty export list.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ExportList {
-  pub export_list: Vec<ModulePath>
+pub struct Module {
+  pub imports: Vec<ImportList>,
+  pub glsl: Vec<ExternalDeclaration>
 }
 
 /// A non-empty import list.

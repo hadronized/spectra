@@ -4,7 +4,6 @@ use std::str::from_utf8_unchecked;
 #[cfg(test)]
 use nom::{IResult, digit};
 
-
 use glsl::parser::{external_declaration, identifier};
 pub use glsl::parser::{parse, parse_str};
 use render::shader::lang::syntax;
@@ -59,16 +58,6 @@ named!(pub module_list<&[u8], Vec<syntax::ModulePath>>,
   )
 );
 
-/// Parse an export list.
-named!(pub export_list<&[u8], syntax::ExportList>,
-  ws!(do_parse!(
-    tag!("export") >>
-    modules: module_list >>
-
-    (syntax::ExportList { export_list: modules })
-  ))
-);
-
 /// Parse an import list.
 named!(pub import_list<&[u8], syntax::ImportList>,
   ws!(do_parse!(
@@ -80,12 +69,12 @@ named!(pub import_list<&[u8], syntax::ImportList>,
   ))
 );
 
-/// Parse a module or a pipeline.
-named!(pub module_or_pipeline<&[u8], syntax::Module>,
-  many0!(alt!(
-    map!(export_list, syntax::Lang::Export) |
-    map!(import_list, syntax::Lang::Import) |
-    map!(external_declaration, syntax::Lang::GLSL)
+/// Parse a module.
+named!(pub module<&[u8], syntax::Module>,
+  ws!(do_parse!(
+    imports: many0!(import_list) >>
+    glsl: many0!(external_declaration) >>
+    (syntax::Module { imports, glsl })
   ))
 );
 
