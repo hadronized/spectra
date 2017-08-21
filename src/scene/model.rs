@@ -5,7 +5,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use wavefront_obj::obj;
 
-use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store};
+use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 use scene::aabb::AABB;
 
 /// A model tree representing the structure of a model.
@@ -47,13 +47,13 @@ impl CacheKey for ObjModelKey {
   type Target = ObjModel;
 }
 
-impl Load for ObjModel {
-  type Key = ObjModelKey;
-
-  fn key_to_path(key: &Self::Key) -> PathBuf {
-    key.0.clone().into()
+impl StoreKey for ObjModelKey {
+  fn key_to_path(&self) -> PathBuf {
+    self.0.clone().into()
   }
+}
 
+impl Load for ObjModel {
   fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 

@@ -4,7 +4,7 @@ use image;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
-use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store};
+use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
 // Common texture aliases.
 pub type TextureRGB32F = Texture<Flat, Dim2, RGB32F>;
@@ -74,13 +74,13 @@ impl CacheKey for TextureKey {
   type Target = TextureImage;
 }
 
-impl Load for TextureImage {
-  type Key = TextureKey;
-
-  fn key_to_path(key: &Self::Key) -> PathBuf {
-    key.0.clone().into()
+impl StoreKey for TextureKey {
+  fn key_to_path(&self) -> PathBuf {
+    self.0.clone().into()
   }
+}
 
+impl Load for TextureImage {
   fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let result = load_rgba_texture(path).map(TextureImage)?.into();
     Ok(result)

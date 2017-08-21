@@ -12,7 +12,7 @@ pub use luminance::shader::program::{ProgramError, Uniform, Uniformable, Uniform
                                      UniformInterface, UniformWarning};
 use luminance::vertex::Vertex;
 
-use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store};
+use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
 #[derive(Debug)]
 pub enum ShaderError {
@@ -284,20 +284,26 @@ impl<'a, In, Out, Uni> From<&'a str> for ProgramKey<In, Out, Uni> {
   }
 }
 
-impl<In, Out, Uni> CacheKey for ProgramKey<In, Out, Uni> {
+impl<In, Out, Uni> CacheKey for ProgramKey<In, Out, Uni>
+    where In: 'static,
+          Out: 'static,
+          Uni: 'static {
   type Target = Program<In, Out, Uni>;
+}
+
+impl<In, Out, Uni> StoreKey for ProgramKey<In, Out, Uni>
+    where In: 'static,
+          Out: 'static,
+          Uni: 'static {
+  fn key_to_path(&self) -> PathBuf {
+    self.key.clone().into()
+  }
 }
 
 impl<In, Out, Uni> Load for Program<In, Out, Uni>
     where In: 'static + Vertex,
           Out: 'static,
           Uni: 'static + UniformInterface {
-  type Key = ProgramKey<In, Out, Uni>;
-
-  fn key_to_path(key: &Self::Key) -> PathBuf {
-    key.key.clone().into()
-  }
-
   fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 

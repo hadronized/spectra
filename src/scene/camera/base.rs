@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use linear::{M44, Quat, V3};
 use render::projection::{Projectable, Projection};
 use scene::transform::{Transform, Transformable};
-use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store};
+use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
 #[derive(Clone, Debug)]
 pub struct Camera<P> {
@@ -95,17 +95,17 @@ impl<A> hash::Hash for CameraKey<A> {
   }
 }
 
-impl<A> CacheKey for CameraKey<A> {
+impl<A> CacheKey for CameraKey<A> where A: 'static {
   type Target = Camera<A>;
 }
 
-impl<A> Load for Camera<A> where A: 'static + Default + DeserializeOwned {
-  type Key = CameraKey<A>;
-
-  fn key_to_path(key: &Self::Key) -> PathBuf {
-    key.key.clone().into()
+impl<A> StoreKey for CameraKey<A> where A: 'static {
+  fn key_to_path(&self) -> PathBuf {
+    self.key.clone().into()
   }
+}
 
+impl<A> Load for Camera<A> where A: 'static + Default + DeserializeOwned {
   fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
