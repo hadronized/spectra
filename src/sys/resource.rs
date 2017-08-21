@@ -37,23 +37,12 @@ use std::time::{Duration, Instant};
 /// important to note that you’re not supposed to load objects directly from this trait. Instead,
 /// you should use a `Store`.
 pub trait Load: 'static + Sized {
-  /// Key representing the resource. This type is used to uniquely identify a resource.
-  type Key: CacheKey<Target = Self> + Clone + Debug;
-
-  /// Convert from a key to its path representation.
-  fn key_to_path(key: &Self::Key) -> PathBuf;
+  // /// Convert from a key to its path representation.
+  // fn key_to_path(key: &Self::Key) -> PathBuf;
 
   /// Load a resource. The `Store` can be used to load or declare additional resource dependencies.
   /// The result type is used to register for dependency events.
   fn load<P>(path: P, cache: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path>;
-}
-
-/// Resource key. This type is used to adapt a key type’s target so that it can be mutably shared.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-struct RKey<K>(K);
-
-impl<K, T> CacheKey for RKey<K> where K: CacheKey<Target = T> {
-  type Target = Rc<RefCell<T>>;
 }
 
 /// Result of a resource loading. This type enables you to register a resource for reloading events
@@ -97,6 +86,20 @@ pub type Res<T> = Rc<RefCell<T>>;
 
 /// Time to await after a resource update to establish that it should be reloaded.
 const UPDATE_AWAIT_TIME_MS: u64 = 1000;
+
+/// Resource key. This type is used to adapt a key type’s target so that it can be mutably shared.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+struct RKey<K>(K);
+
+impl<K, T> CacheKey for RKey<K> where K: CacheKey<Target = T> {
+  type Target = Rc<RefCell<T>>;
+}
+
+/// Trait used to represente keys in a resource store.
+pub trait StoreKey: CacheKey + Clone + Debug {
+  /// Convert from a key to its path representation.
+  fn key_to_path(&self) -> PathBuf;
+}
 
 /// Resource store. Responsible for holding and presenting resources.
 pub struct Store {
@@ -156,21 +159,23 @@ impl Store {
   ///
   /// `key` is used to cache the resource and `path` is the path to where to reload the
   /// resource.
-  fn inject<T>(&mut self, key: &T::Key, resource: T, dependencies: Vec<PathBuf>) -> Res<T> where T: Load {
+  fn inject<K>(&mut self, key: &K, resource: K::Target, dependencies: Vec<PathBuf>) -> Res<K::Target>
+      where K: StoreKey,
+            K::Target: Load {
     // wrap the resource to make it shared mutably
     let res = Rc::new(RefCell::new(resource));
     let res_ = res.clone();
 
     // create the path associated with the given key
     let key_ = key.clone();
-    let path = self.root.join(T::key_to_path(&key));
+    let path = self.root.join(K::key_to_path(&key));
     let path_ = path.clone();
 
     // closure used to reload the object when needed
     let on_reload: Box<for<'a> Fn(&'a mut Store) -> Result<(), LoadError>> = Box::new(move |cache| {
       deb!("reloading {:?}", key_);
 
-      match T::load(&path_, cache) {
+      match K::Target::load(&path_, cache) {
         Ok(load_result) => {
           // replace the current resource with the freshly loaded one
           *res_.borrow_mut() = load_result.res;
@@ -205,8 +210,8 @@ impl Store {
   }
 
   /// Get a resource from the cache and return an error if loading failed.
-  fn get_<T>(&mut self, key: &T::Key) -> Result<Res<T>, LoadError> where T: Load {
-    let rekey: RKey<T::Key> = RKey(key.clone());
+  fn get_<K>(&mut self, key: &K) -> Result<Res<K::Target>, LoadError> where K: StoreKey, K::Target: Load {
+    let rekey = RKey(key.clone());
     match self.cache.get(&rekey).cloned() {
       Some(resource) => {
         deb!("cache hit for {:?}", key);
@@ -217,15 +222,15 @@ impl Store {
 
         // specific loading
         info!("loading {:?}", key);
-        let path = self.root.join(T::key_to_path(key));
-        let load_result = T::load(&path, self)?;
+        let path = self.root.join(K::key_to_path(key));
+        let load_result = K::Target::load(&path, self)?;
         Ok(self.inject(key, load_result.res, load_result.dependencies))
       }
     }
   }
 
   /// Get a resource from the cache for the given key.
-  pub fn get<T>(&mut self, key: &T::Key) -> Option<Res<T>> where T: Load {
+  pub fn get<K>(&mut self, key: &K) -> Option<Res<K::Target>> where K: StoreKey, K::Target: Load {
     deb!("getting {:?}", key);
 
     match self.get_(key) {
@@ -239,9 +244,10 @@ impl Store {
 
   /// Get a resource from the store for the given key. If it fails, a proxed version is used, which
   /// will get replaced by the resource once it’s available.
-  pub fn get_proxied<T, P>(&mut self, key: &T::Key, proxy: P) -> Result<Res<T>, LoadError>
-      where T: Load,
-            P: FnOnce() -> T {
+  pub fn get_proxied<K, P>(&mut self, key: &K, proxy: P) -> Result<Res<K::Target>, LoadError>
+      where K: StoreKey,
+            K::Target: Load,
+            P: FnOnce() -> K::Target {
     match self.get_(key) {
       Ok(resource) => Ok(resource),
       Err(e) => {

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
-use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store};
+use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
 /// Time.
 pub type Time = f64;
@@ -175,13 +175,13 @@ impl CacheKey for TimelineManifestKey {
   type Target = TimelineManifest;
 }
 
-impl Load for TimelineManifest {
-  type Key = TimelineManifestKey;
-
-  fn key_to_path(key: &Self::Key) -> PathBuf {
-    key.0.clone().into()
+impl StoreKey for TimelineManifestKey {
+  fn key_to_path(&self) -> PathBuf {
+    self.0.clone().into()
   }
+}
 
+impl Load for TimelineManifest {
   fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 

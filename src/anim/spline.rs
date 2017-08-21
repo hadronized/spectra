@@ -10,7 +10,7 @@ use std::ops::{Add, Div, Mul, Sub};
 use std::path::{Path, PathBuf};
 
 use linear::{Scale, Quat, V2, V3, V4};
-use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store};
+use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
 /// Time used as sampling type in splines.
 pub type Time = f32;
@@ -203,17 +203,17 @@ impl<T> hash::Hash for SplineKey<T> {
   }
 }
 
-impl<T> CacheKey for SplineKey<T> where {
+impl<T> CacheKey for SplineKey<T> where T: 'static {
   type Target = Spline<T>;
 }
 
-impl<T> Load for Spline<T> where T: 'static + SplineDeserializerAdapter {
-  type Key = SplineKey<T>;
-
-  fn key_to_path(key: &Self::Key) -> PathBuf {
-    key.key.clone().into()
+impl<T> StoreKey for SplineKey<T> where T: 'static {
+  fn key_to_path(&self) -> PathBuf {
+    self.key.clone().into()
   }
+}
 
+impl<T> Load for Spline<T> where T: 'static + SplineDeserializerAdapter {
   fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
     let path = path.as_ref();
 
