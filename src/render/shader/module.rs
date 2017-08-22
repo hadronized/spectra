@@ -52,9 +52,7 @@ impl Load for Module {
 
     match parser::parse_str(&src[..], parser::module) {
       parser::ParseResult::Ok(module) => {
-        let imports = module.imports.iter().map(|il| il.module.path.join("/").into()).collect();
-        let res = LoadResult::with_dependencies(Module(module), imports);
-        Ok(res)
+        Ok(Module(module).into())
       }
       parser::ParseResult::Err(e) => Err(LoadError::ConversionFailed(format!("{:?}", e))),
       _ => Err(LoadError::ConversionFailed("incomplete input".to_owned()))
