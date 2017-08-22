@@ -1,5 +1,17 @@
+//! Shader programs.
+//!
+//! A shader program is a piece of code that runs on GPU, consuming vertices, primitives, geometry
+//! patches and fragments and output into a framebuffer colors and depth information.
+//!
+//! Shaders are abstracted by *shader modules* – see the `render::shader::module` module for further
+//! details. You are not supposed to write *shader programs* directly, but instead, you write one or
+//! several *shader modules* and are automatically handed a *shader program* based on the analysis
+//! of the *shader modules* you wrote and how you combined them.
 use luminance::shader::program::Program as LProgram;
+pub use luminance::shader::program::{ProgramError, Uniform, Uniformable, UniformBuilder,
+                                     UniformInterface, UniformWarning};
 use luminance::shader::stage::{Stage, StageError, Type};
+use luminance::vertex::Vertex;
 use std::fmt;
 use std::fs::File;
 use std::hash;
@@ -8,10 +20,7 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
-pub use luminance::shader::program::{ProgramError, Uniform, Uniformable, UniformBuilder,
-                                     UniformInterface, UniformWarning};
-use luminance::vertex::Vertex;
-
+use render::shader::module::{Module, ModuleKey};
 use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
 #[derive(Debug)]
