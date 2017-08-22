@@ -3,7 +3,7 @@ use luminance::shader::stage::{Stage, StageError, Type};
 use std::fmt;
 use std::fs::File;
 use std::hash;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader};
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -12,8 +12,6 @@ pub use luminance::shader::program::{ProgramError, Uniform, Uniformable, Uniform
                                      UniformInterface, UniformWarning};
 use luminance::vertex::Vertex;
 
-use render::shader::lang::parser;
-use render::shader::lang::syntax::{Module as SyntaxModule};
 use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
 #[derive(Debug)]
@@ -69,53 +67,6 @@ fn compile_stages(tcs_src: &str, tes_src: &str, vs_src: &str, gs_src: &str, fs_s
   Ok((tess, vs, gs, fs))
 }
 
-/// Shader module.
-///
-/// A shader module is a piece of GLSL code with optional import lists (dependencies).
-///
-/// You’re not supposed to directly manipulate any object of this type. You just write modules on
-/// disk and let everyting happen automatically for you.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Module(SyntaxModule);
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct ModuleKey(String);
-
-impl ModuleKey {
-  pub fn new(key: &str) -> Self {
-    ModuleKey(key.to_owned())
-  }
-}
-
-impl CacheKey for ModuleKey {
-  type Target = Module;
-}
-
-impl StoreKey for ModuleKey {
-  fn key_to_path(&self) -> PathBuf {
-    self.0.clone().into()
-  }
-}
-
-impl Load for Module {
-  fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
-    let path = path.as_ref();
-
-    let mut fh = File::open(path).map_err(|_| LoadError::FileNotFound(path.to_owned()))?;
-    let mut src = String::new();
-    let _ = fh.read_to_string(&mut src);
-
-    match parser::parse_str(&src[..], parser::module) {
-      parser::ParseResult::Ok(module) => {
-        let imports = module.imports.iter().map(|il| il.module.path.join("/").into()).collect();
-        let res = LoadResult::with_dependencies(Module(module), imports);
-        Ok(res)
-      }
-      parser::ParseResult::Err(e) => Err(LoadError::ConversionFailed(format!("{:?}", e))),
-      _ => Err(LoadError::ConversionFailed("incomplete input".to_owned()))
-    }
-  }
-}
 
 /// Shader program.
 pub struct Program<In, Out, Uni> {

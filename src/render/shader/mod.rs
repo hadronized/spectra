@@ -4,4 +4,5 @@
 //! and analyses your code to switch on or off shader stages.
 
 pub mod lang;
+pub mod module;
 pub mod program;
