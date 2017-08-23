@@ -11,7 +11,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use render::shader::lang::parser;
-use render::shader::lang::syntax::{Module as SyntaxModule, ModulePath};
+use render::shader::lang::syntax::Module as SyntaxModule;
 use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
 /// Shader module.
@@ -21,7 +21,7 @@ use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 /// You’re not supposed to directly manipulate any object of this type. You just write modules on
 /// disk and let everyting happen automatically for you.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Module(SyntaxModule);
+pub struct Module(pub SyntaxModule); // FIXME: remove the pub
 
 impl Module {
   /// Retrieve all the modules this module depends on, without duplicates.
@@ -50,13 +50,35 @@ impl Module {
 
       // get the dependency module 
       let module = store.get(&module_key).ok_or_else(|| DepsError::LoadError(module_key.clone()))?;
-      let r = module.borrow().deps_no_cycle(store, &module_key, parents, deps)?;
+      module.borrow().deps_no_cycle(store, &module_key, parents, deps)?;
 
       deps.push(module_key.clone());
       parents.pop();
     }
 
     Ok(())
+  }
+
+  /// Fold a module and its dependencies into a single module. The list of dependencies is also
+  /// returned.
+  pub fn gather(&self, store: &mut Store, k: &ModuleKey) -> Result<(Self, Vec<ModuleKey>), DepsError> {
+    let deps = self.deps(store, k)?;
+    let glsl =
+      deps.iter()
+          .flat_map(|kd| {
+              let m = store.get(kd).unwrap();
+              let g = m.borrow().0.glsl.clone();
+              g
+            })
+          .chain(self.0.glsl.clone())
+          .collect();
+
+    let module = Module(SyntaxModule {
+      imports: Vec::new(),
+      glsl
+    });
+
+    Ok((module, deps))
   }
 }
 
