@@ -30,32 +30,34 @@ pub struct Module(SyntaxModule);
 
 impl Module {
   /// Retrieve all the modules this module depends on, without duplicates.
-  pub fn deps(&self, store: &mut Store, path: &ModulePath) -> Result<Vec<ModulePath>, DepsError> {
+  pub fn deps(&self, store: &mut Store, key: &ModuleKey) -> Result<Vec<ModuleKey>, DepsError> {
     let mut deps = Vec::new();
-    self.deps_no_cycle(store, &path, &mut Vec::new(), &mut deps).map(|_| deps)
+    self.deps_no_cycle(store, &key, &mut Vec::new(), &mut deps).map(|_| deps)
   }
 
-  fn deps_no_cycle(&self, store: &mut Store, path: &ModulePath, parents: &mut Vec<ModulePath>, deps: &mut Vec<ModulePath>) -> Result<(), DepsError> {
+  fn deps_no_cycle(&self, store: &mut Store, key: &ModuleKey, parents: &mut Vec<ModuleKey>, deps: &mut Vec<ModuleKey>) -> Result<(), DepsError> {
     let imports = self.0.imports.iter().map(|il| &il.module);
 
-    parents.push(path.clone());
+    parents.push(key.clone());
 
-    for module_name in imports {
+    for module_path in imports {
+      let module_key = module_path_to_module_key(module_path);
+
       // check whether it’s already in the deps
-      if deps.contains(module_name) {
+      if deps.contains(&module_key) {
         continue;
       }
 
       // check whether the module was already visited
-      if parents.contains(module_name) {
-        return Err(DepsError::Cycle(path.clone(), module_name.clone()));
+      if parents.contains(&module_key) {
+        return Err(DepsError::Cycle(module_key.clone(), module_key.clone()));
       }
 
       // get the dependency module 
-      let module = store.get(&module_path_to_module_key(&module_name)).ok_or_else(|| DepsError::LoadError(module_name.clone()))?;
-      let r = module.borrow().deps_no_cycle(store, module_name, parents, deps)?;
+      let module = store.get(&module_key).ok_or_else(|| DepsError::LoadError(module_key.clone()))?;
+      let r = module.borrow().deps_no_cycle(store, &module_key, parents, deps)?;
 
-      deps.push(module_name.clone());
+      deps.push(module_key.clone());
       parents.pop();
     }
 
@@ -68,9 +70,9 @@ impl Module {
 pub enum DepsError {
   /// If a module’s dependencies has any cycle, the dependencies are unusable and the cycle is
   /// returned.
-  Cycle(ModulePath, ModulePath),
+  Cycle(ModuleKey, ModuleKey),
   /// There was a loading error of a module.
-  LoadError(ModulePath)
+  LoadError(ModuleKey)
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
