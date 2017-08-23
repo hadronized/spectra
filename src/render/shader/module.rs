@@ -14,11 +14,6 @@ use render::shader::lang::parser;
 use render::shader::lang::syntax::{Module as SyntaxModule, ModulePath};
 use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
-// FIXME: see where to put that shit; especially, ModuleKey should be implemented with ModuleKe(ModulePath), LOL
-fn module_path_to_module_key(mp: &ModulePath) -> ModuleKey {
-  ModuleKey(mp.path.join("/") + ".spsl")
-}
-
 /// Shader module.
 ///
 /// A shader module is a piece of GLSL code with optional import lists (dependencies).
@@ -41,7 +36,7 @@ impl Module {
     parents.push(key.clone());
 
     for module_path in imports {
-      let module_key = module_path_to_module_key(module_path);
+      let module_key = ModuleKey(module_path.path.join("."));
 
       // check whether it’s already in the deps
       if deps.contains(&module_key) {
@@ -90,7 +85,7 @@ impl CacheKey for ModuleKey {
 
 impl StoreKey for ModuleKey {
   fn key_to_path(&self) -> PathBuf {
-    self.0.clone().into()
+    PathBuf::from(self.0.replace(".", "/") + ".spsl")
   }
 }
 
