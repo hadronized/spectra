@@ -20,6 +20,7 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::path::PathBuf;
 
+use render::shader::module::ModuleKey;
 use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
 #[derive(Debug)]
@@ -427,3 +428,10 @@ impl<T> UnwrapOrUnbound<T> for Result<Uniform<T>, UniformWarning> {
   }
 }
 
+pub fn from_spsl(key: &ModuleKey, store: &mut Store) {
+  if let Some(module) = store.get(key) {
+    let (gathered, _) = module.borrow().gather(store, key).unwrap();
+    let uniforms = gathered.uniforms();
+    println!("uniforms: {:#?}", uniforms);
+  }
+}
