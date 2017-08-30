@@ -14,7 +14,7 @@ use render::shader::lang::parser;
 use render::shader::lang::syntax::{Declaration, ExternalDeclaration, FunctionDefinition, FullySpecifiedType,
                                    FunctionParameterDeclaration, InitDeclaratorList,
                                    Module as SyntaxModule, SingleDeclaration, StorageQualifier,
-                                   TypeQualifierSpec};
+                                   StructFieldSpecifier, TypeSpecifier, TypeQualifierSpec};
 use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
 /// Shader module.
@@ -126,24 +126,29 @@ impl Module {
 #[derive(Clone, Debug, PartialEq)]
 pub struct VertexShaderInterface {
   inputs: Vec<ExternalDeclaration>,
-  outputs: FullySpecifiedType
+  outputs: Vec<ExternalDeclaration>
 }
 
-#[derive(Clone, Eq, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum VertexShaderInterfaceError {
-  UnnamedInput
+  UnnamedInput,
+  OutputHasMainQualifier,
+  OutputTypeMustBeAStruct(TypeSpecifier),
+  WrongOutputFirstField(StructFieldSpecifier),
+  OutputFieldCannotBeStruct(usize, TypeSpecifier),
+  OutputFieldCannotHaveSeveralIdentifiers(usize, StructFieldSpecifier)
 }
 
 /// Build the vertex shader interface from a function definition.
 pub fn vertex_shader_interface(fun_def: &FunctionDefinition) -> Result<VertexShaderInterface, VertexShaderInterfaceError> {
   let proto = &fun_def.prototype;
-  let inputs = vertex_shader_interface_inputs(proto.parameters.iter())?;
-  let outputs = proto.ty.clone();
+  let inputs = vertex_shader_inputs(proto.parameters.iter())?;
+  let outputs = vertex_shader_outputs(&proto.ty)?;
 
   Ok(VertexShaderInterface { inputs, outputs })
 }
 
-fn vertex_shader_interface_inputs<'a, I>(args: I) -> Result<Vec<ExternalDeclaration>, VertexShaderInterfaceError> where I: IntoIterator<Item = &'a FunctionParameterDeclaration> {
+fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<ExternalDeclaration>, VertexShaderInterfaceError> where I: IntoIterator<Item = &'a FunctionParameterDeclaration> {
   let mut inputs = Vec::new();
 
   for arg in args {
@@ -176,10 +181,69 @@ fn vertex_shader_interface_inputs<'a, I>(args: I) -> Result<Vec<ExternalDeclarat
   Ok(inputs)
 }
 
-fn vertex_shader_interface_outputs(ty: &FullySpecifiedType) -> Result<Vec<ExternalDeclaration>, VertexShaderInterface> {
-  let mut outputs = Vec::new();
+fn vertex_shader_outputs(fsty: &FullySpecifiedType) -> Result<Vec<ExternalDeclaration>, VertexShaderInterfaceError> {
+  // we refuse that the output has a main qualifier
+  if fsty.qualifier.is_some() {
+    return Err(VertexShaderInterfaceError::OutputHasMainQualifier);
+  }
+
+  let ty = &fsty.ty;
+
+  // we enforce that the output must be a struct that follows a certain pattern
+  match *ty {
+    TypeSpecifier::Struct(ref s) => { // it must be a struct
+      // the first field must be named "gl_Position", has type vec4 and no qualifier
+      let first_field = &s.fields[0];
+
+      if first_field.qualifier.is_some() ||
+         first_field.ty != TypeSpecifier::Vec4 ||
+         first_field.identifiers != vec![("gl_Position".to_owned(), None)] {
+        return Err(VertexShaderInterfaceError::WrongOutputFirstField(first_field.clone()));
+      }
+
+      // then, for all other fields, we check that they are not composite type (i.e. structs); if
+      // they are not, add them to the interface; otherwise, fail
+      let mut outputs = Vec::new();
+
+      for (i, field) in (&s.fields[1..]).into_iter().enumerate() {
+        if let TypeSpecifier::Struct(_) = field.ty {
+          return Err(VertexShaderInterfaceError::OutputFieldCannotBeStruct(i, field.ty.clone()));
+        }
+
+        if field.identifiers.len() > 1 {
+          return Err(VertexShaderInterfaceError::OutputFieldCannotHaveSeveralIdentifiers(i, field.clone()));
+        }
+
+        outputs.push(vertex_shader_output_field_to_ext_decl(&field));
+      }
+
+      Ok(outputs)
+    },
+    _ => Err(VertexShaderInterfaceError::OutputTypeMustBeAStruct(ty.clone()))
+  }
 }
 
+fn vertex_shader_output_field_to_ext_decl(field: &StructFieldSpecifier) -> ExternalDeclaration {
+  let fsty = FullySpecifiedType {
+    qualifier: field.qualifier.clone(),
+    ty: field.ty.clone()
+  };
+  let decl = SingleDeclaration {
+    ty: fsty,
+    name: Some(field.identifiers[0].0.clone()),
+    array_specifier: field.identifiers[0].1.clone(),
+    initializer: None
+  };
+
+  ExternalDeclaration::Declaration(
+    Declaration::InitDeclaratorList(
+      InitDeclaratorList {
+        head: decl,
+        tail: Vec::new()
+      }
+    )
+  )
+}
 
 /// Class of errors that can happen in dependencies.
 #[derive(Clone, Debug, PartialEq)]
