@@ -14,7 +14,8 @@ use render::shader::lang::parser;
 use render::shader::lang::syntax::{Declaration, ExternalDeclaration, FunctionDefinition, FullySpecifiedType,
                                    FunctionParameterDeclaration, InitDeclaratorList,
                                    Module as SyntaxModule, SingleDeclaration, StorageQualifier,
-                                   StructFieldSpecifier, TypeSpecifier, TypeQualifierSpec};
+                                   StructSpecifier, StructFieldSpecifier,
+                                   TypeSpecifier, TypeQualifierSpec};
 use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
 /// Shader module.
@@ -118,6 +119,29 @@ impl Module {
       _ => None
     }).collect()
   }
+
+  /// Get all the declared structures.
+  pub fn structs(&self) -> Vec<StructSpecifier> {
+    self.0.glsl.iter().filter_map(|ed| {
+      match *ed {
+        ExternalDeclaration::Declaration(
+          Declaration::InitDeclaratorList(
+            InitDeclaratorList {
+              head: SingleDeclaration {
+                ty: FullySpecifiedType {
+                  ty: TypeSpecifier::Struct(ref s),
+                  ..
+                },
+                ..
+              },
+              ..
+            }
+          )
+        ) => Some(s.clone()),
+        _ => None
+      }
+    }).collect()
+  }
 }
 
 /// Vertex shader I/O interface.
@@ -140,10 +164,10 @@ pub enum VertexShaderInterfaceError {
 }
 
 /// Build the vertex shader interface from a function definition.
-pub fn vertex_shader_interface(fun_def: &FunctionDefinition) -> Result<VertexShaderInterface, VertexShaderInterfaceError> {
+pub fn vertex_shader_interface(fun_def: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<VertexShaderInterface, VertexShaderInterfaceError> {
   let proto = &fun_def.prototype;
   let inputs = vertex_shader_inputs(proto.parameters.iter())?;
-  let outputs = vertex_shader_outputs(&proto.ty)?;
+  let outputs = vertex_shader_outputs(&proto.ty, structs)?;
 
   Ok(VertexShaderInterface { inputs, outputs })
 }
@@ -181,7 +205,7 @@ fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<ExternalDeclaration>, Vert
   Ok(inputs)
 }
 
-fn vertex_shader_outputs(fsty: &FullySpecifiedType) -> Result<Vec<ExternalDeclaration>, VertexShaderInterfaceError> {
+fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier]) -> Result<Vec<ExternalDeclaration>, VertexShaderInterfaceError> {
   // we refuse that the output has a main qualifier
   if fsty.qualifier.is_some() {
     return Err(VertexShaderInterfaceError::OutputHasMainQualifier);
@@ -191,34 +215,41 @@ fn vertex_shader_outputs(fsty: &FullySpecifiedType) -> Result<Vec<ExternalDeclar
 
   // we enforce that the output must be a struct that follows a certain pattern
   match *ty {
-    TypeSpecifier::Struct(ref s) => { // it must be a struct
-      // the first field must be named "gl_Position", has type vec4 and no qualifier
-      let first_field = &s.fields[0];
+    TypeSpecifier::TypeName(ref ty_name) => {
+      let real_ty = structs.iter().find(|ref s| s.name.as_ref() == Some(ty_name));
 
-      if first_field.qualifier.is_some() ||
-         first_field.ty != TypeSpecifier::Vec4 ||
-         first_field.identifiers != vec![("gl_Position".to_owned(), None)] {
-        return Err(VertexShaderInterfaceError::WrongOutputFirstField(first_field.clone()));
-      }
+      match real_ty {
+        Some(ref s) => {
+          // the first field must be named "gl_Position", has type vec4 and no qualifier
+          let first_field = &s.fields[0];
 
-      // then, for all other fields, we check that they are not composite type (i.e. structs); if
-      // they are not, add them to the interface; otherwise, fail
-      let mut outputs = Vec::new();
+          if first_field.qualifier.is_some() ||
+             first_field.ty != TypeSpecifier::Vec4 ||
+             first_field.identifiers != vec![("gl_Position".to_owned(), None)] {
+            return Err(VertexShaderInterfaceError::WrongOutputFirstField(first_field.clone()));
+          }
 
-      for (i, field) in (&s.fields[1..]).into_iter().enumerate() {
-        if let TypeSpecifier::Struct(_) = field.ty {
-          return Err(VertexShaderInterfaceError::OutputFieldCannotBeStruct(i, field.ty.clone()));
+          // then, for all other fields, we check that they are not composite type (i.e. structs); if
+          // they are not, add them to the interface; otherwise, fail
+          let mut outputs = Vec::new();
+
+          for (i, field) in (&s.fields[1..]).into_iter().enumerate() {
+            if let TypeSpecifier::Struct(_) = field.ty {
+              return Err(VertexShaderInterfaceError::OutputFieldCannotBeStruct(i, field.ty.clone()));
+            }
+
+            if field.identifiers.len() > 1 {
+              return Err(VertexShaderInterfaceError::OutputFieldCannotHaveSeveralIdentifiers(i, field.clone()));
+            }
+
+            outputs.push(vertex_shader_output_field_to_ext_decl(&field));
+          }
+
+          Ok(outputs)
         }
-
-        if field.identifiers.len() > 1 {
-          return Err(VertexShaderInterfaceError::OutputFieldCannotHaveSeveralIdentifiers(i, field.clone()));
-        }
-
-        outputs.push(vertex_shader_output_field_to_ext_decl(&field));
+        _ => Err(VertexShaderInterfaceError::OutputTypeMustBeAStruct(ty.clone()))
       }
-
-      Ok(outputs)
-    },
+    }
     _ => Err(VertexShaderInterfaceError::OutputTypeMustBeAStruct(ty.clone()))
   }
 }
