@@ -11,11 +11,12 @@ use std::io::Read;
 use std::path::PathBuf;
 
 use render::shader::lang::parser;
+// FIXME: qualified use, it’s ugly now
 use render::shader::lang::syntax::{Declaration, ExternalDeclaration, FunctionDefinition, FullySpecifiedType,
-                                   FunctionParameterDeclaration, InitDeclaratorList,
+                                   FunctionParameterDeclaration, InitDeclaratorList, Expr,
                                    Module as SyntaxModule, SingleDeclaration, StorageQualifier,
-                                   StructSpecifier, StructFieldSpecifier,
-                                   TypeSpecifier, TypeQualifierSpec};
+                                   StructSpecifier, StructFieldSpecifier, LayoutQualifier,
+                                   TypeSpecifier, TypeQualifier, TypeQualifierSpec, LayoutQualifierSpec};
 use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
 /// Shader module.
@@ -175,18 +176,30 @@ pub fn vertex_shader_interface(fun_def: &FunctionDefinition, structs: &[StructSp
 fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<ExternalDeclaration>, VertexShaderInterfaceError> where I: IntoIterator<Item = &'a FunctionParameterDeclaration> {
   let mut inputs = Vec::new();
 
-  for arg in args {
+  for (i, arg) in args.into_iter().enumerate() {
     match *arg {
       FunctionParameterDeclaration::Unnamed(..) => return Err(VertexShaderInterfaceError::UnnamedInput),
       FunctionParameterDeclaration::Named(ref ty_qual, ref decl) => {
-        let qualifier = ty_qual.clone();
+        let layout_qualifier = LayoutQualifier {
+          ids: vec![LayoutQualifierSpec::Identifier("location".to_owned(), Some(Box::new(Expr::IntConst(i as i32))))]
+        };
+        let base_qualifier = TypeQualifier {
+          qualifiers: vec![
+            TypeQualifierSpec::Layout(layout_qualifier),
+            TypeQualifierSpec::Storage(StorageQualifier::Uniform)
+          ]
+        };
+        let qualifier = match *ty_qual {
+          Some(ref qual) => TypeQualifier { qualifiers: base_qualifier.qualifiers.into_iter().chain(qual.clone().qualifiers).collect() },
+          None => base_qualifier
+        };
         let ty = decl.ty.clone();
         let name = Some(decl.name.clone());
         let array_spec = decl.array_spec.clone();
         let idl = InitDeclaratorList {
           head: SingleDeclaration {
             ty: FullySpecifiedType {
-              qualifier,
+              qualifier: Some(qualifier),
               ty
             },
             name,
