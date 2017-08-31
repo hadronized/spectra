@@ -3,8 +3,103 @@
 //! Shader functions and declarations can be grouped in so-called *modules*. Modules structure is
 //! inherently tied to the filesystem’s tree.
 //!
-//! You’re not supposed to use modules at the Rust level, even though you can. You’re supposed to
-//! actually write modules that will be used by shader programs.
+//! You’re not supposed to use modules at the Rust level, even though you can. You actually want to
+//! write modules that will be used by shader programs using the SPSL language.
+//!
+//! # SPSL
+//!
+//! Spectra Shading Language is a superset of [GLSL](https://en.wikipedia.org/wiki/OpenGL_Shading_Language)
+//! with extra candies, such as:
+//!
+//! - module imports/exports;
+//! - interface, uniforms, blocks, structs, etc. deduplication
+//! - functional programming style
+//!
+//! ## Define once, use everywhere
+//!
+//! The idea is that you can refactor the code you use at several places into *modules* – in the
+//! same way you do in Rust, and then `import` those modules in other ones.
+//!
+//! This is achieved with the `from foo.bar.zoo import (yyyy, zzzz)` pattern. You typically want to put
+//! that line at the top of your module – you can put several. This will import the `yyyy` and
+//! `zzzz` symbols from the `foo.bar.zoo` module. The `(*)` form is called an import list and must
+//! contain something.
+//!
+//! > Note on paths: because of the bijective relation between modules and files, if you import the
+//! > `foo.bar.zoo` module, the file `foo/bar/zoo.spsl` must be reachable.
+//!
+//! > Note on import lists: currently, import lists are just informative. By default, all symbols
+//! > are imported. Future plans will restrict them to the one only defined in the import lists.
+//!
+//! ## Pipeline modules
+//!
+//! In SPSL, there’s no such thing such as a *stage*. You cannot declare a *vertex shader*, a
+//! *geometry shader*, a *fragment shader* or any *tessellation shaders*. Instead, you write
+//! pipelines directly.
+//!
+//! A pipeline is just a special module that contains special functions. Up to now, you can find
+//! three functions:
+//!
+//! | Function name     | Mandatory? | Role                                                              |
+//! | -------------     | ---------- | ----                                                              |
+//! | `map_vertex`      | yes        | Called on each vertex in the pipeline’s stream                    |
+//! | `concat_map_prim` | no         | Called on each primitive generated via the `map_vertex` function  |
+//! | `map_fragment`    | yes        | Called on each rasterized fragment                                |
+//!
+//! ### `map_vertex`
+//!
+//! This mandatory function must be defined and will be called on each vertex in the input stream.
+//! It takes a variable number of arguments and its return type must be provided. Both the arguments
+//! and return types form a *contract* that binds the function to the input and output stream. The
+//! order of the arguments matters, as it must be the same order as in your tessellation’s buffers.
+//!
+//! For instance, if you want to process a stream of vertices which have a 3D-floating position and
+//! a 4D-floating color and return only the color, you’d something like this:
+//!
+//! ```glsl
+//! struct Vertex {
+//!   vec4 gl_Position; // this is mandatory as it will be fetched by the pipeline
+//!   vec4 color;
+//! };
+//!
+//! Vertex map_vertex(vec3 position, vec4 color) {
+//!   return Vertex(vec4(position, 1.), color);
+//! }
+//! ```
+//!
+//! If at some time you come to the realization that you also need the position information in the
+//! result, you just have to change the above code to:
+//!
+//! ```glsl
+//! struct Vertex {
+//!   vec4 gl_Position; // this is mandatory as it will be fetched by the pipeline
+//!   vec3 position;
+//!   vec4 color;
+//! };
+//!
+//! Vertex map_vertex(vec3 position, vec4 color) {
+//!   return Vertex(vec4(position, 1.), position, color);
+//! }
+//! ```
+//!
+//! > Note on the return type: the name of this type is completely up to you. Nothing is enforced,
+//! > use the type name you think is the best. `Vertex` is a de facto name because it seems natural
+//! > to use it, but if you dislike such a name, feel free to use another.
+//!
+//! ### `concat_map_prim`
+//!
+//! This optional function takes an array of vertices which type is the same as `map_vertex`’
+//! result’s type and outputs a stream of primitives:
+//!
+//! ```glsl
+//! layout (triangles_strip, max_vertices = 3) struct Prim {
+//!   // TODO
+//! };
+//!
+//! void concat_map_prim(Vertex[3] vertices) {
+//!   
+//! }
+//! ```
 
 use std::fs::File;
 use std::io::Read;
@@ -25,7 +120,7 @@ use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 /// A shader module is a piece of GLSL code with optional import lists (dependencies).
 ///
 /// You’re not supposed to directly manipulate any object of this type. You just write modules on
-/// disk and let everyting happen automatically for you.
+/// disk and let everything happen automatically for you.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Module(pub SyntaxModule); // FIXME: remove the pub
 
