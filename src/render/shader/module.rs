@@ -8,6 +8,7 @@
 
 use std::fs::File;
 use std::io::Read;
+use std::iter::once;
 use std::path::PathBuf;
 
 use render::shader::lang::parser;
@@ -150,8 +151,8 @@ impl Module {
 /// It contains the inputs and the outputs to the next stage.
 #[derive(Clone, Debug, PartialEq)]
 pub struct VertexShaderInterface {
-  inputs: Vec<ExternalDeclaration>,
-  outputs: Vec<ExternalDeclaration>
+  pub inputs: Vec<ExternalDeclaration>,
+  pub outputs: Vec<ExternalDeclaration>
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -268,13 +269,18 @@ fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier])
 }
 
 fn vertex_shader_output_field_to_ext_decl(field: &StructFieldSpecifier) -> ExternalDeclaration {
+  let base_qualifier = TypeQualifierSpec::Storage(StorageQualifier::Out);
+  let qualifier = match field.qualifier {
+    Some(ref qual) => TypeQualifier { qualifiers: qual.clone().qualifiers.into_iter().chain(once(base_qualifier)).collect() },
+    None => TypeQualifier { qualifiers: vec![base_qualifier] }
+  };
   let fsty = FullySpecifiedType {
-    qualifier: field.qualifier.clone(),
+    qualifier: Some(qualifier),
     ty: field.ty.clone()
   };
   let decl = SingleDeclaration {
     ty: fsty,
-    name: Some(field.identifiers[0].0.clone()),
+    name: Some("__v_".to_owned() + &field.identifiers[0].0),
     array_specifier: field.identifiers[0].1.clone(),
     initializer: None
   };
