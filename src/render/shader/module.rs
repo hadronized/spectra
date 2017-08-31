@@ -186,7 +186,7 @@ fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<ExternalDeclaration>, Vert
         let base_qualifier = TypeQualifier {
           qualifiers: vec![
             TypeQualifierSpec::Layout(layout_qualifier),
-            TypeQualifierSpec::Storage(StorageQualifier::Uniform)
+            TypeQualifierSpec::Storage(StorageQualifier::In)
           ]
         };
         let qualifier = match *ty_qual {
