@@ -184,8 +184,8 @@ impl Module {
     Ok((module, deps))
   }
 
-  /// Fold a module into its raw GLSL representation.
-  pub fn to_glsl_string(&self) -> Result<GLSLString, GLSLConversionError> {
+  /// Fold a module into its GLSL setup.
+  pub fn to_glsl_setup(&self) -> Result<GLSLSetup, GLSLConversionError> {
     let uniforms = self.uniforms();
     let blocks = self.blocks();
     let structs = self.structs();
@@ -198,6 +198,7 @@ impl Module {
     // sink uniforms, blocks and structs first as a common framework
     for uniform in &uniforms {
       writer::glsl::show_single_declaration(&mut common, uniform);
+      common.write_str(";\n");
     }
 
     for block in &blocks {
@@ -210,13 +211,24 @@ impl Module {
 
     for fun in &functions {
       if fun.prototype.name == "map_vertex" { // enable the vertex shader
-        sink_vertex_shader(&mut vs, &fun, &structs);
+        sink_vertex_shader(&mut vs, &fun, &structs).map_err(GLSLConversionError::VertexShaderInterfaceError)?;
       } else {
         writer::glsl::show_function_definition(&mut common, fun);
       }
     }
 
-    Ok(vs) // FIXME
+    if vs.is_empty() {
+      Err(GLSLConversionError::NoVertexShader)
+    } else if fs.is_empty() {
+      Err(GLSLConversionError::NoFragmentShader)
+    } else {
+      let setup = GLSLSetup {
+        vs: common.clone() + &vs,
+        fs: common.clone() + &fs
+      };
+
+      Ok(setup)
+    }
   }
 
   /// Get all the uniforms defined in a module.
@@ -293,10 +305,16 @@ impl Module {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum GLSLConversionError {
-  VertexShader(VertexShaderInterfaceError)
+  VertexShaderInterfaceError(VertexShaderInterfaceError),
+  NoVertexShader,
+  NoFragmentShader
 }
 
-pub type GLSLString = String;
+#[derive(Clone, Debug, PartialEq)]
+pub struct GLSLSetup {
+  vs: String,
+  fs: String
+}
 
 /// Vertex shader I/O interface.
 ///
@@ -337,6 +355,9 @@ fn sink_vertex_shader<F>(sink: &mut F,
     writer::glsl::show_external_declaration(sink, output);
   }
 
+  // sink the output type
+  let output_ty = get_vertex_output_type(map_vertex, structs)?;
+
   // sink the map_vertex function
   writer::glsl::show_function_definition(sink, map_vertex);
 
@@ -345,11 +366,11 @@ fn sink_vertex_shader<F>(sink: &mut F,
 
   // call the map_vertex function
   let mut assigns = String::new();
-  sink_vertex_shader_output(sink, &mut assigns, &map_vertex, structs);
+  sink_vertex_shader_output(sink, &mut assigns, &output_ty);
 
   sink.write_str(" v = map_vertex(");
   sink_vertex_shader_input_args(sink, &map_vertex);
-  sink.write_str(")\n");
+  sink.write_str(");\n");
 
   // assign to outputs
   sink.write_str(&assigns);
@@ -360,27 +381,35 @@ fn sink_vertex_shader<F>(sink: &mut F,
   Ok(())
 }
 
-/// Sink a vertex shader’s output.
-fn sink_vertex_shader_output<F, G>(sink: &mut F, assigns: &mut G, map_vertex: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<(), VertexShaderInterfaceError> where F: Write, G: Write {
+fn get_vertex_output_type(map_vertex: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<StructSpecifier, VertexShaderInterfaceError> {
   if let TypeSpecifierNonArray::TypeName(ref name) = map_vertex.prototype.ty.ty.ty {
-    sink.write_str(name);
-
-    assigns.write_str("  gl_Position = v.gl_Position;\n");
-
-    // find the definition of the return type
     if let Some(ref ty) = structs.iter().find(|ref s| s.name.as_ref() == Some(name)) {
-      // iterate over its fields
-      for field in &ty.fields[1..] {
-        for &(ref identifier, _) in &field.identifiers {
-          write!(assigns, "  __v_{0} = v.{0};\n", identifier);
-        }
-      }
+      Ok((*ty).clone())
+    } else {
+      Err(VertexShaderInterfaceError::OutputTypeMustBeAStruct(map_vertex.prototype.ty.ty.clone()))
     }
-
-    Ok(())
   } else {
     Err(VertexShaderInterfaceError::OutputTypeMustBeAStruct(map_vertex.prototype.ty.ty.clone()))
   }
+}
+
+/// Sink a vertex shader’s output.
+fn sink_vertex_shader_output<F, G>(sink: &mut F, assigns: &mut G, ty: &StructSpecifier) -> Result<(), VertexShaderInterfaceError> where F: Write, G: Write {
+  if let Some(ref name) = ty.name {
+    sink.write_str(name);
+  } else {
+    panic!("cannot happen");
+  }
+
+  assigns.write_str("  gl_Position = v.gl_Position;\n");
+
+  for field in &ty.fields[1..] {
+    for &(ref identifier, _) in &field.identifiers {
+      write!(assigns, "  __v_{0} = v.{0};\n", identifier);
+    }
+  }
+  
+  Ok(())
 }
 
 /// Sink the arguments of the map_vertex function.
