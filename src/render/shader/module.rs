@@ -210,10 +210,19 @@ impl Module {
     }
 
     for fun in &functions {
-      if fun.prototype.name == "map_vertex" { // enable the vertex shader
-        sink_vertex_shader(&mut vs, &fun, &structs).map_err(GLSLConversionError::VertexShaderInterfaceError)?;
-      } else {
-        writer::glsl::show_function_definition(&mut common, fun);
+      writer::glsl::show_function_definition(&mut common, fun)
+    }
+
+    // get the special functions
+    let map_vertex = functions.iter().find(|fd| &fd.prototype.name == "map_vertex");
+    let map_frag_data = functions.iter().find(|fd| &fd.prototype.name == "map_frag_data");
+
+    match (map_vertex, map_frag_data) {
+      (None, _) => return Err(GLSLConversionError::NoVertexShader),
+      (_, None) => return Err(GLSLConversionError::NoFragmentShader),
+      (Some(vf), Some(ff)) => {
+        let vertex_output_ty = sink_vertex_shader(&mut vs, vf, &structs)?;
+        sink_fragment_shader(&mut fs, ff, &structs, &vertex_output_ty)?;
       }
     }
 
@@ -305,9 +314,14 @@ impl Module {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum GLSLConversionError {
-  VertexShaderInterfaceError(VertexShaderInterfaceError),
   NoVertexShader,
-  NoFragmentShader
+  NoFragmentShader,
+  UnnamedInput,
+  OutputHasMainQualifier,
+  ReturnTypeMustBeAStruct(TypeSpecifier),
+  WrongOutputFirstField(StructFieldSpecifier),
+  OutputFieldCannotBeStruct(usize, TypeSpecifier),
+  OutputFieldCannotHaveSeveralIdentifiers(usize, StructFieldSpecifier)
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -325,21 +339,11 @@ pub struct VertexShaderInterface {
   pub outputs: Vec<ExternalDeclaration>
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum VertexShaderInterfaceError {
-  UnnamedInput,
-  OutputHasMainQualifier,
-  OutputTypeMustBeAStruct(TypeSpecifier),
-  WrongOutputFirstField(StructFieldSpecifier),
-  OutputFieldCannotBeStruct(usize, TypeSpecifier),
-  OutputFieldCannotHaveSeveralIdentifiers(usize, StructFieldSpecifier)
-}
-
 /// Sink a vertex shader.
 fn sink_vertex_shader<F>(sink: &mut F,
                          map_vertex: &FunctionDefinition,
                          structs: &[StructSpecifier])
-                         -> Result<(), VertexShaderInterfaceError>
+                         -> Result<StructSpecifier, GLSLConversionError>
                          where F: Write {
   // sink inputs
   let inputs = vertex_shader_inputs(&map_vertex.prototype.parameters)?;
@@ -356,7 +360,7 @@ fn sink_vertex_shader<F>(sink: &mut F,
   }
 
   // sink the output type
-  let output_ty = get_vertex_output_type(map_vertex, structs)?;
+  let output_ty = get_fn_ret_ty(map_vertex, structs)?;
 
   // sink the map_vertex function
   writer::glsl::show_function_definition(sink, map_vertex);
@@ -378,23 +382,23 @@ fn sink_vertex_shader<F>(sink: &mut F,
   // end of the main function
   sink.write_str("}\n\n");
 
-  Ok(())
+  Ok(output_ty)
 }
 
-fn get_vertex_output_type(map_vertex: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<StructSpecifier, VertexShaderInterfaceError> {
-  if let TypeSpecifierNonArray::TypeName(ref name) = map_vertex.prototype.ty.ty.ty {
+fn get_fn_ret_ty(f: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<StructSpecifier, GLSLConversionError> {
+  if let TypeSpecifierNonArray::TypeName(ref name) = f.prototype.ty.ty.ty {
     if let Some(ref ty) = structs.iter().find(|ref s| s.name.as_ref() == Some(name)) {
       Ok((*ty).clone())
     } else {
-      Err(VertexShaderInterfaceError::OutputTypeMustBeAStruct(map_vertex.prototype.ty.ty.clone()))
+      Err(GLSLConversionError::ReturnTypeMustBeAStruct(f.prototype.ty.ty.clone()))
     }
   } else {
-    Err(VertexShaderInterfaceError::OutputTypeMustBeAStruct(map_vertex.prototype.ty.ty.clone()))
+    Err(GLSLConversionError::ReturnTypeMustBeAStruct(f.prototype.ty.ty.clone()))
   }
 }
 
 /// Sink a vertex shader’s output.
-fn sink_vertex_shader_output<F, G>(sink: &mut F, assigns: &mut G, ty: &StructSpecifier) -> Result<(), VertexShaderInterfaceError> where F: Write, G: Write {
+fn sink_vertex_shader_output<F, G>(sink: &mut F, assigns: &mut G, ty: &StructSpecifier) -> Result<(), GLSLConversionError> where F: Write, G: Write {
   if let Some(ref name) = ty.name {
     sink.write_str(name);
   } else {
@@ -413,7 +417,7 @@ fn sink_vertex_shader_output<F, G>(sink: &mut F, assigns: &mut G, ty: &StructSpe
 }
 
 /// Sink the arguments of the map_vertex function.
-fn sink_vertex_shader_input_args<F>(sink: &mut F, map_vertex: &FunctionDefinition) -> Result<(), VertexShaderInterfaceError> where F: Write {
+fn sink_vertex_shader_input_args<F>(sink: &mut F, map_vertex: &FunctionDefinition) -> Result<(), GLSLConversionError> where F: Write {
   let args = &map_vertex.prototype.parameters;
 
   if !args.is_empty() {
@@ -432,19 +436,19 @@ fn sink_vertex_shader_input_args<F>(sink: &mut F, map_vertex: &FunctionDefinitio
 }
 
 /// Sink an argument of a function.
-fn sink_vertex_shader_input_arg<F>(sink: &mut F, arg: &FunctionParameterDeclaration) -> Result<(), VertexShaderInterfaceError> where F: Write {
+fn sink_vertex_shader_input_arg<F>(sink: &mut F, arg: &FunctionParameterDeclaration) -> Result<(), GLSLConversionError> where F: Write {
   match *arg {
     FunctionParameterDeclaration::Named(_, ref d) => {
       sink.write_str(&d.name);
       Ok(())
     }
-    _ => Err(VertexShaderInterfaceError::UnnamedInput)
+    _ => Err(GLSLConversionError::UnnamedInput)
   }
 }
 
 
 /// Build the vertex shader interface from a function definition.
-pub fn vertex_shader_interface(fun_def: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<VertexShaderInterface, VertexShaderInterfaceError> {
+pub fn vertex_shader_interface(fun_def: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<VertexShaderInterface, GLSLConversionError> {
   let proto = &fun_def.prototype;
   let inputs = vertex_shader_inputs(proto.parameters.iter())?;
   let outputs = vertex_shader_outputs(&proto.ty, structs)?;
@@ -452,12 +456,12 @@ pub fn vertex_shader_interface(fun_def: &FunctionDefinition, structs: &[StructSp
   Ok(VertexShaderInterface { inputs, outputs })
 }
 
-fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<ExternalDeclaration>, VertexShaderInterfaceError> where I: IntoIterator<Item = &'a FunctionParameterDeclaration> {
+fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<ExternalDeclaration>, GLSLConversionError> where I: IntoIterator<Item = &'a FunctionParameterDeclaration> {
   let mut inputs = Vec::new();
 
   for (i, arg) in args.into_iter().enumerate() {
     match *arg {
-      FunctionParameterDeclaration::Unnamed(..) => return Err(VertexShaderInterfaceError::UnnamedInput),
+      FunctionParameterDeclaration::Unnamed(..) => return Err(GLSLConversionError::UnnamedInput),
       FunctionParameterDeclaration::Named(ref ty_qual, ref decl) => {
         let layout_qualifier = LayoutQualifier {
           ids: vec![LayoutQualifierSpec::Identifier("location".to_owned(), Some(Box::new(Expr::IntConst(i as i32))))]
@@ -497,10 +501,10 @@ fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<ExternalDeclaration>, Vert
   Ok(inputs)
 }
 
-fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier]) -> Result<Vec<ExternalDeclaration>, VertexShaderInterfaceError> {
+fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier]) -> Result<Vec<ExternalDeclaration>, GLSLConversionError> {
   // we refuse that the output has a main qualifier
   if fsty.qualifier.is_some() {
-    return Err(VertexShaderInterfaceError::OutputHasMainQualifier);
+    return Err(GLSLConversionError::OutputHasMainQualifier);
   }
 
   let ty = &fsty.ty;
@@ -518,7 +522,7 @@ fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier])
           if first_field.qualifier.is_some() ||
              first_field.ty.ty != TypeSpecifierNonArray::Vec4 ||
              first_field.identifiers != vec![("gl_Position".to_owned(), None)] {
-            return Err(VertexShaderInterfaceError::WrongOutputFirstField(first_field.clone()));
+            return Err(GLSLConversionError::WrongOutputFirstField(first_field.clone()));
           }
 
           // then, for all other fields, we check that they are not composite type (i.e. structs); if
@@ -527,11 +531,11 @@ fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier])
 
           for (i, field) in (&s.fields[1..]).into_iter().enumerate() {
             if let TypeSpecifierNonArray::Struct(_) = field.ty.ty {
-              return Err(VertexShaderInterfaceError::OutputFieldCannotBeStruct(i, field.ty.clone()));
+              return Err(GLSLConversionError::OutputFieldCannotBeStruct(i, field.ty.clone()));
             }
 
             if field.identifiers.len() > 1 {
-              return Err(VertexShaderInterfaceError::OutputFieldCannotHaveSeveralIdentifiers(i, field.clone()));
+              return Err(GLSLConversionError::OutputFieldCannotHaveSeveralIdentifiers(i, field.clone()));
             }
 
             outputs.push(vertex_shader_output_field_to_ext_decl(&field));
@@ -539,10 +543,10 @@ fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier])
 
           Ok(outputs)
         }
-        _ => Err(VertexShaderInterfaceError::OutputTypeMustBeAStruct(ty.clone()))
+        _ => Err(GLSLConversionError::ReturnTypeMustBeAStruct(ty.clone()))
       }
     }
-    _ => Err(VertexShaderInterfaceError::OutputTypeMustBeAStruct(ty.clone()))
+    _ => Err(GLSLConversionError::ReturnTypeMustBeAStruct(ty.clone()))
   }
 }
 
@@ -571,6 +575,48 @@ fn vertex_shader_output_field_to_ext_decl(field: &StructFieldSpecifier) -> Exter
       }
     )
   )
+}
+
+/// Sink a fragment shader.
+fn sink_fragment_shader<F>(sink: &mut F,
+                           map_frag_data: &FunctionDefinition,
+                           structs: &[StructSpecifier],
+                           input_ty: &StructSpecifier)
+                           -> Result<(), GLSLConversionError>
+                           where F: Write {
+  for input in &fragment_shader_inputs(input_ty) {
+    writer::glsl::show_external_declaration(sink, input);
+  }
+}
+
+fn fragment_shader_inputs(input: &StructSpecifier) -> Vec<ExternalDeclaration> {
+  // we start at index 1 because 0 is reserved for gl_Position
+  input.fields.iter().skip(1).map(|field| {
+    let base_qualifier = TypeQualifierSpec::Storage(StorageQualifier::In);
+    let qualifier = match field.qualifier {
+      Some(ref qual) => TypeQualifier { qualifiers: once(base_qualifier).chain(qual.qualifiers).collect() },
+      None => TypeQualifier { qualifiers: vec![base_qualifier] }
+    };
+    let fsty = FullySpecifiedType {
+      qualifier: Some(qualifier),
+      ty: field.ty
+    };
+    let decl = SingleDeclaration {
+      ty: fsty,
+      name: Some("__v_".to_owned() + &field.identifiers[0].0),
+      array_specifier: field.identifiers[0].1.clone(),
+      initializer: None
+    };
+
+    ExternalDeclaration::Declaration(
+      Declaration::InitDeclaratorList(
+        InitDeclaratorList {
+          head: decl,
+          tail: Vec::new()
+        }
+      )
+    )
+  }).collect()
 }
 
 /// Class of errors that can happen in dependencies.
