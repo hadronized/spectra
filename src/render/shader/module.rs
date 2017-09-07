@@ -221,8 +221,8 @@ impl Module {
       (None, _) => return Err(GLSLConversionError::NoVertexShader),
       (_, None) => return Err(GLSLConversionError::NoFragmentShader),
       (Some(vf), Some(ff)) => {
-        let vertex_ret_ty = sink_vertex_shader(&mut vs, vf, &structs)?;
-        let fragment_ret_ty = sink_fragment_shader(&mut fs, ff, &structs, &vertex_ret_ty)?;
+        let (vertex_ret_ty, vertex_outputs) = sink_vertex_shader(&mut vs, vf, &structs)?;
+        let fragment_ret_ty = sink_fragment_shader(&mut fs, ff, &structs, &vertex_outputs)?;
         
         // stages don’t have the common structures yet because they might define overloaded ones, so
         let mut structs_str = String::new();
@@ -348,18 +348,30 @@ pub struct VertexShaderInterface {
   pub outputs: Vec<ExternalDeclaration>
 }
 
+fn single_to_external_declaration(sd: SingleDeclaration) -> ExternalDeclaration {
+  ExternalDeclaration::Declaration(
+    Declaration::InitDeclaratorList(
+      InitDeclaratorList {
+        head: sd,
+        tail: Vec::new()
+      }
+    )
+  )
+}
+
 /// Sink a vertex shader.
 fn sink_vertex_shader<F>(sink: &mut F,
                          map_vertex: &FunctionDefinition,
                          structs: &[StructSpecifier])
-                         -> Result<StructSpecifier, GLSLConversionError>
+                         -> Result<(StructSpecifier, Vec<SingleDeclaration>), GLSLConversionError>
                          where F: Write {
   let inputs = vertex_shader_inputs(&map_vertex.prototype.parameters)?;
   let outputs = vertex_shader_outputs(&map_vertex.prototype.ty, structs)?;
   let ret_ty = get_fn_ret_ty(map_vertex, structs)?;
 
-  for ed in inputs.iter().chain(&outputs) {
-    writer::glsl::show_external_declaration(sink, ed);
+  for sd in inputs.iter().chain(&outputs) {
+    let ed = single_to_external_declaration(sd.clone());
+    writer::glsl::show_external_declaration(sink, &ed);
   }
 
   // sink the return type
@@ -385,7 +397,7 @@ fn sink_vertex_shader<F>(sink: &mut F,
   // end of the main function
   sink.write_str("}\n\n");
 
-  Ok(ret_ty)
+  Ok((ret_ty, outputs))
 }
 
 fn get_fn_ret_ty(f: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<StructSpecifier, GLSLConversionError> {
@@ -451,16 +463,7 @@ fn sink_vertex_shader_input_arg<F>(sink: &mut F, arg: &FunctionParameterDeclarat
 }
 
 
-/// Build the vertex shader interface from a function definition.
-pub fn vertex_shader_interface(fun_def: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<VertexShaderInterface, GLSLConversionError> {
-  let proto = &fun_def.prototype;
-  let inputs = vertex_shader_inputs(proto.parameters.iter())?;
-  let outputs = vertex_shader_outputs(&proto.ty, structs)?;
-
-  Ok(VertexShaderInterface { inputs, outputs })
-}
-
-fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<ExternalDeclaration>, GLSLConversionError> where I: IntoIterator<Item = &'a FunctionParameterDeclaration> {
+fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<SingleDeclaration>, GLSLConversionError> where I: IntoIterator<Item = &'a FunctionParameterDeclaration> {
   let mut inputs = Vec::new();
 
   for (i, arg) in args.into_iter().enumerate() {
@@ -482,8 +485,8 @@ fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<ExternalDeclaration>, GLSL
         let ty = decl.ty.clone();
         let name = Some(decl.name.clone());
         let array_spec = decl.array_spec.clone();
-        let idl = InitDeclaratorList {
-          head: SingleDeclaration {
+        let sd = 
+          SingleDeclaration {
             ty: FullySpecifiedType {
               qualifier: Some(qualifier),
               ty
@@ -491,12 +494,9 @@ fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<ExternalDeclaration>, GLSL
             name,
             array_specifier: array_spec,
             initializer: None
-          },
-          tail: Vec::new()
-        };
-        let ed = ExternalDeclaration::Declaration(Declaration::InitDeclaratorList(idl));
+          };
 
-        inputs.push(ed);
+        inputs.push(sd);
       }
 
       // unnamed arguments is not an error! it serves when the argument is not used, but we still
@@ -508,7 +508,7 @@ fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<ExternalDeclaration>, GLSL
   Ok(inputs)
 }
 
-fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier]) -> Result<Vec<ExternalDeclaration>, GLSLConversionError> {
+fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier]) -> Result<Vec<SingleDeclaration>, GLSLConversionError> {
   // we refuse that the output has a main qualifier
   if fsty.qualifier.is_some() {
     return Err(GLSLConversionError::OutputHasMainQualifier);
@@ -534,7 +534,7 @@ fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier])
 
           // then, for all other fields, we check that they are not composite type (i.e. structs); if
           // they are not, add them to the interface; otherwise, fail
-          fields_to_ext_decls(&s.fields[1..], "__v_")
+          fields_to_single_decls(&s.fields[1..], "__v_")
         }
         _ => Err(GLSLConversionError::ReturnTypeMustBeAStruct(ty.clone()))
       }
@@ -545,7 +545,7 @@ fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier])
 
 /// Map a struct’s fields to a Vec<ExternalDeclaration>. Typically suitable for generating outputs
 /// from a struct fields.
-fn fields_to_ext_decls(fields: &[StructFieldSpecifier], prefix: &str) -> Result<Vec<ExternalDeclaration>, GLSLConversionError> {
+fn fields_to_single_decls(fields: &[StructFieldSpecifier], prefix: &str) -> Result<Vec<SingleDeclaration>, GLSLConversionError> {
   let mut outputs = Vec::new();
 
   for (i, field) in fields.into_iter().enumerate() {
@@ -559,7 +559,7 @@ fn fields_to_ext_decls(fields: &[StructFieldSpecifier], prefix: &str) -> Result<
       return Err(GLSLConversionError::OutputFieldCannotHaveSeveralIdentifiers(i, field.clone()));
     }
 
-    outputs.push(field_to_ext_decl(&field, prefix));
+    outputs.push(field_to_single_decl(&field, prefix));
   }
 
   Ok(outputs)
@@ -567,7 +567,7 @@ fn fields_to_ext_decls(fields: &[StructFieldSpecifier], prefix: &str) -> Result<
 
 /// Map a StructFieldSpecifier to an ExternalDeclaration. Typically suitable for generating an
 /// output from a struct field.
-fn field_to_ext_decl(field: &StructFieldSpecifier, prefix: &str) -> ExternalDeclaration {
+fn field_to_single_decl(field: &StructFieldSpecifier, prefix: &str) -> SingleDeclaration {
   let base_qualifier = TypeQualifierSpec::Storage(StorageQualifier::Out);
   let qualifier = match field.qualifier {
     Some(ref qual) => TypeQualifier { qualifiers: qual.clone().qualifiers.into_iter().chain(once(base_qualifier)).collect() },
@@ -577,37 +577,30 @@ fn field_to_ext_decl(field: &StructFieldSpecifier, prefix: &str) -> ExternalDecl
     qualifier: Some(qualifier),
     ty: field.ty.clone()
   };
-  let decl = SingleDeclaration {
+
+  SingleDeclaration {
     ty: fsty,
     name: Some(prefix.to_owned() + &field.identifiers[0].0),
     array_specifier: field.identifiers[0].1.clone(),
     initializer: None
-  };
-
-  ExternalDeclaration::Declaration(
-    Declaration::InitDeclaratorList(
-      InitDeclaratorList {
-        head: decl,
-        tail: Vec::new()
-      }
-    )
-  )
+  }
 }
 
 /// Sink a fragment shader.
 fn sink_fragment_shader<F>(sink: &mut F,
                            map_frag_data: &FunctionDefinition,
                            structs: &[StructSpecifier],
-                           input_ty: &StructSpecifier)
+                           prev_inputs: &[SingleDeclaration])
                            -> Result<StructSpecifier, GLSLConversionError>
                            where F: Write {
-  let inputs = fragment_shader_inputs(input_ty); // this is wrong, need to adapt the previous inputs instead
+  let inputs = fragment_shader_inputs(prev_inputs); // this is wrong, need to adapt the previous inputs instead
   let ret_ty = get_fn_ret_ty(map_frag_data, structs)?;
-  let outputs = fields_to_ext_decls(&ret_ty.fields, "__f_")?;
+  let outputs = fields_to_single_decls(&ret_ty.fields, "__f_")?;
 
   // sink inputs and outputs
-  for ed in inputs.iter().chain(&outputs) {
-    writer::glsl::show_external_declaration(sink, ed);
+  for sd in inputs.into_iter().chain(outputs) {
+    let ed = single_to_external_declaration(sd);
+    writer::glsl::show_external_declaration(sink, &ed);
   }
 
   // sink the map_frag_data function
@@ -615,9 +608,6 @@ fn sink_fragment_shader<F>(sink: &mut F,
 
   // void main
   sink.write_str("void main() {\n  ");
-
-  // TODO
-
 
   // // call the map_frag_data function
   // let mut assigns = String::new();
@@ -636,34 +626,30 @@ fn sink_fragment_shader<F>(sink: &mut F,
   Ok(ret_ty)
 }
 
-fn fragment_shader_inputs(input: &StructSpecifier) -> Vec<ExternalDeclaration> {
-  // we start at index 1 because 0 is reserved for gl_Position
-  input.fields.iter().skip(1).map(|field| {
-    let base_qualifier = TypeQualifierSpec::Storage(StorageQualifier::In);
-    let qualifier = match field.qualifier {
-      Some(ref qual) => TypeQualifier { qualifiers: once(base_qualifier).chain(qual.qualifiers.clone()).collect() },
-      None => TypeQualifier { qualifiers: vec![base_qualifier] }
-    };
-    let fsty = FullySpecifiedType {
-      qualifier: Some(qualifier),
-      ty: field.ty.clone()
-    };
-    let decl = SingleDeclaration {
-      ty: fsty,
-      name: Some("__v_".to_owned() + &field.identifiers[0].0),
-      array_specifier: field.identifiers[0].1.clone(),
-      initializer: None
-    };
-
-    ExternalDeclaration::Declaration(
-      Declaration::InitDeclaratorList(
-        InitDeclaratorList {
-          head: decl,
-          tail: Vec::new()
+/// Replace an input declaration by its output declaration dual.
+fn replace_out_in_single_declaration(input: SingleDeclaration) -> SingleDeclaration {
+  let qualifier = input.ty.qualifier.map(|q| {
+    TypeQualifier {
+      qualifiers: q.qualifiers.into_iter().map(|qs| {
+        match qs {
+          TypeQualifierSpec::Storage(StorageQualifier::Out) => TypeQualifierSpec::Storage(StorageQualifier::In),
+          _ => qs
         }
-      )
-    )
-  }).collect()
+      }).collect()
+    }
+  });
+
+  SingleDeclaration {
+    ty: FullySpecifiedType {
+      qualifier,
+      .. input.ty
+    },
+    .. input
+  }
+}
+
+fn fragment_shader_inputs(inputs: &[SingleDeclaration]) -> Vec<SingleDeclaration> {
+  inputs.into_iter().map(|sd| replace_out_in_single_declaration(sd.clone())).collect()
 }
 
 /// Class of errors that can happen in dependencies.
