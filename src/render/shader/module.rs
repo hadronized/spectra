@@ -222,7 +222,7 @@ impl Module {
       (_, None) => return Err(GLSLConversionError::NoFragmentShader),
       (Some(vf), Some(ff)) => {
         let (vertex_ret_ty, vertex_outputs) = sink_vertex_shader(&mut vs, vf, &structs)?;
-        let fragment_ret_ty = sink_fragment_shader(&mut fs, ff, &structs, &vertex_outputs)?;
+        let fragment_ret_ty = sink_fragment_shader(&mut fs, ff, &structs, &vertex_ret_ty, &vertex_outputs)?;
         
         // stages don’t have the common structures yet because they might define overloaded ones, so
         let mut structs_str = String::new();
@@ -590,6 +590,7 @@ fn field_to_single_decl(field: &StructFieldSpecifier, prefix: &str) -> SingleDec
 fn sink_fragment_shader<F>(sink: &mut F,
                            map_frag_data: &FunctionDefinition,
                            structs: &[StructSpecifier],
+                           prev_ret_ty: &StructSpecifier,
                            prev_inputs: &[SingleDeclaration])
                            -> Result<StructSpecifier, GLSLConversionError>
                            where F: Write {
@@ -602,6 +603,12 @@ fn sink_fragment_shader<F>(sink: &mut F,
     let ed = single_to_external_declaration(sd);
     writer::glsl::show_external_declaration(sink, &ed);
   }
+
+  // sink the previous return type (from the previous stage)
+  writer::glsl::show_struct(sink, prev_ret_ty);
+
+  // sink the return type
+  writer::glsl::show_struct(sink, &ret_ty);
 
   // sink the map_frag_data function
   writer::glsl::show_function_definition(sink, map_frag_data);
