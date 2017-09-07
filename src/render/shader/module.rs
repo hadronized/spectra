@@ -209,8 +209,12 @@ impl Module {
       writer::glsl::show_struct(&mut common, struct_);
     }
 
-    for fun in &functions {
-      writer::glsl::show_function_definition(&mut common, fun)
+    // filter out special functions so that we don’t put them in the common part
+    for f in functions.iter().filter(|f| {
+        let n: &str = &f.prototype.name;
+        n != "map_vertex" && n != "map_frag_data"
+      }) {
+      writer::glsl::show_function_definition(&mut common, f)
     }
 
     // get the special functions
@@ -326,8 +330,8 @@ pub enum GLSLConversionError {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct GLSLSetup {
-  vs: String,
-  fs: String
+  pub vs: String,
+  pub fs: String
 }
 
 /// Vertex shader I/O interface.
@@ -527,21 +531,7 @@ fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier])
 
           // then, for all other fields, we check that they are not composite type (i.e. structs); if
           // they are not, add them to the interface; otherwise, fail
-          let mut outputs = Vec::new();
-
-          for (i, field) in (&s.fields[1..]).into_iter().enumerate() {
-            if let TypeSpecifierNonArray::Struct(_) = field.ty.ty {
-              return Err(GLSLConversionError::OutputFieldCannotBeStruct(i, field.ty.clone()));
-            }
-
-            if field.identifiers.len() > 1 {
-              return Err(GLSLConversionError::OutputFieldCannotHaveSeveralIdentifiers(i, field.clone()));
-            }
-
-            outputs.push(vertex_shader_output_field_to_ext_decl(&field));
-          }
-
-          Ok(outputs)
+          fields_to_ext_decls(&s.fields[1..], "__v_")
         }
         _ => Err(GLSLConversionError::ReturnTypeMustBeAStruct(ty.clone()))
       }
@@ -550,7 +540,31 @@ fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier])
   }
 }
 
-fn vertex_shader_output_field_to_ext_decl(field: &StructFieldSpecifier) -> ExternalDeclaration {
+/// Map a struct’s fields to a Vec<ExternalDeclaration>. Typically suitable for generating outputs
+/// from a struct fields.
+fn fields_to_ext_decls(fields: &[StructFieldSpecifier], prefix: &str) -> Result<Vec<ExternalDeclaration>, GLSLConversionError> {
+  let mut outputs = Vec::new();
+
+  for (i, field) in fields.into_iter().enumerate() {
+    if let TypeSpecifierNonArray::Struct(_) = field.ty.ty {
+      return Err(GLSLConversionError::OutputFieldCannotBeStruct(i, field.ty.clone()));
+    }
+
+    // TODO: also fail on TypeSpecifierNonArray::TypeName
+
+    if field.identifiers.len() > 1 {
+      return Err(GLSLConversionError::OutputFieldCannotHaveSeveralIdentifiers(i, field.clone()));
+    }
+
+    outputs.push(field_to_ext_decl(&field, prefix));
+  }
+
+  Ok(outputs)
+}
+
+/// Map a StructFieldSpecifier to an ExternalDeclaration. Typically suitable for generating an
+/// output from a struct field.
+fn field_to_ext_decl(field: &StructFieldSpecifier, prefix: &str) -> ExternalDeclaration {
   let base_qualifier = TypeQualifierSpec::Storage(StorageQualifier::Out);
   let qualifier = match field.qualifier {
     Some(ref qual) => TypeQualifier { qualifiers: qual.clone().qualifiers.into_iter().chain(once(base_qualifier)).collect() },
@@ -562,7 +576,7 @@ fn vertex_shader_output_field_to_ext_decl(field: &StructFieldSpecifier) -> Exter
   };
   let decl = SingleDeclaration {
     ty: fsty,
-    name: Some("__v_".to_owned() + &field.identifiers[0].0),
+    name: Some(prefix.to_owned() + &field.identifiers[0].0),
     array_specifier: field.identifiers[0].1.clone(),
     initializer: None
   };
@@ -587,6 +601,10 @@ fn sink_fragment_shader<F>(sink: &mut F,
   for input in &fragment_shader_inputs(input_ty) {
     writer::glsl::show_external_declaration(sink, input);
   }
+
+  let ret_ty = get_fn_ret_ty(map_frag_data, structs);
+
+  Ok(())
 }
 
 fn fragment_shader_inputs(input: &StructSpecifier) -> Vec<ExternalDeclaration> {
@@ -594,12 +612,12 @@ fn fragment_shader_inputs(input: &StructSpecifier) -> Vec<ExternalDeclaration> {
   input.fields.iter().skip(1).map(|field| {
     let base_qualifier = TypeQualifierSpec::Storage(StorageQualifier::In);
     let qualifier = match field.qualifier {
-      Some(ref qual) => TypeQualifier { qualifiers: once(base_qualifier).chain(qual.qualifiers).collect() },
+      Some(ref qual) => TypeQualifier { qualifiers: once(base_qualifier).chain(qual.qualifiers.clone()).collect() },
       None => TypeQualifier { qualifiers: vec![base_qualifier] }
     };
     let fsty = FullySpecifiedType {
       qualifier: Some(qualifier),
-      ty: field.ty
+      ty: field.ty.clone()
     };
     let decl = SingleDeclaration {
       ty: fsty,

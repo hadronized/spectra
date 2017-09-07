@@ -436,7 +436,9 @@ pub fn from_spsl(key: &ModuleKey, store: &mut Store) {
 
     match glsl {
       Ok(s) => {
-        println!("success: {:?}", s);
+        println!("success");
+        println!("vertex shader:\n{}", s.vs);
+        println!("\nfragment shader shader:\n{}", s.fs);
       }
       Err(e) => {
         println!("damn: {:?}", e)
