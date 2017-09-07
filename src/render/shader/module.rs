@@ -596,9 +596,34 @@ fn sink_fragment_shader<F>(sink: &mut F,
   let ret_ty = get_fn_ret_ty(map_frag_data, structs)?;
   let outputs = fields_to_ext_decls(&ret_ty.fields, "__f_")?;
 
+  // sink inputs and outputs
   for ed in inputs.iter().chain(&outputs) {
     writer::glsl::show_external_declaration(sink, ed);
   }
+
+  // sink the map_frag_data function
+  writer::glsl::show_function_definition(sink, map_frag_data);
+
+  // void main
+  sink.write_str("void main() {\n  ");
+
+  // TODO
+  // // build the Vertex object
+  // // TODO
+
+  // // call the map_frag_data function
+  // let mut assigns = String::new();
+  // sink_vertex_shader_output(sink, &mut assigns, &ret_ty);
+
+  // sink.write_str(" v = map_vertex(");
+  // sink_vertex_shader_input_args(sink, &map_vertex);
+  // sink.write_str(");\n");
+
+  // // assign to outputs
+  // sink.write_str(&assigns);
+
+  // end of the main function
+  sink.write_str("}\n\n");
 
   Ok(())
 }
