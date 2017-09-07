@@ -205,10 +205,6 @@ impl Module {
       writer::glsl::show_block(&mut common, block);
     }
 
-    for struct_ in &structs {
-      writer::glsl::show_struct(&mut common, struct_);
-    }
-
     // filter out special functions so that we don’t put them in the common part
     for f in functions.iter().filter(|f| {
         let n: &str = &f.prototype.name;
@@ -225,8 +221,18 @@ impl Module {
       (None, _) => return Err(GLSLConversionError::NoVertexShader),
       (_, None) => return Err(GLSLConversionError::NoFragmentShader),
       (Some(vf), Some(ff)) => {
-        let vertex_output_ty = sink_vertex_shader(&mut vs, vf, &structs)?;
-        sink_fragment_shader(&mut fs, ff, &structs, &vertex_output_ty)?;
+        let vertex_ret_ty = sink_vertex_shader(&mut vs, vf, &structs)?;
+        let fragment_ret_ty = sink_fragment_shader(&mut fs, ff, &structs, &vertex_ret_ty)?;
+        
+        // stages don’t have the common structures yet because they might define overloaded ones, so
+        let mut structs_str = String::new();
+        for s in &structs {
+          if s.name != vertex_ret_ty.name && s.name != fragment_ret_ty.name {
+            writer::glsl::show_struct(&mut structs_str, s);
+          }
+        }
+
+        common = structs_str + &common;
       }
     }
 
@@ -355,6 +361,9 @@ fn sink_vertex_shader<F>(sink: &mut F,
   for ed in inputs.iter().chain(&outputs) {
     writer::glsl::show_external_declaration(sink, ed);
   }
+
+  // sink the return type
+  writer::glsl::show_struct(sink, &ret_ty);
 
   // sink the map_vertex function
   writer::glsl::show_function_definition(sink, map_vertex);
@@ -590,7 +599,7 @@ fn sink_fragment_shader<F>(sink: &mut F,
                            map_frag_data: &FunctionDefinition,
                            structs: &[StructSpecifier],
                            input_ty: &StructSpecifier)
-                           -> Result<(), GLSLConversionError>
+                           -> Result<StructSpecifier, GLSLConversionError>
                            where F: Write {
   let inputs = fragment_shader_inputs(input_ty); // this is wrong, need to adapt the previous inputs instead
   let ret_ty = get_fn_ret_ty(map_frag_data, structs)?;
@@ -608,8 +617,7 @@ fn sink_fragment_shader<F>(sink: &mut F,
   sink.write_str("void main() {\n  ");
 
   // TODO
-  // // build the Vertex object
-  // // TODO
+
 
   // // call the map_frag_data function
   // let mut assigns = String::new();
@@ -625,7 +633,7 @@ fn sink_fragment_shader<F>(sink: &mut F,
   // end of the main function
   sink.write_str("}\n\n");
 
-  Ok(())
+  Ok(ret_ty)
 }
 
 fn fragment_shader_inputs(input: &StructSpecifier) -> Vec<ExternalDeclaration> {
