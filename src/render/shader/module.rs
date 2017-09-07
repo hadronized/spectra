@@ -320,7 +320,6 @@ impl Module {
 pub enum GLSLConversionError {
   NoVertexShader,
   NoFragmentShader,
-  UnnamedInput,
   OutputHasMainQualifier,
   ReturnTypeMustBeAStruct(TypeSpecifier),
   WrongOutputFirstField(StructFieldSpecifier),
@@ -349,22 +348,13 @@ fn sink_vertex_shader<F>(sink: &mut F,
                          structs: &[StructSpecifier])
                          -> Result<StructSpecifier, GLSLConversionError>
                          where F: Write {
-  // sink inputs
   let inputs = vertex_shader_inputs(&map_vertex.prototype.parameters)?;
-
-  for input in &inputs {
-    writer::glsl::show_external_declaration(sink, input);
-  }
-
-  // sink outputs
   let outputs = vertex_shader_outputs(&map_vertex.prototype.ty, structs)?;
+  let ret_ty = get_fn_ret_ty(map_vertex, structs)?;
 
-  for output in &outputs {
-    writer::glsl::show_external_declaration(sink, output);
+  for ed in inputs.iter().chain(&outputs) {
+    writer::glsl::show_external_declaration(sink, ed);
   }
-
-  // sink the output type
-  let output_ty = get_fn_ret_ty(map_vertex, structs)?;
 
   // sink the map_vertex function
   writer::glsl::show_function_definition(sink, map_vertex);
@@ -374,7 +364,7 @@ fn sink_vertex_shader<F>(sink: &mut F,
 
   // call the map_vertex function
   let mut assigns = String::new();
-  sink_vertex_shader_output(sink, &mut assigns, &output_ty);
+  sink_vertex_shader_output(sink, &mut assigns, &ret_ty);
 
   sink.write_str(" v = map_vertex(");
   sink_vertex_shader_input_args(sink, &map_vertex);
@@ -386,7 +376,7 @@ fn sink_vertex_shader<F>(sink: &mut F,
   // end of the main function
   sink.write_str("}\n\n");
 
-  Ok(output_ty)
+  Ok(ret_ty)
 }
 
 fn get_fn_ret_ty(f: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<StructSpecifier, GLSLConversionError> {
@@ -444,10 +434,11 @@ fn sink_vertex_shader_input_arg<F>(sink: &mut F, arg: &FunctionParameterDeclarat
   match *arg {
     FunctionParameterDeclaration::Named(_, ref d) => {
       sink.write_str(&d.name);
-      Ok(())
     }
-    _ => Err(GLSLConversionError::UnnamedInput)
+    _ => ()
   }
+
+  Ok(())
 }
 
 
@@ -465,7 +456,6 @@ fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<ExternalDeclaration>, GLSL
 
   for (i, arg) in args.into_iter().enumerate() {
     match *arg {
-      FunctionParameterDeclaration::Unnamed(..) => return Err(GLSLConversionError::UnnamedInput),
       FunctionParameterDeclaration::Named(ref ty_qual, ref decl) => {
         let layout_qualifier = LayoutQualifier {
           ids: vec![LayoutQualifierSpec::Identifier("location".to_owned(), Some(Box::new(Expr::IntConst(i as i32))))]
@@ -499,6 +489,10 @@ fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<ExternalDeclaration>, GLSL
 
         inputs.push(ed);
       }
+
+      // unnamed arguments is not an error! it serves when the argument is not used, but we still
+      // need to state how the data is stored in the buffer
+      _ => ()
     }
   }
 
@@ -598,11 +592,13 @@ fn sink_fragment_shader<F>(sink: &mut F,
                            input_ty: &StructSpecifier)
                            -> Result<(), GLSLConversionError>
                            where F: Write {
-  for input in &fragment_shader_inputs(input_ty) {
-    writer::glsl::show_external_declaration(sink, input);
-  }
+  let inputs = fragment_shader_inputs(input_ty); // this is wrong, need to adapt the previous inputs instead
+  let ret_ty = get_fn_ret_ty(map_frag_data, structs)?;
+  let outputs = fields_to_ext_decls(&ret_ty.fields, "__f_")?;
 
-  let ret_ty = get_fn_ret_ty(map_frag_data, structs);
+  for ed in inputs.iter().chain(&outputs) {
+    writer::glsl::show_external_declaration(sink, ed);
+  }
 
   Ok(())
 }
