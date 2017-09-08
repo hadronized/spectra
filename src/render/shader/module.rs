@@ -1,3 +1,5 @@
+// TODO: optimize the allocation scheme
+
 //! Shader module.
 //!
 //! Shader functions and declarations can be grouped in so-called *modules*. Modules structure is
@@ -113,7 +115,7 @@ use render::shader::lang::parser;
 use render::shader::lang::syntax::{Block, Declaration, ExternalDeclaration, FunctionDefinition, FullySpecifiedType,
                                    FunctionParameterDeclaration, InitDeclaratorList, Expr,
                                    Module as SyntaxModule, SingleDeclaration, StorageQualifier,
-                                   StructSpecifier, StructFieldSpecifier, LayoutQualifier,
+                                   StructSpecifier, StructFieldSpecifier, LayoutQualifier, TypeName,
                                    TypeSpecifier, TypeSpecifierNonArray, TypeQualifier, TypeQualifierSpec, LayoutQualifierSpec};
 use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
@@ -330,7 +332,9 @@ pub enum GLSLConversionError {
   ReturnTypeMustBeAStruct(TypeSpecifier),
   WrongOutputFirstField(StructFieldSpecifier),
   OutputFieldCannotBeStruct(usize, TypeSpecifier),
-  OutputFieldCannotHaveSeveralIdentifiers(usize, StructFieldSpecifier)
+  OutputFieldCannotHaveSeveralIdentifiers(usize, StructFieldSpecifier),
+  UnknownInputType(TypeName),
+  NotSingleArgFn // FIXME: wat da fak?!
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -409,6 +413,15 @@ fn get_fn_ret_ty(f: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<
     }
   } else {
     Err(GLSLConversionError::ReturnTypeMustBeAStruct(f.prototype.ty.ty.clone()))
+  }
+}
+
+fn get_fn_input_ty_name(f: &FunctionDefinition) -> Result<TypeName, GLSLConversionError> {
+  match f.prototype.parameters.as_slice() {
+    &[FunctionParameterDeclaration::Named(_, ref fpd)] => Ok(fpd.name.clone()),
+    &[FunctionParameterDeclaration::Unnamed(_, TypeSpecifier { ty: TypeSpecifierNonArray::TypeName(ref n), .. })] =>
+      Ok(n.clone()),
+    _ => Err(GLSLConversionError::NotSingleArgFn)
   }
 }
 
@@ -594,6 +607,13 @@ fn sink_fragment_shader<F>(sink: &mut F,
                            prev_inputs: &[SingleDeclaration])
                            -> Result<StructSpecifier, GLSLConversionError>
                            where F: Write {
+  let input_ty_name = get_fn_input_ty_name(map_frag_data)?;
+
+  // ensure we use the right input type
+  if Some(&input_ty_name) != prev_ret_ty.name.as_ref() {
+    return Err(GLSLConversionError::UnknownInputType(input_ty_name.clone()));
+  }
+
   let inputs = fragment_shader_inputs(prev_inputs); // this is wrong, need to adapt the previous inputs instead
   let ret_ty = get_fn_ret_ty(map_frag_data, structs)?;
   let outputs = fields_to_single_decls(&ret_ty.fields, "__f_")?;
@@ -616,6 +636,7 @@ fn sink_fragment_shader<F>(sink: &mut F,
   // void main
   sink.write_str("void main() {\n  ");
 
+  write!(sink, "{0} v = {0}(", prev_ret_ty.name.as_ref().unwrap());
   // // call the map_frag_data function
   // let mut assigns = String::new();
   // sink_vertex_shader_output(sink, &mut assigns, &ret_ty);
