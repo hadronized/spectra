@@ -200,7 +200,7 @@ impl Module {
     // sink uniforms, blocks and structs first as a common framework
     for uniform in &uniforms {
       writer::glsl::show_single_declaration(&mut common, uniform);
-      common.write_str(";\n");
+      let _ = common.write_str(";\n");
     }
 
     for block in &blocks {
@@ -385,21 +385,21 @@ fn sink_vertex_shader<F>(sink: &mut F,
   writer::glsl::show_function_definition(sink, map_vertex);
 
   // void main
-  sink.write_str("void main() {\n  ");
+  let _ = sink.write_str("void main() {\n  ");
 
   // call the map_vertex function
   let mut assigns = String::new();
   sink_vertex_shader_output(sink, &mut assigns, &ret_ty);
 
-  sink.write_str(" v = map_vertex(");
+  let _ = sink.write_str(" v = map_vertex(");
   sink_vertex_shader_input_args(sink, &map_vertex);
-  sink.write_str(");\n");
+  let _ = sink.write_str(");\n");
 
   // assign to outputs
-  sink.write_str(&assigns);
+  let _ = sink.write_str(&assigns);
 
   // end of the main function
-  sink.write_str("}\n\n");
+  let _ = sink.write_str("}\n\n");
 
   Ok((ret_ty, outputs))
 }
@@ -436,53 +436,47 @@ fn get_fn_input_ty_name(f: &FunctionDefinition) -> Result<TypeName, GLSLConversi
 }
 
 /// Sink a vertex shader’s output.
-fn sink_vertex_shader_output<F, G>(sink: &mut F, assigns: &mut G, ty: &StructSpecifier) -> Result<(), GLSLConversionError> where F: Write, G: Write {
+fn sink_vertex_shader_output<F, G>(sink: &mut F, assigns: &mut G, ty: &StructSpecifier) where F: Write, G: Write {
   if let Some(ref name) = ty.name {
-    sink.write_str(name);
+    let _ = sink.write_str(name);
   } else {
     panic!("cannot happen");
   }
 
-  assigns.write_str("  gl_Position = v.gl_Position;\n");
+  let _ = assigns.write_str("  gl_Position = v.gl_Position;\n");
 
   for field in &ty.fields[1..] {
     for &(ref identifier, _) in &field.identifiers {
-      write!(assigns, "  __v_{0} = v.{0};\n", identifier);
+      let _ = write!(assigns, "  __v_{0} = v.{0};\n", identifier);
     }
   }
-  
-  Ok(())
 }
 
 /// Sink the arguments of the map_vertex function.
-fn sink_vertex_shader_input_args<F>(sink: &mut F, map_vertex: &FunctionDefinition) -> Result<(), GLSLConversionError> where F: Write {
+fn sink_vertex_shader_input_args<F>(sink: &mut F, map_vertex: &FunctionDefinition) where F: Write {
   let args = &map_vertex.prototype.parameters;
 
   if !args.is_empty() {
     // sink the first argument upfront
     let first_arg = &args[0];
 
-    sink_vertex_shader_input_arg(sink, first_arg)?;
+    sink_vertex_shader_input_arg(sink, first_arg);
 
     for arg in &map_vertex.prototype.parameters[1..] {
-      sink.write_str(", ");
-      sink_vertex_shader_input_arg(sink, arg)?;
+      let _ = sink.write_str(", ");
+      sink_vertex_shader_input_arg(sink, arg);
     }
   }
-
-  Ok(())
 }
 
 /// Sink an argument of a function.
-fn sink_vertex_shader_input_arg<F>(sink: &mut F, arg: &FunctionParameterDeclaration) -> Result<(), GLSLConversionError> where F: Write {
+fn sink_vertex_shader_input_arg<F>(sink: &mut F, arg: &FunctionParameterDeclaration) where F: Write {
   match *arg {
     FunctionParameterDeclaration::Named(_, ref d) => {
-      sink.write_str(&d.name);
+      let _ = sink.write_str(&d.name);
     }
     _ => ()
   }
-
-  Ok(())
 }
 
 
@@ -644,25 +638,25 @@ fn sink_fragment_shader<F>(sink: &mut F,
   writer::glsl::show_function_definition(sink, map_frag_data);
 
   // void main
-  sink.write_str("void main() {\n  ");
+  let _ = sink.write_str("void main() {\n  ");
 
-  write!(sink, "{0} i = {0}(", prev_ret_ty.name.as_ref().unwrap());
+  let _ = write!(sink, "{0} i = {0}(", prev_ret_ty.name.as_ref().unwrap());
 
-  sink.write_str(inputs[0].name.as_ref().unwrap());
+  let _ = sink.write_str(inputs[0].name.as_ref().unwrap());
 
   for input in &inputs[1..] {
-    write!(sink, ", {}", input.name.as_ref().unwrap());
+    let _ = write!(sink, ", {}", input.name.as_ref().unwrap());
   }
 
-  sink.write_str(");\n");
-  write!(sink, "  {} o = map_frag_data(i);\n", ret_ty.name.as_ref().unwrap());
+  let _ = sink.write_str(");\n");
+  let _ = write!(sink, "  {} o = map_frag_data(i);\n", ret_ty.name.as_ref().unwrap());
 
   for (output, ret_ty_field) in outputs.iter().zip(&ret_ty.fields) {
-    write!(sink, "  {} = o.{};\n", output.name.as_ref().unwrap(), ret_ty_field.identifiers[0].0);
+    let _ = write!(sink, "  {} = o.{};\n", output.name.as_ref().unwrap(), ret_ty_field.identifiers[0].0);
   }
 
   // end of the main function
-  sink.write_str("}\n\n");
+  let _ = sink.write_str("}\n\n");
 
   Ok(ret_ty)
 }
