@@ -113,7 +113,7 @@ use glsl::writer;
 use render::shader::lang::parser;
 // FIXME: qualified use, it’s ugly now
 use render::shader::lang::syntax::{Block, Declaration, ExternalDeclaration, FunctionDefinition, FullySpecifiedType,
-                                   FunctionParameterDeclaration, InitDeclaratorList, Expr,
+                                   FunctionParameterDeclaration, FunctionParameterDeclarator, InitDeclaratorList, Expr,
                                    Module as SyntaxModule, SingleDeclaration, StorageQualifier,
                                    StructSpecifier, StructFieldSpecifier, LayoutQualifier, TypeName,
                                    TypeSpecifier, TypeSpecifierNonArray, TypeQualifier, TypeQualifierSpec, LayoutQualifierSpec};
@@ -418,9 +418,19 @@ fn get_fn_ret_ty(f: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<
 
 fn get_fn_input_ty_name(f: &FunctionDefinition) -> Result<TypeName, GLSLConversionError> {
   match f.prototype.parameters.as_slice() {
-    &[FunctionParameterDeclaration::Named(_, ref fpd)] => Ok(fpd.name.clone()),
-    &[FunctionParameterDeclaration::Unnamed(_, TypeSpecifier { ty: TypeSpecifierNonArray::TypeName(ref n), .. })] =>
-      Ok(n.clone()),
+    &[FunctionParameterDeclaration::Named(_, FunctionParameterDeclarator {
+      ty: TypeSpecifier {
+        ty: TypeSpecifierNonArray::TypeName(ref n),
+        ..
+      },
+      ..
+    })] => Ok(n.clone()),
+
+    &[FunctionParameterDeclaration::Unnamed(_, TypeSpecifier {
+      ty: TypeSpecifierNonArray::TypeName(ref n),
+      ..
+    })] => Ok(n.clone()),
+
     _ => Err(GLSLConversionError::NotSingleArgFn)
   }
 }
@@ -619,8 +629,8 @@ fn sink_fragment_shader<F>(sink: &mut F,
   let outputs = fields_to_single_decls(&ret_ty.fields, "__f_")?;
 
   // sink inputs and outputs
-  for sd in inputs.into_iter().chain(outputs) {
-    let ed = single_to_external_declaration(sd);
+  for sd in inputs.iter().chain(&outputs) {
+    let ed = single_to_external_declaration(sd.clone());
     writer::glsl::show_external_declaration(sink, &ed);
   }
 
@@ -636,17 +646,20 @@ fn sink_fragment_shader<F>(sink: &mut F,
   // void main
   sink.write_str("void main() {\n  ");
 
-  write!(sink, "{0} v = {0}(", prev_ret_ty.name.as_ref().unwrap());
-  // // call the map_frag_data function
-  // let mut assigns = String::new();
-  // sink_vertex_shader_output(sink, &mut assigns, &ret_ty);
+  write!(sink, "{0} i = {0}(", prev_ret_ty.name.as_ref().unwrap());
 
-  // sink.write_str(" v = map_vertex(");
-  // sink_vertex_shader_input_args(sink, &map_vertex);
-  // sink.write_str(");\n");
+  sink.write_str(inputs[0].name.as_ref().unwrap());
 
-  // // assign to outputs
-  // sink.write_str(&assigns);
+  for input in &inputs[1..] {
+    write!(sink, ", {}", input.name.as_ref().unwrap());
+  }
+
+  sink.write_str(");\n");
+  write!(sink, "  {} o = map_frag_data(i);\n", ret_ty.name.as_ref().unwrap());
+
+  for (output, ret_ty_field) in outputs.iter().zip(&ret_ty.fields) {
+    write!(sink, "  {} = o.{};\n", output.name.as_ref().unwrap(), ret_ty_field.identifiers[0].0);
+  }
 
   // end of the main function
   sink.write_str("}\n\n");
