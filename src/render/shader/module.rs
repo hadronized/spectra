@@ -180,7 +180,7 @@ impl Module {
   }
 
   /// Fold a module into its GLSL setup.
-  pub fn to_glsl_setup(&self) -> Result<GLSLSetup, GLSLConversionError> {
+  pub(crate) fn to_glsl_setup(&self) -> Result<ModuleFold, GLSLConversionError> {
     let uniforms = self.uniforms();
     let blocks = self.blocks();
     let structs = self.structs();
@@ -236,7 +236,7 @@ impl Module {
     } else if fs.is_empty() {
       Err(GLSLConversionError::NoFragmentShader)
     } else {
-      let setup = GLSLSetup {
+      let setup = ModuleFold {
         vs: common.clone() + &vs,
         fs: common.clone() + &fs
       };
@@ -331,8 +331,12 @@ pub enum GLSLConversionError {
   NotSingleArgFn // FIXME: wat da fak?!
 }
 
+/// Module fold (pipeline).
+///
+/// When a module contains all the required functions and structures to define a workable pipeline,
+/// it can be folded down to this type, that will be used by lower layers (GPU).
 #[derive(Clone, Debug, PartialEq)]
-pub struct GLSLSetup {
+pub(crate) struct ModuleFold {
   pub vs: String,
   pub fs: String
 }
