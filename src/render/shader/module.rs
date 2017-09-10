@@ -8,7 +8,7 @@
 
 use std::fs::File;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use render::shader::lang::parser;
 use render::shader::lang::syntax::Module as SyntaxModule;
@@ -112,10 +112,10 @@ impl StoreKey for ModuleKey {
 }
 
 impl Load for Module {
-  fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
-    let path = path.as_ref();
+  fn load<K>(key: &K, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where K: StoreKey<Target = Self> {
+    let path = key.key_to_path();
 
-    let mut fh = File::open(path).map_err(|_| LoadError::FileNotFound(path.to_owned()))?;
+    let mut fh = File::open(&path).map_err(|_| LoadError::FileNotFound(path.into()))?;
     let mut src = String::new();
     let _ = fh.read_to_string(&mut src);
 

@@ -2,7 +2,7 @@ pub use luminance::tess::{Mode, Tess, TessVertices};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use wavefront_obj::obj;
 
 use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
@@ -54,14 +54,14 @@ impl StoreKey for ObjModelKey {
 }
 
 impl Load for ObjModel {
-  fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
-    let path = path.as_ref();
+  fn load<K>(key: &K, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where K: StoreKey<Target = Self> {
+    let path = key.key_to_path();
 
     let mut input = String::new();
 
     // load the data directly into memory; no buffering nor streaming
     {
-      let mut file = File::open(path).map_err(|_| LoadError::FileNotFound(path.to_path_buf()))?;
+      let mut file = File::open(&path).map_err(|_| LoadError::FileNotFound(path))?;
       let _ = file.read_to_string(&mut input);
     }
 

@@ -18,9 +18,8 @@ use std::hash;
 use std::io::{BufRead, BufReader};
 use std::marker::PhantomData;
 use std::ops::Deref;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use render::shader::module::{Module, ModuleKey};
 use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
 #[derive(Debug)]
@@ -297,8 +296,8 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni>
     where In: 'static + Vertex,
           Out: 'static,
           Uni: 'static + UniformInterface {
-  fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
-    let path = path.as_ref();
+  fn load<K>(key: &K, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where K: StoreKey<Target = Self> {
+    let path = key.key_to_path();
 
     enum CurrentStage {
       VS,
@@ -312,7 +311,7 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni>
       *src += &format!("#line {}\n{}\n", line_nb, line);
     }
 
-    match File::open(path) {
+    match File::open(&path) {
       Ok(fh) => {
         let buffered = BufReader::new(fh);
         let mut tcs_src = String::new();
@@ -410,7 +409,7 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni>
           }).into()
         )
       },
-      Err(_) => Err(LoadError::FileNotFound(path.to_owned()))
+      Err(_) => Err(LoadError::FileNotFound(path.into()))
     }
   }
 }

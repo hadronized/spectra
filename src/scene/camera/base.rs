@@ -7,7 +7,7 @@ use std::fmt;
 use std::fs::File;
 use std::hash;
 use std::marker::PhantomData;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use linear::{M44, Quat, V3};
 use render::projection::{Projectable, Projection};
@@ -106,11 +106,11 @@ impl<A> StoreKey for CameraKey<A> where A: 'static {
 }
 
 impl<A> Load for Camera<A> where A: 'static + Default + DeserializeOwned {
-  fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
-    let path = path.as_ref();
+  fn load<K>(key: &K, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where K: StoreKey<Target = Self> {
+    let path = key.key_to_path();
 
     let manifest: Manifest<A> = {
-      let file = File::open(path).map_err(|_| LoadError::FileNotFound(path.to_path_buf()))?;
+      let file = File::open(&path).map_err(|_| LoadError::FileNotFound(path))?;
       from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?
     };
 

@@ -1,7 +1,7 @@
 use serde_json::from_reader;
 use std::collections::HashMap;
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
@@ -182,10 +182,10 @@ impl StoreKey for TimelineManifestKey {
 }
 
 impl Load for TimelineManifest {
-  fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
-    let path = path.as_ref();
+  fn load<K>(key: &K, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where K: StoreKey<Target = Self> {
+    let path = key.key_to_path();
 
-    let file = File::open(path).map_err(|_| LoadError::FileNotFound(path.to_path_buf()))?;
+    let file = File::open(&path).map_err(|_| LoadError::FileNotFound(path))?;
     let res: Self = from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?;
 
     Ok(res.into())

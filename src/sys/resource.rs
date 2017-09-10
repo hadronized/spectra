@@ -39,7 +39,7 @@ use std::time::{Duration, Instant};
 pub trait Load: 'static + Sized {
   /// Load a resource. The `Store` can be used to load or declare additional resource dependencies.
   /// The result type is used to register for dependency events.
-  fn load<P>(path: P, cache: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path>;
+  fn load<K>(key: &K, cache: &mut Store) -> Result<LoadResult<Self>, LoadError> where K: StoreKey<Target = Self>;
 }
 
 /// Result of a resource loading. This type enables you to register a resource for reloading events
@@ -92,7 +92,7 @@ impl<K, T> CacheKey for RKey<K> where K: CacheKey<Target = T> {
   type Target = Rc<RefCell<T>>;
 }
 
-/// Trait used to represente keys in a resource store.
+/// Trait used to represent keys in a resource store.
 pub trait StoreKey: CacheKey + Clone + Debug {
   /// Convert from a key to its path representation.
   fn key_to_path(&self) -> PathBuf;
@@ -166,13 +166,12 @@ impl Store {
     // create the path associated with the given key
     let key_ = key.clone();
     let path = self.root.join(K::key_to_path(&key));
-    let path_ = path.clone();
 
     // closure used to reload the object when needed
     let on_reload: Box<for<'a> Fn(&'a mut Store) -> Result<(), LoadError>> = Box::new(move |cache| {
       deb!("reloading {:?}", key_);
 
-      match K::Target::load(&path_, cache) {
+      match K::Target::load(&key_, cache) {
         Ok(load_result) => {
           // replace the current resource with the freshly loaded one
           *res_.borrow_mut() = load_result.res;
@@ -209,6 +208,7 @@ impl Store {
   /// Get a resource from the cache and return an error if loading failed.
   fn get_<K>(&mut self, key: &K) -> Result<Res<K::Target>, LoadError> where K: StoreKey, K::Target: Load {
     let rekey = RKey(key.clone());
+
     match self.cache.get(&rekey).cloned() {
       Some(resource) => {
         deb!("cache hit for {:?}", key);
@@ -219,8 +219,7 @@ impl Store {
 
         // specific loading
         info!("loading {:?}", key);
-        let path = self.root.join(K::key_to_path(key));
-        let load_result = K::Target::load(&path, self)?;
+        let load_result = K::Target::load(key, self)?;
         Ok(self.inject(key, load_result.res, load_result.dependencies))
       }
     }

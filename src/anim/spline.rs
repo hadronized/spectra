@@ -7,7 +7,7 @@ use std::fmt;
 use std::hash;
 use std::marker::PhantomData;
 use std::ops::{Add, Div, Mul, Sub};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use linear::{Scale, Quat, V2, V3, V4};
 use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
@@ -214,10 +214,10 @@ impl<T> StoreKey for SplineKey<T> where T: 'static {
 }
 
 impl<T> Load for Spline<T> where T: 'static + SplineDeserializerAdapter {
-  fn load<P>(path: P, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path> {
-    let path = path.as_ref();
+  fn load<K>(key: &K, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where K: StoreKey<Target = Self> {
+    let path = key.key_to_path();
 
-    let file = File::open(path).map_err(|_| LoadError::FileNotFound(path.to_path_buf()))?;
+    let file = File::open(&path).map_err(|_| LoadError::FileNotFound(path))?;
     let keys: Vec<Key<T::Deserialized>> = from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?;
 
     Ok(Spline::from_keys(keys.into_iter().map(|key|
