@@ -37,9 +37,6 @@ use std::time::{Duration, Instant};
 /// important to note that you’re not supposed to load objects directly from this trait. Instead,
 /// you should use a `Store`.
 pub trait Load: 'static + Sized {
-  // /// Convert from a key to its path representation.
-  // fn key_to_path(key: &Self::Key) -> PathBuf;
-
   /// Load a resource. The `Store` can be used to load or declare additional resource dependencies.
   /// The result type is used to register for dependency events.
   fn load<P>(path: P, cache: &mut Store) -> Result<LoadResult<Self>, LoadError> where P: AsRef<Path>;
