@@ -112,6 +112,47 @@ use render::shader::lang::parser;
 use render::shader::lang::syntax;
 use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
+/// Key to use to get a `Module`.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct ModuleKey(String);
+
+impl ModuleKey {
+  /// Create a new module key. The string must contain the module in the form:
+  ///
+  ///     foo.bar.zoo
+  pub fn new(key: &str) -> Self {
+    ModuleKey(key.to_owned())
+  }
+}
+
+impl CacheKey for ModuleKey {
+  type Target = Module;
+}
+
+impl StoreKey for ModuleKey {
+  fn key_to_path(&self) -> PathBuf {
+    PathBuf::from(self.0.replace(".", "/") + ".spsl")
+  }
+}
+
+impl Load for Module {
+  fn load<K>(key: &K, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where K: StoreKey<Target = Self> {
+    let path = key.key_to_path();
+
+    let mut fh = File::open(&path).map_err(|_| LoadError::FileNotFound(path.into()))?;
+    let mut src = String::new();
+    let _ = fh.read_to_string(&mut src);
+
+    match parser::parse_str(&src[..], parser::module) {
+      parser::ParseResult::Ok(module) => {
+        Ok(Module(module).into())
+      }
+      parser::ParseResult::Err(e) => Err(LoadError::ConversionFailed(format!("{:?}", e))),
+      _ => Err(LoadError::ConversionFailed("incomplete input".to_owned()))
+    }
+  }
+}
+
 /// Shader module.
 ///
 /// A shader module is a piece of GLSL code with optional import lists (dependencies).
@@ -246,7 +287,7 @@ impl Module {
   }
 
   /// Get all the uniforms defined in a module.
-  pub fn uniforms(&self) -> Vec<syntax::SingleDeclaration> {
+  fn uniforms(&self) -> Vec<syntax::SingleDeclaration> {
     let mut uniforms = Vec::new();
 
     for glsl in &self.0.glsl {
@@ -273,7 +314,7 @@ impl Module {
   }
 
   /// Get all the blocks defined in a module.
-  pub fn blocks(&self) -> Vec<syntax::Block> {
+  fn blocks(&self) -> Vec<syntax::Block> {
     self.0.glsl.iter().filter_map(|ed| {
       match *ed {
         syntax::ExternalDeclaration::Declaration(syntax::Declaration::Block(ref b)) => Some(b.clone()),
@@ -283,7 +324,7 @@ impl Module {
   }
 
   /// Get all the functions.
-  pub fn functions(&self) -> Vec<syntax::FunctionDefinition> {
+  fn functions(&self) -> Vec<syntax::FunctionDefinition> {
     self.0.glsl.iter().filter_map(|ed| match *ed {
       syntax::ExternalDeclaration::FunctionDefinition(ref def) => Some(def.clone()),
       _ => None
@@ -291,7 +332,7 @@ impl Module {
   }
 
   /// Get all the declared structures.
-  pub fn structs(&self) -> Vec<syntax::StructSpecifier> {
+  fn structs(&self) -> Vec<syntax::StructSpecifier> {
     self.0.glsl.iter().filter_map(|ed| {
       match *ed {
         syntax::ExternalDeclaration::Declaration(
@@ -317,6 +358,9 @@ impl Module {
   }
 }
 
+/// GLSL conversion error.
+///
+/// Such an errors can happen when a module is ill-formed.
 #[derive(Clone, Debug, PartialEq)]
 pub enum GLSLConversionError {
   NoVertexShader,
@@ -362,6 +406,7 @@ fn sink_vertex_shader<F>(sink: &mut F,
   let outputs = vertex_shader_outputs(&map_vertex.prototype.ty, structs)?;
   let ret_ty = get_fn_ret_ty(map_vertex, structs)?;
 
+  // sink inputs and outputs
   for sd in inputs.iter().chain(&outputs) {
     let ed = single_to_external_declaration(sd.clone());
     writer::glsl::show_external_declaration(sink, &ed);
@@ -379,7 +424,6 @@ fn sink_vertex_shader<F>(sink: &mut F,
   // call the map_vertex function
   let mut assigns = String::new();
   sink_vertex_shader_output(sink, &mut assigns, &ret_ty);
-
   let _ = sink.write_str(" v = map_vertex(");
   sink_vertex_shader_input_args(sink, &map_vertex);
   let _ = sink.write_str(");\n");
@@ -468,29 +512,34 @@ fn sink_vertex_shader_input_arg<F>(sink: &mut F, arg: &syntax::FunctionParameter
   }
 }
 
+fn vertex_shader_input_qualifier(i: usize, ty_qual: &Option<syntax::TypeQualifier>) -> syntax::TypeQualifier {
+  let layout_qualifier = syntax::LayoutQualifier {
+    ids: vec![syntax::LayoutQualifierSpec::Identifier("location".to_owned(),
+    Some(Box::new(syntax::Expr::IntConst(i as i32))))]
+  };
+  let base_qualifier = syntax::TypeQualifier {
+    qualifiers: vec![
+      syntax::TypeQualifierSpec::Layout(layout_qualifier),
+      syntax::TypeQualifierSpec::Storage(syntax::StorageQualifier::In)
+    ]
+  };
 
+  match *ty_qual {
+    Some(ref qual) => syntax::TypeQualifier {
+      qualifiers: base_qualifier.qualifiers.into_iter().chain(qual.clone().qualifiers).collect()
+    },
+    None => base_qualifier
+  }
+}
+
+/// Extract the vertex shader inputs from a list of arguments.
 fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<syntax::SingleDeclaration>, GLSLConversionError> where I: IntoIterator<Item = &'a syntax::FunctionParameterDeclaration> {
   let mut inputs = Vec::new();
 
   for (i, arg) in args.into_iter().enumerate() {
     match *arg {
       syntax::FunctionParameterDeclaration::Named(ref ty_qual, ref decl) => {
-        let layout_qualifier = syntax::LayoutQualifier {
-          ids: vec![syntax::LayoutQualifierSpec::Identifier("location".to_owned(),
-                                                            Some(Box::new(syntax::Expr::IntConst(i as i32))))]
-        };
-        let base_qualifier = syntax::TypeQualifier {
-          qualifiers: vec![
-            syntax::TypeQualifierSpec::Layout(layout_qualifier),
-            syntax::TypeQualifierSpec::Storage(syntax::StorageQualifier::In)
-          ]
-        };
-        let qualifier = match *ty_qual {
-          Some(ref qual) => syntax::TypeQualifier {
-            qualifiers: base_qualifier.qualifiers.into_iter().chain(qual.clone().qualifiers).collect()
-          },
-          None => base_qualifier
-        };
+        let qualifier = vertex_shader_input_qualifier(i, ty_qual);
         let ty = decl.ty.clone();
         let name = Some(decl.name.clone());
         let array_spec = decl.array_spec.clone();
@@ -698,41 +747,3 @@ pub enum DepsError {
   /// There was a loading error of a module.
   LoadError(ModuleKey)
 }
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct ModuleKey(String);
-
-impl ModuleKey {
-  pub fn new(key: &str) -> Self {
-    ModuleKey(key.to_owned())
-  }
-}
-
-impl CacheKey for ModuleKey {
-  type Target = Module;
-}
-
-impl StoreKey for ModuleKey {
-  fn key_to_path(&self) -> PathBuf {
-    PathBuf::from(self.0.replace(".", "/") + ".spsl")
-  }
-}
-
-impl Load for Module {
-  fn load<K>(key: &K, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where K: StoreKey<Target = Self> {
-    let path = key.key_to_path();
-
-    let mut fh = File::open(&path).map_err(|_| LoadError::FileNotFound(path.into()))?;
-    let mut src = String::new();
-    let _ = fh.read_to_string(&mut src);
-
-    match parser::parse_str(&src[..], parser::module) {
-      parser::ParseResult::Ok(module) => {
-        Ok(Module(module).into())
-      }
-      parser::ParseResult::Err(e) => Err(LoadError::ConversionFailed(format!("{:?}", e))),
-      _ => Err(LoadError::ConversionFailed("incomplete input".to_owned()))
-    }
-  }
-}
-
