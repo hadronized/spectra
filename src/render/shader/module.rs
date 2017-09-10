@@ -1,5 +1,3 @@
-// TODO: optimize the allocation scheme
-
 //! Shader module.
 //!
 //! Shader functions and declarations can be grouped in so-called *modules*. Modules structure is
