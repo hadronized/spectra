@@ -116,109 +116,16 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni>
     where In: 'static + Vertex,
           Out: 'static,
           Uni: 'static + UniformInterface {
-  fn load<K>(key: &K, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where K: StoreKey<Target = Self> {
-    // load as a module first
+  type Key = ProgramKey<In, Out, Uni>;
 
+  fn load(key: &Self::Key, _: &mut Store) -> Result<LoadResult<Self>, LoadError> {
+    let module_key = ModuleKey::new(&key.key);
+    let (module, deps) = store.get(&module_key).ok_or(LoadError::ConversionFailed("cannot get program".to_owned()))?;
 
-    match File::open(&path) {
-      Ok(fh) => {
-        let buffered = BufReader::new(fh);
-        let mut tcs_src = String::new();
-        let mut tes_src = String::new();
-        let mut vs_src = String::new();
-        let mut gs_src = String::new();
-        let mut fs_src = String::new();
-        let mut current_stage: Option<CurrentStage> = None;
-
-        for (line_nb, line) in buffered.lines().enumerate() {
-          let line_nb = line_nb + 1;
-          let line = line.unwrap();
-          let trimmed = line.trim();
-
-          if trimmed.starts_with("#vs") {
-            if !vs_src.is_empty() {
-              return Err(LoadError::ParseFailed(format!("(line {}) several #vs sections", line_nb)));
-            }
-
-            info!("  found a vertex shader");
-
-            current_stage = Some(CurrentStage::VS);
-            continue;
-          } else if trimmed.starts_with("#fs") {
-            if !fs_src.is_empty() {
-              return Err(LoadError::ParseFailed(format!("(line {}) several #fs sections", line_nb)));
-            }
-
-            info!("  found a fragment shader");
-
-            current_stage = Some(CurrentStage::FS);
-            continue;
-          } else if trimmed.starts_with("#gs") {
-            if !gs_src.is_empty() {
-              return Err(LoadError::ParseFailed(format!("(line {}) several #gs sections", line_nb)));
-            }
-
-            info!("  found a geometry shader");
-
-            current_stage = Some(CurrentStage::GS);
-            continue;
-          } else if trimmed.starts_with("#tcs") {
-            if !tcs_src.is_empty() {
-              return Err(LoadError::ParseFailed(format!("(line {}) several #tcs sections", line_nb)));
-            }
-
-            info!("  found a tessellation control shader");
-
-            current_stage = Some(CurrentStage::TCS);
-            continue;
-          } else if trimmed.starts_with("#tes") {
-            if !tes_src.is_empty() {
-              return Err(LoadError::ParseFailed(format!("(line {}) several #tes sections", line_nb)));
-            }
-
-            info!("  found a tessellation evaluation shader");
-
-            current_stage = Some(CurrentStage::TES);
-            continue;
-          } else if current_stage.is_none() && !trimmed.is_empty() && !trimmed.starts_with("//") && !trimmed.starts_with("\n") {
-            return Err(LoadError::ParseFailed(format!("(line {}) not in a shader stage nor a comment", line_nb)));
-          }
-
-          match current_stage {
-            Some(CurrentStage::VS) => {
-              annotate_line_src(&mut vs_src, trimmed, line_nb);
-            },
-            Some(CurrentStage::FS) => {
-              annotate_line_src(&mut fs_src, trimmed, line_nb);
-            },
-            Some(CurrentStage::GS) => {
-              annotate_line_src(&mut gs_src, trimmed, line_nb);
-            },
-            Some(CurrentStage::TCS) => {
-              annotate_line_src(&mut tcs_src, trimmed, line_nb);
-            },
-            Some(CurrentStage::TES) => {
-              annotate_line_src(&mut tes_src, trimmed, line_nb);
-            },
-            None => {}
-          }
-        }
-
-        let (program, warnings) = new_program(&tcs_src, &tes_src, &vs_src, &gs_src, &fs_src)
-          .map_err(|e| LoadError::ConversionFailed(format!("{:#?}", e)))?;
-
-        // check for semantic errors
-        for warning in warnings {
-          warn!("uniform warning: {:?}", warning);
-        }
-
-        Ok(
-          (Program {
-            program: program
-          }).into()
-        )
-      },
-      Err(_) => Err(LoadError::FileNotFound(path.into()))
+    match module.to_glsl_setup() {
+      Ok(fold) => {
+        let program = LProgram::from_strings(None, &fold.vs, None, &fold.fs);
+        // TODO: later!
     }
   }
 }

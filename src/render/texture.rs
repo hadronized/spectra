@@ -81,7 +81,9 @@ impl StoreKey for TextureKey {
 }
 
 impl Load for TextureImage {
-  fn load<K>(key: &K, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where K: StoreKey<Target = Self> {
+  type Key = TextureKey;
+
+  fn load(key: &Self::Key, _: &mut Store) -> Result<LoadResult<Self>, LoadError> {
     let result = load_rgba_texture(key.key_to_path()).map(TextureImage)?.into();
     Ok(result)
   }

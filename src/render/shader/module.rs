@@ -136,7 +136,9 @@ impl StoreKey for ModuleKey {
 }
 
 impl Load for Module {
-  fn load<K>(key: &K, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where K: StoreKey<Target = Self> {
+  type Key = ModuleKey;
+
+  fn load(key: &Self::Key, _: &mut Store) -> Result<LoadResult<Self>, LoadError> {
     let path = key.key_to_path();
 
     let mut fh = File::open(&path).map_err(|_| LoadError::FileNotFound(path.into()))?;

@@ -214,7 +214,9 @@ impl<T> StoreKey for SplineKey<T> where T: 'static {
 }
 
 impl<T> Load for Spline<T> where T: 'static + SplineDeserializerAdapter {
-  fn load<K>(key: &K, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where K: StoreKey<Target = Self> {
+  type Key = SplineKey<T>;
+
+  fn load(key: &Self::Key, _: &mut Store) -> Result<LoadResult<Self>, LoadError> {
     let path = key.key_to_path();
 
     let file = File::open(&path).map_err(|_| LoadError::FileNotFound(path))?;

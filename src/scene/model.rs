@@ -54,7 +54,9 @@ impl StoreKey for ObjModelKey {
 }
 
 impl Load for ObjModel {
-  fn load<K>(key: &K, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where K: StoreKey<Target = Self> {
+  type Key = ObjModelKey;
+
+  fn load(key: &Self::Key, _: &mut Store) -> Result<LoadResult<Self>, LoadError> {
     let path = key.key_to_path();
 
     let mut input = String::new();
