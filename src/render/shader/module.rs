@@ -111,12 +111,7 @@ use std::path::PathBuf;
 use glsl::writer;
 
 use render::shader::lang::parser;
-// FIXME: qualified use, it’s ugly now
-use render::shader::lang::syntax::{Block, Declaration, ExternalDeclaration, FunctionDefinition, FullySpecifiedType,
-                                   FunctionParameterDeclaration, FunctionParameterDeclarator, InitDeclaratorList, Expr,
-                                   Module as SyntaxModule, SingleDeclaration, StorageQualifier,
-                                   StructSpecifier, StructFieldSpecifier, LayoutQualifier, TypeName,
-                                   TypeSpecifier, TypeSpecifierNonArray, TypeQualifier, TypeQualifierSpec, LayoutQualifierSpec};
+use render::shader::lang::syntax;
 use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
 /// Shader module.
@@ -126,7 +121,7 @@ use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 /// You’re not supposed to directly manipulate any object of this type. You just write modules on
 /// disk and let everything happen automatically for you.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Module(pub SyntaxModule); // FIXME: remove the pub
+pub struct Module(syntax::Module);
 
 impl Module {
   /// Retrieve all the modules this module depends on, without duplicates.
@@ -178,7 +173,7 @@ impl Module {
           .chain(self.0.glsl.clone())
           .collect();
 
-    let module = Module(SyntaxModule {
+    let module = Module(syntax::Module {
       imports: Vec::new(),
       glsl
     });
@@ -253,18 +248,18 @@ impl Module {
   }
 
   /// Get all the uniforms defined in a module.
-  pub fn uniforms(&self) -> Vec<SingleDeclaration> {
+  pub fn uniforms(&self) -> Vec<syntax::SingleDeclaration> {
     let mut uniforms = Vec::new();
 
     for glsl in &self.0.glsl {
-      if let ExternalDeclaration::Declaration(Declaration::InitDeclaratorList(ref i)) = *glsl {
+      if let syntax::ExternalDeclaration::Declaration(syntax::Declaration::InitDeclaratorList(ref i)) = *glsl {
         if let Some(ref q) = i.head.ty.qualifier {
-          if q.qualifiers.contains(&TypeQualifierSpec::Storage(StorageQualifier::Uniform)) {
+          if q.qualifiers.contains(&syntax::TypeQualifierSpec::Storage(syntax::StorageQualifier::Uniform)) {
             uniforms.push(i.head.clone());
 
             // check whether we have more
             for next in &i.tail {
-              uniforms.push(SingleDeclaration {
+              uniforms.push(syntax::SingleDeclaration {
                 ty: i.head.ty.clone(),
                 name: Some(next.name.clone()),
                 array_specifier: next.array_specifier.clone(),
@@ -280,34 +275,34 @@ impl Module {
   }
 
   /// Get all the blocks defined in a module.
-  pub fn blocks(&self) -> Vec<Block> {
+  pub fn blocks(&self) -> Vec<syntax::Block> {
     self.0.glsl.iter().filter_map(|ed| {
       match *ed {
-        ExternalDeclaration::Declaration(Declaration::Block(ref b)) => Some(b.clone()),
+        syntax::ExternalDeclaration::Declaration(syntax::Declaration::Block(ref b)) => Some(b.clone()),
         _ => None
       }
     }).collect()
   }
 
   /// Get all the functions.
-  pub fn functions(&self) -> Vec<FunctionDefinition> {
+  pub fn functions(&self) -> Vec<syntax::FunctionDefinition> {
     self.0.glsl.iter().filter_map(|ed| match *ed {
-      ExternalDeclaration::FunctionDefinition(ref def) => Some(def.clone()),
+      syntax::ExternalDeclaration::FunctionDefinition(ref def) => Some(def.clone()),
       _ => None
     }).collect()
   }
 
   /// Get all the declared structures.
-  pub fn structs(&self) -> Vec<StructSpecifier> {
+  pub fn structs(&self) -> Vec<syntax::StructSpecifier> {
     self.0.glsl.iter().filter_map(|ed| {
       match *ed {
-        ExternalDeclaration::Declaration(
-          Declaration::InitDeclaratorList(
-            InitDeclaratorList {
-              head: SingleDeclaration {
-                ty: FullySpecifiedType {
-                  ty: TypeSpecifier {
-                    ty: TypeSpecifierNonArray::Struct(ref s),
+        syntax::ExternalDeclaration::Declaration(
+          syntax::Declaration::InitDeclaratorList(
+            syntax::InitDeclaratorList {
+              head: syntax::SingleDeclaration {
+                ty: syntax::FullySpecifiedType {
+                  ty: syntax::TypeSpecifier {
+                    ty: syntax::TypeSpecifierNonArray::Struct(ref s),
                     ..
                   },
                   ..
@@ -329,11 +324,12 @@ pub enum GLSLConversionError {
   NoVertexShader,
   NoFragmentShader,
   OutputHasMainQualifier,
-  ReturnTypeMustBeAStruct(TypeSpecifier),
-  WrongOutputFirstField(StructFieldSpecifier),
-  OutputFieldCannotBeStruct(usize, TypeSpecifier),
-  OutputFieldCannotHaveSeveralIdentifiers(usize, StructFieldSpecifier),
-  UnknownInputType(TypeName),
+  ReturnTypeMustBeAStruct(syntax::TypeSpecifier),
+  WrongOutputFirstField(syntax::StructFieldSpecifier),
+  OutputFieldCannotBeStruct(usize, syntax::StructSpecifier),
+  OutputFieldCannotBeTypeName(usize, syntax::TypeName),
+  OutputFieldCannotHaveSeveralIdentifiers(usize, syntax::StructFieldSpecifier),
+  UnknownInputType(syntax::TypeName),
   NotSingleArgFn // FIXME: wat da fak?!
 }
 
@@ -343,19 +339,10 @@ pub struct GLSLSetup {
   pub fs: String
 }
 
-/// Vertex shader I/O interface.
-///
-/// It contains the inputs and the outputs to the next stage.
-#[derive(Clone, Debug, PartialEq)]
-pub struct VertexShaderInterface {
-  pub inputs: Vec<ExternalDeclaration>,
-  pub outputs: Vec<ExternalDeclaration>
-}
-
-fn single_to_external_declaration(sd: SingleDeclaration) -> ExternalDeclaration {
-  ExternalDeclaration::Declaration(
-    Declaration::InitDeclaratorList(
-      InitDeclaratorList {
+fn single_to_external_declaration(sd: syntax::SingleDeclaration) -> syntax::ExternalDeclaration {
+  syntax::ExternalDeclaration::Declaration(
+    syntax::Declaration::InitDeclaratorList(
+      syntax::InitDeclaratorList {
         head: sd,
         tail: Vec::new()
       }
@@ -365,9 +352,9 @@ fn single_to_external_declaration(sd: SingleDeclaration) -> ExternalDeclaration 
 
 /// Sink a vertex shader.
 fn sink_vertex_shader<F>(sink: &mut F,
-                         map_vertex: &FunctionDefinition,
-                         structs: &[StructSpecifier])
-                         -> Result<(StructSpecifier, Vec<SingleDeclaration>), GLSLConversionError>
+                         map_vertex: &syntax::FunctionDefinition,
+                         structs: &[syntax::StructSpecifier])
+                         -> Result<(syntax::StructSpecifier, Vec<syntax::SingleDeclaration>), GLSLConversionError>
                          where F: Write {
   let inputs = vertex_shader_inputs(&map_vertex.prototype.parameters)?;
   let outputs = vertex_shader_outputs(&map_vertex.prototype.ty, structs)?;
@@ -404,8 +391,8 @@ fn sink_vertex_shader<F>(sink: &mut F,
   Ok((ret_ty, outputs))
 }
 
-fn get_fn_ret_ty(f: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<StructSpecifier, GLSLConversionError> {
-  if let TypeSpecifierNonArray::TypeName(ref name) = f.prototype.ty.ty.ty {
+fn get_fn_ret_ty(f: &syntax::FunctionDefinition, structs: &[syntax::StructSpecifier]) -> Result<syntax::StructSpecifier, GLSLConversionError> {
+  if let syntax::TypeSpecifierNonArray::TypeName(ref name) = f.prototype.ty.ty.ty {
     if let Some(ref ty) = structs.iter().find(|ref s| s.name.as_ref() == Some(name)) {
       Ok((*ty).clone())
     } else {
@@ -416,18 +403,18 @@ fn get_fn_ret_ty(f: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<
   }
 }
 
-fn get_fn_input_ty_name(f: &FunctionDefinition) -> Result<TypeName, GLSLConversionError> {
+fn get_fn_input_ty_name(f: &syntax::FunctionDefinition) -> Result<syntax::TypeName, GLSLConversionError> {
   match f.prototype.parameters.as_slice() {
-    &[FunctionParameterDeclaration::Named(_, FunctionParameterDeclarator {
-      ty: TypeSpecifier {
-        ty: TypeSpecifierNonArray::TypeName(ref n),
+    &[syntax::FunctionParameterDeclaration::Named(_, syntax::FunctionParameterDeclarator {
+      ty: syntax::TypeSpecifier {
+        ty: syntax::TypeSpecifierNonArray::TypeName(ref n),
         ..
       },
       ..
     })] => Ok(n.clone()),
 
-    &[FunctionParameterDeclaration::Unnamed(_, TypeSpecifier {
-      ty: TypeSpecifierNonArray::TypeName(ref n),
+    &[syntax::FunctionParameterDeclaration::Unnamed(_, syntax::TypeSpecifier {
+      ty: syntax::TypeSpecifierNonArray::TypeName(ref n),
       ..
     })] => Ok(n.clone()),
 
@@ -436,7 +423,7 @@ fn get_fn_input_ty_name(f: &FunctionDefinition) -> Result<TypeName, GLSLConversi
 }
 
 /// Sink a vertex shader’s output.
-fn sink_vertex_shader_output<F, G>(sink: &mut F, assigns: &mut G, ty: &StructSpecifier) where F: Write, G: Write {
+fn sink_vertex_shader_output<F, G>(sink: &mut F, assigns: &mut G, ty: &syntax::StructSpecifier) where F: Write, G: Write {
   if let Some(ref name) = ty.name {
     let _ = sink.write_str(name);
   } else {
@@ -453,7 +440,7 @@ fn sink_vertex_shader_output<F, G>(sink: &mut F, assigns: &mut G, ty: &StructSpe
 }
 
 /// Sink the arguments of the map_vertex function.
-fn sink_vertex_shader_input_args<F>(sink: &mut F, map_vertex: &FunctionDefinition) where F: Write {
+fn sink_vertex_shader_input_args<F>(sink: &mut F, map_vertex: &syntax::FunctionDefinition) where F: Write {
   let args = &map_vertex.prototype.parameters;
 
   if !args.is_empty() {
@@ -470,9 +457,9 @@ fn sink_vertex_shader_input_args<F>(sink: &mut F, map_vertex: &FunctionDefinitio
 }
 
 /// Sink an argument of a function.
-fn sink_vertex_shader_input_arg<F>(sink: &mut F, arg: &FunctionParameterDeclaration) where F: Write {
+fn sink_vertex_shader_input_arg<F>(sink: &mut F, arg: &syntax::FunctionParameterDeclaration) where F: Write {
   match *arg {
-    FunctionParameterDeclaration::Named(_, ref d) => {
+    syntax::FunctionParameterDeclaration::Named(_, ref d) => {
       let _ = sink.write_str(&d.name);
     }
     _ => ()
@@ -480,31 +467,34 @@ fn sink_vertex_shader_input_arg<F>(sink: &mut F, arg: &FunctionParameterDeclarat
 }
 
 
-fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<SingleDeclaration>, GLSLConversionError> where I: IntoIterator<Item = &'a FunctionParameterDeclaration> {
+fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<syntax::SingleDeclaration>, GLSLConversionError> where I: IntoIterator<Item = &'a syntax::FunctionParameterDeclaration> {
   let mut inputs = Vec::new();
 
   for (i, arg) in args.into_iter().enumerate() {
     match *arg {
-      FunctionParameterDeclaration::Named(ref ty_qual, ref decl) => {
-        let layout_qualifier = LayoutQualifier {
-          ids: vec![LayoutQualifierSpec::Identifier("location".to_owned(), Some(Box::new(Expr::IntConst(i as i32))))]
+      syntax::FunctionParameterDeclaration::Named(ref ty_qual, ref decl) => {
+        let layout_qualifier = syntax::LayoutQualifier {
+          ids: vec![syntax::LayoutQualifierSpec::Identifier("location".to_owned(),
+                                                            Some(Box::new(syntax::Expr::IntConst(i as i32))))]
         };
-        let base_qualifier = TypeQualifier {
+        let base_qualifier = syntax::TypeQualifier {
           qualifiers: vec![
-            TypeQualifierSpec::Layout(layout_qualifier),
-            TypeQualifierSpec::Storage(StorageQualifier::In)
+            syntax::TypeQualifierSpec::Layout(layout_qualifier),
+            syntax::TypeQualifierSpec::Storage(syntax::StorageQualifier::In)
           ]
         };
         let qualifier = match *ty_qual {
-          Some(ref qual) => TypeQualifier { qualifiers: base_qualifier.qualifiers.into_iter().chain(qual.clone().qualifiers).collect() },
+          Some(ref qual) => syntax::TypeQualifier {
+            qualifiers: base_qualifier.qualifiers.into_iter().chain(qual.clone().qualifiers).collect()
+          },
           None => base_qualifier
         };
         let ty = decl.ty.clone();
         let name = Some(decl.name.clone());
         let array_spec = decl.array_spec.clone();
         let sd = 
-          SingleDeclaration {
-            ty: FullySpecifiedType {
+          syntax::SingleDeclaration {
+            ty: syntax::FullySpecifiedType {
               qualifier: Some(qualifier),
               ty
             },
@@ -525,7 +515,7 @@ fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<SingleDeclaration>, GLSLCo
   Ok(inputs)
 }
 
-fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier]) -> Result<Vec<SingleDeclaration>, GLSLConversionError> {
+fn vertex_shader_outputs(fsty: &syntax::FullySpecifiedType, structs: &[syntax::StructSpecifier]) -> Result<Vec<syntax::SingleDeclaration>, GLSLConversionError> {
   // we refuse that the output has a main qualifier
   if fsty.qualifier.is_some() {
     return Err(GLSLConversionError::OutputHasMainQualifier);
@@ -535,7 +525,7 @@ fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier])
 
   // we enforce that the output must be a struct that follows a certain pattern
   match ty.ty {
-    TypeSpecifierNonArray::TypeName(ref ty_name) => {
+    syntax::TypeSpecifierNonArray::TypeName(ref ty_name) => {
       let real_ty = structs.iter().find(|ref s| s.name.as_ref() == Some(ty_name));
 
       match real_ty {
@@ -544,7 +534,7 @@ fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier])
           let first_field = &s.fields[0];
 
           if first_field.qualifier.is_some() ||
-             first_field.ty.ty != TypeSpecifierNonArray::Vec4 ||
+             first_field.ty.ty != syntax::TypeSpecifierNonArray::Vec4 ||
              first_field.identifiers != vec![("gl_Position".to_owned(), None)] {
             return Err(GLSLConversionError::WrongOutputFirstField(first_field.clone()));
           }
@@ -562,18 +552,22 @@ fn vertex_shader_outputs(fsty: &FullySpecifiedType, structs: &[StructSpecifier])
 
 /// Map a struct’s fields to a Vec<ExternalDeclaration>. Typically suitable for generating outputs
 /// from a struct fields.
-fn fields_to_single_decls(fields: &[StructFieldSpecifier], prefix: &str) -> Result<Vec<SingleDeclaration>, GLSLConversionError> {
+fn fields_to_single_decls(fields: &[syntax::StructFieldSpecifier], prefix: &str) -> Result<Vec<syntax::SingleDeclaration>, GLSLConversionError> {
   let mut outputs = Vec::new();
 
   for (i, field) in fields.into_iter().enumerate() {
-    if let TypeSpecifierNonArray::Struct(_) = field.ty.ty {
-      return Err(GLSLConversionError::OutputFieldCannotBeStruct(i, field.ty.clone()));
+    match field.ty.ty {
+      syntax::TypeSpecifierNonArray::Struct(ref s) => {
+        return Err(GLSLConversionError::OutputFieldCannotBeStruct(i + 1, s.clone()));
+      }
+      syntax::TypeSpecifierNonArray::TypeName(ref t) => {
+        return Err(GLSLConversionError::OutputFieldCannotBeTypeName(i + 1, t.clone()));
+      }
+      _ => ()
     }
 
-    // TODO: also fail on TypeSpecifierNonArray::TypeName
-
     if field.identifiers.len() > 1 {
-      return Err(GLSLConversionError::OutputFieldCannotHaveSeveralIdentifiers(i, field.clone()));
+      return Err(GLSLConversionError::OutputFieldCannotHaveSeveralIdentifiers(i + 1, field.clone()));
     }
 
     outputs.push(field_to_single_decl(&field, prefix));
@@ -584,18 +578,23 @@ fn fields_to_single_decls(fields: &[StructFieldSpecifier], prefix: &str) -> Resu
 
 /// Map a StructFieldSpecifier to an ExternalDeclaration. Typically suitable for generating an
 /// output from a struct field.
-fn field_to_single_decl(field: &StructFieldSpecifier, prefix: &str) -> SingleDeclaration {
-  let base_qualifier = TypeQualifierSpec::Storage(StorageQualifier::Out);
+fn field_to_single_decl(field: &syntax::StructFieldSpecifier, prefix: &str) -> syntax::SingleDeclaration {
+  let base_qualifier = syntax::TypeQualifierSpec::Storage(syntax::StorageQualifier::Out);
   let qualifier = match field.qualifier {
-    Some(ref qual) => TypeQualifier { qualifiers: qual.clone().qualifiers.into_iter().chain(once(base_qualifier)).collect() },
-    None => TypeQualifier { qualifiers: vec![base_qualifier] }
+    Some(ref qual) =>
+      syntax::TypeQualifier {
+        qualifiers: qual.clone().qualifiers.into_iter().chain(once(base_qualifier)).collect()
+      },
+    None => syntax::TypeQualifier {
+      qualifiers: vec![base_qualifier]
+    }
   };
-  let fsty = FullySpecifiedType {
+  let fsty = syntax::FullySpecifiedType {
     qualifier: Some(qualifier),
     ty: field.ty.clone()
   };
 
-  SingleDeclaration {
+  syntax::SingleDeclaration {
     ty: fsty,
     name: Some(prefix.to_owned() + &field.identifiers[0].0),
     array_specifier: field.identifiers[0].1.clone(),
@@ -605,11 +604,11 @@ fn field_to_single_decl(field: &StructFieldSpecifier, prefix: &str) -> SingleDec
 
 /// Sink a fragment shader.
 fn sink_fragment_shader<F>(sink: &mut F,
-                           map_frag_data: &FunctionDefinition,
-                           structs: &[StructSpecifier],
-                           prev_ret_ty: &StructSpecifier,
-                           prev_inputs: &[SingleDeclaration])
-                           -> Result<StructSpecifier, GLSLConversionError>
+                           map_frag_data: &syntax::FunctionDefinition,
+                           structs: &[syntax::StructSpecifier],
+                           prev_ret_ty: &syntax::StructSpecifier,
+                           prev_inputs: &[syntax::SingleDeclaration])
+                           -> Result<syntax::StructSpecifier, GLSLConversionError>
                            where F: Write {
   let input_ty_name = get_fn_input_ty_name(map_frag_data)?;
 
@@ -662,20 +661,21 @@ fn sink_fragment_shader<F>(sink: &mut F,
 }
 
 /// Replace an input declaration by its output declaration dual.
-fn replace_out_in_single_declaration(input: SingleDeclaration) -> SingleDeclaration {
+fn replace_out_in_single_declaration(input: syntax::SingleDeclaration) -> syntax::SingleDeclaration {
   let qualifier = input.ty.qualifier.map(|q| {
-    TypeQualifier {
+    syntax::TypeQualifier {
       qualifiers: q.qualifiers.into_iter().map(|qs| {
         match qs {
-          TypeQualifierSpec::Storage(StorageQualifier::Out) => TypeQualifierSpec::Storage(StorageQualifier::In),
+          syntax::TypeQualifierSpec::Storage(syntax::StorageQualifier::Out) =>
+            syntax::TypeQualifierSpec::Storage(syntax::StorageQualifier::In),
           _ => qs
         }
       }).collect()
     }
   });
 
-  SingleDeclaration {
-    ty: FullySpecifiedType {
+  syntax::SingleDeclaration {
+    ty: syntax::FullySpecifiedType {
       qualifier,
       .. input.ty
     },
@@ -683,7 +683,7 @@ fn replace_out_in_single_declaration(input: SingleDeclaration) -> SingleDeclarat
   }
 }
 
-fn fragment_shader_inputs(inputs: &[SingleDeclaration]) -> Vec<SingleDeclaration> {
+fn fragment_shader_inputs(inputs: &[syntax::SingleDeclaration]) -> Vec<syntax::SingleDeclaration> {
   inputs.into_iter().map(|sd| replace_out_in_single_declaration(sd.clone())).collect()
 }
 
