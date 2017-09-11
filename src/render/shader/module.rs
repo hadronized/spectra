@@ -58,7 +58,7 @@
 //!
 //! ```glsl
 //! struct Vertex {
-//!   vec4 gl_Position; // this is mandatory as it will be fetched by the pipeline
+//!   vec4 spsl_Position; // this is mandatory as it will be fetched by the pipeline
 //!   vec4 color;
 //! };
 //!
@@ -72,7 +72,7 @@
 //!
 //! ```glsl
 //! struct Vertex {
-//!   vec4 gl_Position; // this is mandatory as it will be fetched by the pipeline
+//!   vec4 spsl_Position; // this is mandatory as it will be fetched by the pipeline
 //!   vec3 position;
 //!   vec4 color;
 //! };
@@ -478,11 +478,11 @@ fn sink_vertex_shader_output<F, G>(sink: &mut F, assigns: &mut G, ty: &syntax::S
     panic!("cannot happen");
   }
 
-  let _ = assigns.write_str("  gl_Position = v.gl_Position;\n");
+  let _ = assigns.write_str("  gl_Position = v.spsl_Position;\n");
 
   for field in &ty.fields[1..] {
     for &(ref identifier, _) in &field.identifiers {
-      let _ = write!(assigns, "  __v_{0} = v.{0};\n", identifier);
+      let _ = write!(assigns, "  spsl_v_{0} = v.{0};\n", identifier);
     }
   }
 }
@@ -498,9 +498,19 @@ fn sink_vertex_shader_input_args<F>(sink: &mut F, map_vertex: &syntax::FunctionD
     sink_vertex_shader_input_arg(sink, first_arg);
 
     for arg in &map_vertex.prototype.parameters[1..] {
-      let _ = sink.write_str(", ");
-      sink_vertex_shader_input_arg(sink, arg);
+      if is_fn_arg_named(arg) {
+        let _ = sink.write_str(", ");
+        sink_vertex_shader_input_arg(sink, arg);
+      }
     }
+  }
+}
+
+fn is_fn_arg_named(arg: &syntax::FunctionParameterDeclaration) -> bool {
+  if let syntax::FunctionParameterDeclaration::Named(..) = *arg {
+    true
+  } else {
+    false
   }
 }
 
@@ -583,18 +593,18 @@ fn vertex_shader_outputs(fsty: &syntax::FullySpecifiedType, structs: &[syntax::S
 
       match real_ty {
         Some(ref s) => {
-          // the first field must be named "gl_Position", has type vec4 and no qualifier
+          // the first field must be named "spsl_Position", has type vec4 and no qualifier
           let first_field = &s.fields[0];
 
           if first_field.qualifier.is_some() ||
              first_field.ty.ty != syntax::TypeSpecifierNonArray::Vec4 ||
-             first_field.identifiers != vec![("gl_Position".to_owned(), None)] {
+             first_field.identifiers != vec![("spsl_Position".to_owned(), None)] {
             return Err(GLSLConversionError::WrongOutputFirstField(first_field.clone()));
           }
 
           // then, for all other fields, we check that they are not composite type (i.e. structs); if
           // they are not, add them to the interface; otherwise, fail
-          fields_to_single_decls(&s.fields[1..], "__v_")
+          fields_to_single_decls(&s.fields[1..], "spsl_v_")
         }
         _ => Err(GLSLConversionError::ReturnTypeMustBeAStruct(ty.clone()))
       }
@@ -672,7 +682,7 @@ fn sink_fragment_shader<F>(sink: &mut F,
 
   let inputs = fragment_shader_inputs(prev_inputs); // this is wrong, need to adapt the previous inputs instead
   let ret_ty = get_fn_ret_ty(map_frag_data, structs)?;
-  let outputs = fields_to_single_decls(&ret_ty.fields, "__f_")?;
+  let outputs = fields_to_single_decls(&ret_ty.fields, "spsl_f_")?;
 
   // sink inputs and outputs
   for sd in inputs.iter().chain(&outputs) {

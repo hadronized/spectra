@@ -127,6 +127,12 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni>
         Err(LoadError::ConversionFailed("cannot generate GLSL".to_owned()))
       }
       Ok(fold) => {
+        info!("vertex shader");
+        annotate_shader(&fold.vs);
+
+        info!("fragment shader");
+        annotate_shader(&fold.fs);
+
         match LProgram::from_strings(None, &fold.vs, None, &fold.fs) {
           Err(err) => {
             err!("{:?}", err);
@@ -143,6 +149,12 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni>
         }
       }
     }
+  }
+}
+
+fn annotate_shader(s: &str) {
+  for (i, line) in s.lines().enumerate() {
+    info!("{:3}: {}", i + 1, line);
   }
 }
 
