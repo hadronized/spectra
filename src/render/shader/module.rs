@@ -417,8 +417,9 @@ fn sink_vertex_shader<F>(sink: &mut F,
   // sink the return type
   writer::glsl::show_struct(sink, &ret_ty);
 
-  // sink the map_vertex function
-  writer::glsl::show_function_definition(sink, map_vertex);
+  // sink the map_vertex function, but remove its unused arguments
+  let map_vertex_reduced = remove_unused_args_fn(map_vertex);
+  writer::glsl::show_function_definition(sink, &map_vertex_reduced);
 
   // void main
   let _ = sink.write_str("void main() {\n  ");
@@ -427,7 +428,7 @@ fn sink_vertex_shader<F>(sink: &mut F,
   let mut assigns = String::new();
   sink_vertex_shader_output(sink, &mut assigns, &ret_ty);
   let _ = sink.write_str(" v = map_vertex(");
-  sink_vertex_shader_input_args(sink, &map_vertex);
+  sink_vertex_shader_input_args(sink, &map_vertex_reduced);
   let _ = sink.write_str(");\n");
 
   // assign to outputs
@@ -495,12 +496,12 @@ fn sink_vertex_shader_input_args<F>(sink: &mut F, map_vertex: &syntax::FunctionD
     // sink the first argument upfront
     let first_arg = &args[0];
 
-    sink_vertex_shader_input_arg(sink, first_arg);
+    sink_vertex_shader_input_arg(sink, 0, first_arg);
 
-    for arg in &map_vertex.prototype.parameters[1..] {
+    for (i, arg) in map_vertex.prototype.parameters[1..].iter().enumerate() {
       if is_fn_arg_named(arg) {
         let _ = sink.write_str(", ");
-        sink_vertex_shader_input_arg(sink, arg);
+        sink_vertex_shader_input_arg(sink, i + 1, arg);
       }
     }
   }
@@ -514,13 +515,27 @@ fn is_fn_arg_named(arg: &syntax::FunctionParameterDeclaration) -> bool {
   }
 }
 
+fn remove_unused_args_fn(f: &syntax::FunctionDefinition) -> syntax::FunctionDefinition {
+  let f = f.clone();
+
+  syntax::FunctionDefinition {
+    prototype: syntax::FunctionPrototype {
+      parameters: f.prototype.parameters.into_iter().filter(is_fn_arg_named).collect(),
+      .. f.prototype
+    },
+    .. f
+  }
+}
+
 /// Sink an argument of a function.
-fn sink_vertex_shader_input_arg<F>(sink: &mut F, arg: &syntax::FunctionParameterDeclaration) where F: Write {
+fn sink_vertex_shader_input_arg<F>(sink: &mut F, i: usize, arg: &syntax::FunctionParameterDeclaration) where F: Write {
   match *arg {
     syntax::FunctionParameterDeclaration::Named(_, ref d) => {
       let _ = sink.write_str(&d.name);
     }
-    _ => ()
+    syntax::FunctionParameterDeclaration::Unnamed(..) => {
+      let _ = write!(sink, "spsl_unused{}", i);
+    }
   }
 }
 
@@ -697,7 +712,8 @@ fn sink_fragment_shader<F>(sink: &mut F,
   writer::glsl::show_struct(sink, &ret_ty);
 
   // sink the map_frag_data function
-  writer::glsl::show_function_definition(sink, map_frag_data);
+  let map_frag_data_reduced = remove_unused_args_fn(map_frag_data);
+  writer::glsl::show_function_definition(sink, &map_frag_data_reduced);
 
   // void main
   let _ = sink.write_str("void main() {\n  ");
