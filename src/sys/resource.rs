@@ -49,9 +49,9 @@ pub trait Load: 'static + Sized {
 /// the `.into()` function to lift your return value to `LoadResult<_>`.
 pub struct LoadResult<T> {
   /// The loaded object.
-  res: T,
+  pub res: T,
   /// The list of dependencies to listen for events.
-  dependencies: Vec<PathBuf>
+  pub dependencies: Vec<PathBuf>
 }
 
 impl<T> LoadResult<T> {

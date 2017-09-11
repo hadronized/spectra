@@ -33,15 +33,13 @@ pub enum ShaderError {
 /// Shader program.
 ///
 /// This program must be used in a pipeline to take effect.
-pub struct Program<In, Out, Uni> {
-  program: LProgram<In, Out, Uni>
-}
+pub struct Program<In, Out, Uni>(LProgram<In, Out, Uni>);
 
 impl<In, Out, Uni> Deref for Program<In, Out, Uni> {
   type Target = LProgram<In, Out, Uni>;
 
   fn deref(&self) -> &Self::Target {
-    &self.program
+    &self.0
   }
 }
 
@@ -118,14 +116,32 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni>
           Uni: 'static + UniformInterface {
   type Key = ProgramKey<In, Out, Uni>;
 
-  fn load(key: &Self::Key, _: &mut Store) -> Result<LoadResult<Self>, LoadError> {
+  fn load(key: &Self::Key, store: &mut Store) -> Result<LoadResult<Self>, LoadError> {
     let module_key = ModuleKey::new(&key.key);
-    let (module, deps) = store.get(&module_key).ok_or(LoadError::ConversionFailed("cannot get program".to_owned()))?;
+    let module = store.get(&module_key).ok_or(LoadError::ConversionFailed("cannot get program".to_owned()))?;
 
-    match module.to_glsl_setup() {
+    let module_ = module.borrow();
+    match module_.to_glsl_setup() {
+      Err(err) => {
+        err!("{:?}", err);
+        Err(LoadError::ConversionFailed("cannot generate GLSL".to_owned()))
+      }
       Ok(fold) => {
-        let program = LProgram::from_strings(None, &fold.vs, None, &fold.fs);
-        // TODO: later!
+        match LProgram::from_strings(None, &fold.vs, None, &fold.fs) {
+          Err(err) => {
+            err!("{:?}", err);
+            Err(LoadError::ConversionFailed("damn".to_owned()))
+          }
+          Ok((program, warnings)) => {
+            // print warnings in case there’s any
+            for warning in &warnings {
+              warn!("{:?}", warning);
+            }
+
+            Ok(Program(program).into()) // FIXME: deps
+          }
+        }
+      }
     }
   }
 }
@@ -140,24 +156,5 @@ impl<T> UnwrapOrUnbound<T> for Result<Uniform<T>, UniformWarning> {
       warnings.push(w);
       builder.unbound()
     })
-  }
-}
-
-// FIXME: test only
-pub fn from_spsl(key: &ModuleKey, store: &mut Store) {
-  if let Some(module) = store.get(key) {
-    let (gathered, _) = module.borrow().gather(store, key).unwrap();
-    let glsl = gathered.to_glsl_setup();
-
-    match glsl {
-      Ok(s) => {
-        println!("success");
-        println!("vertex shader:\n{}", s.vs);
-        println!("\nfragment shader shader:\n{}", s.fs);
-      }
-      Err(e) => {
-        println!("damn: {:?}", e)
-      }
-    }
   }
 }
