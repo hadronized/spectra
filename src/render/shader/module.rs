@@ -101,12 +101,11 @@
 //! }
 //! ```
 
+use glsl::writer;
 use std::fmt::Write;
 use std::fs::File;
 use std::io::Read;
-use std::iter::once;
 use std::path::PathBuf;
-use glsl::writer;
 
 use render::shader::lang::parser;
 use render::shader::lang::syntax;
@@ -135,6 +134,7 @@ impl StoreKey for ModuleKey {
   }
 }
 
+
 impl Load for Module {
   type Key = ModuleKey;
 
@@ -153,6 +153,16 @@ impl Load for Module {
       _ => Err(LoadError::ConversionFailed("incomplete input".to_owned()))
     }
   }
+}
+
+/// Errors that can happen in dependencies.
+#[derive(Clone, Debug, PartialEq)]
+pub enum DepsError {
+  /// If a module’s dependencies has any cycle, the dependencies are unusable and the cycle is
+  /// returned.
+  Cycle(ModuleKey, ModuleKey),
+  /// There was a loading error of a module.
+  LoadError(ModuleKey)
 }
 
 /// Shader module.
@@ -223,7 +233,7 @@ impl Module {
   }
 
   /// Fold a module into its GLSL setup.
-  pub(crate) fn to_glsl_setup(&self) -> Result<ModuleFold, GLSLConversionError> {
+  pub(crate) fn to_glsl_setup(&self) -> Result<ModuleFold, syntax::GLSLConversionError> {
     let uniforms = self.uniforms();
     let blocks = self.blocks();
     let structs = self.structs();
@@ -231,9 +241,11 @@ impl Module {
 
     let mut common = String::new();
     let mut vs = String::new();
+    let mut gs = String::new();
     let mut fs = String::new();
+    let mut structs_str = String::new();
 
-    // sink uniforms, blocks and structs first as a common framework
+    // sink uniforms, blocks and first as a common framework
     for uniform in &uniforms {
       writer::glsl::show_single_declaration(&mut common, uniform);
       let _ = common.write_str(";\n");
@@ -243,44 +255,67 @@ impl Module {
       writer::glsl::show_block(&mut common, block);
     }
 
-    // filter out special functions so that we don’t put them in the common part
-    for f in functions.iter().filter(|f| {
-        let n: &str = &f.prototype.name;
-        n != "map_vertex" && n != "map_frag_data"
-      }) {
+    for f in filter_out_special_functions(functions.iter()) {
       writer::glsl::show_function_definition(&mut common, f)
     }
 
+    let mut filter_out_struct_def = Vec::new();
+
     // get the special functions
-    let map_vertex = functions.iter().find(|fd| &fd.prototype.name == "map_vertex");
-    let map_frag_data = functions.iter().find(|fd| &fd.prototype.name == "map_frag_data");
+    let map_vertex = functions.iter().find(|fd| &fd.prototype.name == "map_vertex")
+                                     .ok_or(syntax::GLSLConversionError::NoVertexShader)?;
+    let concat_map_prim = functions.iter().find(|fd| &fd.prototype.name == "concat_map_prim");
+    let map_frag_data = functions.iter().find(|fd| &fd.prototype.name == "map_frag_data")
+                                        .ok_or(syntax::GLSLConversionError::NoFragmentShader)?;
 
-    match (map_vertex, map_frag_data) {
-      (None, _) => return Err(GLSLConversionError::NoVertexShader),
-      (_, None) => return Err(GLSLConversionError::NoFragmentShader),
-      (Some(vf), Some(ff)) => {
-        let (vertex_ret_ty, vertex_outputs) = sink_vertex_shader(&mut vs, vf, &structs)?;
-        let fragment_ret_ty = sink_fragment_shader(&mut fs, ff, &structs, &vertex_ret_ty, &vertex_outputs)?;
-        
-        // stages don’t have the common structures yet because they might define overloaded ones, so
-        let mut structs_str = String::new();
-        for s in &structs {
-          if s.name != vertex_ret_ty.name && s.name != fragment_ret_ty.name {
-            writer::glsl::show_struct(&mut structs_str, s);
-          }
-        }
+    // sink the vertex shader
+    let (vertex_ret_ty, vertex_outputs) = sink_vertex_shader(&mut vs, map_vertex, &structs)?;
+    // since this type has its first field reserved, we must drop it for next stage
+    let vertex_ret_ty_fixed = syntax::drop_first_field(&vertex_ret_ty);
 
-        common = structs_str + &common;
+    filter_out_struct_def.push(vertex_ret_ty_fixed.name.clone());
+
+    // if there’s any, sink the geometry shader and get its return type – it’ll be passed to the
+    // fragment shader; otherwise, just return the vertex type
+    let (fs_prev_ret_ty, fs_prev_outputs) = if let Some(concat_map_prim) = concat_map_prim {
+      let (ret_ty, outputs) = sink_geometry_shader(&mut gs,
+                                                   &concat_map_prim,
+                                                   &structs,
+                                                   &vertex_ret_ty_fixed,
+                                                   &vertex_outputs)?;
+
+      filter_out_struct_def.push(ret_ty.name.clone());
+      (ret_ty, outputs)
+    } else {
+      (vertex_ret_ty_fixed, vertex_outputs)
+    };
+
+    // sink the fragment shader
+    let (fragment_ret_ty, _) = sink_fragment_shader(&mut fs,
+                                                    &map_frag_data,
+                                                    &structs,
+                                                    &fs_prev_ret_ty,
+                                                    &fs_prev_outputs)?;
+
+    filter_out_struct_def.push(fragment_ret_ty.name.clone());
+
+    // filter out structs that might only exist in specific stages
+    for s in &structs {
+      if !filter_out_struct_def.contains(&s.name) {
+        writer::glsl::show_struct(&mut structs_str, s);
       }
     }
 
+    common = structs_str + &common;
+
     if vs.is_empty() {
-      Err(GLSLConversionError::NoVertexShader)
+      Err(syntax::GLSLConversionError::NoVertexShader)
     } else if fs.is_empty() {
-      Err(GLSLConversionError::NoFragmentShader)
+      Err(syntax::GLSLConversionError::NoFragmentShader)
     } else {
       let setup = ModuleFold {
         vs: common.clone() + &vs,
+        gs: if gs.is_empty() { None } else { Some(gs.clone()) },
         fs: common.clone() + &fs
       };
 
@@ -319,7 +354,8 @@ impl Module {
   fn blocks(&self) -> Vec<syntax::Block> {
     self.0.glsl.iter().filter_map(|ed| {
       match *ed {
-        syntax::ExternalDeclaration::Declaration(syntax::Declaration::Block(ref b)) => Some(b.clone()),
+        syntax::ExternalDeclaration::Declaration(syntax::Declaration::Block(ref b)) =>
+          Some(b.clone()),
         _ => None
       }
     }).collect()
@@ -360,23 +396,6 @@ impl Module {
   }
 }
 
-/// GLSL conversion error.
-///
-/// Such an errors can happen when a module is ill-formed.
-#[derive(Clone, Debug, PartialEq)]
-pub enum GLSLConversionError {
-  NoVertexShader,
-  NoFragmentShader,
-  OutputHasMainQualifier,
-  ReturnTypeMustBeAStruct(syntax::TypeSpecifier),
-  WrongOutputFirstField(syntax::StructFieldSpecifier),
-  OutputFieldCannotBeStruct(usize, syntax::StructSpecifier),
-  OutputFieldCannotBeTypeName(usize, syntax::TypeName),
-  OutputFieldCannotHaveSeveralIdentifiers(usize, syntax::StructFieldSpecifier),
-  UnknownInputType(syntax::TypeName),
-  NotSingleArgFn // FIXME: wat da fak?!
-}
-
 /// Module fold (pipeline).
 ///
 /// When a module contains all the required functions and structures to define a workable pipeline,
@@ -384,41 +403,27 @@ pub enum GLSLConversionError {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct ModuleFold {
   pub vs: String,
+  pub gs: Option<String>,
   pub fs: String
-}
-
-fn single_to_external_declaration(sd: syntax::SingleDeclaration) -> syntax::ExternalDeclaration {
-  syntax::ExternalDeclaration::Declaration(
-    syntax::Declaration::InitDeclaratorList(
-      syntax::InitDeclaratorList {
-        head: sd,
-        tail: Vec::new()
-      }
-    )
-  )
 }
 
 /// Sink a vertex shader.
 fn sink_vertex_shader<F>(sink: &mut F,
                          map_vertex: &syntax::FunctionDefinition,
                          structs: &[syntax::StructSpecifier])
-                         -> Result<(syntax::StructSpecifier, Vec<syntax::SingleDeclaration>), GLSLConversionError>
+                         -> Result<(syntax::StructSpecifier, Vec<syntax::SingleDeclaration>), syntax::GLSLConversionError>
                          where F: Write {
   let inputs = vertex_shader_inputs(&map_vertex.prototype.parameters)?;
   let outputs = vertex_shader_outputs(&map_vertex.prototype.ty, structs)?;
-  let ret_ty = get_fn_ret_ty(map_vertex, structs)?;
+  let ret_ty = syntax::get_fn_ret_ty(map_vertex, structs)?;
 
-  // sink inputs and outputs
-  for sd in inputs.iter().chain(&outputs) {
-    let ed = single_to_external_declaration(sd.clone());
-    writer::glsl::show_external_declaration(sink, &ed);
-  }
+  syntax::sink_single_as_ext_decls(sink, inputs.iter().chain(&outputs));
 
   // sink the return type
   writer::glsl::show_struct(sink, &ret_ty);
 
   // sink the map_vertex function, but remove its unused arguments
-  let map_vertex_reduced = remove_unused_args_fn(map_vertex);
+  let map_vertex_reduced = syntax::remove_unused_args_fn(map_vertex);
   writer::glsl::show_function_definition(sink, &map_vertex_reduced);
 
   // void main
@@ -438,37 +443,6 @@ fn sink_vertex_shader<F>(sink: &mut F,
   let _ = sink.write_str("}\n\n");
 
   Ok((ret_ty, outputs))
-}
-
-fn get_fn_ret_ty(f: &syntax::FunctionDefinition, structs: &[syntax::StructSpecifier]) -> Result<syntax::StructSpecifier, GLSLConversionError> {
-  if let syntax::TypeSpecifierNonArray::TypeName(ref name) = f.prototype.ty.ty.ty {
-    if let Some(ref ty) = structs.iter().find(|ref s| s.name.as_ref() == Some(name)) {
-      Ok((*ty).clone())
-    } else {
-      Err(GLSLConversionError::ReturnTypeMustBeAStruct(f.prototype.ty.ty.clone()))
-    }
-  } else {
-    Err(GLSLConversionError::ReturnTypeMustBeAStruct(f.prototype.ty.ty.clone()))
-  }
-}
-
-fn get_fn_input_ty_name(f: &syntax::FunctionDefinition) -> Result<syntax::TypeName, GLSLConversionError> {
-  match f.prototype.parameters.as_slice() {
-    &[syntax::FunctionParameterDeclaration::Named(_, syntax::FunctionParameterDeclarator {
-      ty: syntax::TypeSpecifier {
-        ty: syntax::TypeSpecifierNonArray::TypeName(ref n),
-        ..
-      },
-      ..
-    })] => Ok(n.clone()),
-
-    &[syntax::FunctionParameterDeclaration::Unnamed(_, syntax::TypeSpecifier {
-      ty: syntax::TypeSpecifierNonArray::TypeName(ref n),
-      ..
-    })] => Ok(n.clone()),
-
-    _ => Err(GLSLConversionError::NotSingleArgFn)
-  }
 }
 
 /// Sink a vertex shader’s output.
@@ -499,31 +473,11 @@ fn sink_vertex_shader_input_args<F>(sink: &mut F, map_vertex: &syntax::FunctionD
     sink_vertex_shader_input_arg(sink, 0, first_arg);
 
     for (i, arg) in map_vertex.prototype.parameters[1..].iter().enumerate() {
-      if is_fn_arg_named(arg) {
+      if syntax::is_fn_arg_named(arg) {
         let _ = sink.write_str(", ");
         sink_vertex_shader_input_arg(sink, i + 1, arg);
       }
     }
-  }
-}
-
-fn is_fn_arg_named(arg: &syntax::FunctionParameterDeclaration) -> bool {
-  if let syntax::FunctionParameterDeclaration::Named(..) = *arg {
-    true
-  } else {
-    false
-  }
-}
-
-fn remove_unused_args_fn(f: &syntax::FunctionDefinition) -> syntax::FunctionDefinition {
-  let f = f.clone();
-
-  syntax::FunctionDefinition {
-    prototype: syntax::FunctionPrototype {
-      parameters: f.prototype.parameters.into_iter().filter(is_fn_arg_named).collect(),
-      .. f.prototype
-    },
-    .. f
   }
 }
 
@@ -539,6 +493,8 @@ fn sink_vertex_shader_input_arg<F>(sink: &mut F, i: usize, arg: &syntax::Functio
   }
 }
 
+/// Create a vertex’s input (`TypeQualifier`) based on the index and an already `TypeQualifier` of
+/// a vertex input.
 fn vertex_shader_input_qualifier(i: usize, ty_qual: &Option<syntax::TypeQualifier>) -> syntax::TypeQualifier {
   let layout_qualifier = syntax::LayoutQualifier {
     ids: vec![syntax::LayoutQualifierSpec::Identifier("location".to_owned(),
@@ -560,7 +516,8 @@ fn vertex_shader_input_qualifier(i: usize, ty_qual: &Option<syntax::TypeQualifie
 }
 
 /// Extract the vertex shader inputs from a list of arguments.
-fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<syntax::SingleDeclaration>, GLSLConversionError> where I: IntoIterator<Item = &'a syntax::FunctionParameterDeclaration> {
+fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<syntax::SingleDeclaration>, syntax::GLSLConversionError>
+    where I: IntoIterator<Item = &'a syntax::FunctionParameterDeclaration> {
   let mut inputs = Vec::new();
 
   for (i, arg) in args.into_iter().enumerate() {
@@ -593,10 +550,10 @@ fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<syntax::SingleDeclaration>
   Ok(inputs)
 }
 
-fn vertex_shader_outputs(fsty: &syntax::FullySpecifiedType, structs: &[syntax::StructSpecifier]) -> Result<Vec<syntax::SingleDeclaration>, GLSLConversionError> {
+fn vertex_shader_outputs(fsty: &syntax::FullySpecifiedType, structs: &[syntax::StructSpecifier]) -> Result<Vec<syntax::SingleDeclaration>, syntax::GLSLConversionError> {
   // we refuse that the output has a main qualifier
   if fsty.qualifier.is_some() {
-    return Err(GLSLConversionError::OutputHasMainQualifier);
+    return Err(syntax::GLSLConversionError::OutputHasMainQualifier);
   }
 
   let ty = &fsty.ty;
@@ -614,70 +571,79 @@ fn vertex_shader_outputs(fsty: &syntax::FullySpecifiedType, structs: &[syntax::S
           if first_field.qualifier.is_some() ||
              first_field.ty.ty != syntax::TypeSpecifierNonArray::Vec4 ||
              first_field.identifiers != vec![("spsl_Position".to_owned(), None)] {
-            return Err(GLSLConversionError::WrongOutputFirstField(first_field.clone()));
+            return Err(syntax::GLSLConversionError::WrongOutputFirstField(first_field.clone()));
           }
 
           // then, for all other fields, we check that they are not composite type (i.e. structs); if
           // they are not, add them to the interface; otherwise, fail
-          fields_to_single_decls(&s.fields[1..], "spsl_v_")
+          syntax::fields_to_single_decls(&s.fields[1..], "spsl_v_")
         }
-        _ => Err(GLSLConversionError::ReturnTypeMustBeAStruct(ty.clone()))
+        _ => Err(syntax::GLSLConversionError::ReturnTypeMustBeAStruct(ty.clone()))
       }
     }
-    _ => Err(GLSLConversionError::ReturnTypeMustBeAStruct(ty.clone()))
+    _ => Err(syntax::GLSLConversionError::ReturnTypeMustBeAStruct(ty.clone()))
   }
 }
 
-/// Map a struct’s fields to a Vec<ExternalDeclaration>. Typically suitable for generating outputs
-/// from a struct fields.
-fn fields_to_single_decls(fields: &[syntax::StructFieldSpecifier], prefix: &str) -> Result<Vec<syntax::SingleDeclaration>, GLSLConversionError> {
-  let mut outputs = Vec::new();
+/// Sink a geometry shader.
+fn sink_geometry_shader<F>(sink: &mut F,
+                           concat_map_prim: &syntax::FunctionDefinition,
+                           structs: &[syntax::StructSpecifier],
+                           prev_ret_ty: &syntax::StructSpecifier,
+                           prev_inputs: &[syntax::SingleDeclaration],
+                           ) -> Result<(syntax::StructSpecifier, Vec<syntax::SingleDeclaration>), syntax::GLSLConversionError>
+                           where F: Write {
+  let _ = match concat_map_prim.prototype.parameters.as_slice() {
+    &[ref arg0, ref arg1] => {
+      let input = syntax::fn_arg_as_fully_spec_ty(arg0);
+      let output = syntax::fn_arg_as_fully_spec_ty(arg1);
 
-  for (i, field) in fields.into_iter().enumerate() {
-    match field.ty.ty {
-      syntax::TypeSpecifierNonArray::Struct(ref s) => {
-        return Err(GLSLConversionError::OutputFieldCannotBeStruct(i + 1, s.clone()));
-      }
-      syntax::TypeSpecifierNonArray::TypeName(ref t) => {
-        return Err(GLSLConversionError::OutputFieldCannotBeTypeName(i + 1, t.clone()));
-      }
-      _ => ()
-    }
-
-    if field.identifiers.len() > 1 {
-      return Err(GLSLConversionError::OutputFieldCannotHaveSeveralIdentifiers(i + 1, field.clone()));
-    }
-
-    outputs.push(field_to_single_decl(&field, prefix));
-  }
-
-  Ok(outputs)
-}
-
-/// Map a StructFieldSpecifier to an ExternalDeclaration. Typically suitable for generating an
-/// output from a struct field.
-fn field_to_single_decl(field: &syntax::StructFieldSpecifier, prefix: &str) -> syntax::SingleDeclaration {
-  let base_qualifier = syntax::TypeQualifierSpec::Storage(syntax::StorageQualifier::Out);
-  let qualifier = match field.qualifier {
-    Some(ref qual) =>
-      syntax::TypeQualifier {
-        qualifiers: qual.clone().qualifiers.into_iter().chain(once(base_qualifier)).collect()
-      },
-    None => syntax::TypeQualifier {
-      qualifiers: vec![base_qualifier]
+      let input_ty_name = syntax::get_ty_name_from_full_spec_ty(&input);
+      let input_prim = guess_gs_input_prim(&input.ty.array_specifier);
+      let output_layout_metadata = get_gs_output_layout_metadata(&input.qualifier);
     }
   };
-  let fsty = syntax::FullySpecifiedType {
-    qualifier: Some(qualifier),
-    ty: field.ty.clone()
-  };
 
-  syntax::SingleDeclaration {
-    ty: fsty,
-    name: Some(prefix.to_owned() + &field.identifiers[0].0),
-    array_specifier: field.identifiers[0].1.clone(),
-    initializer: None
-  }
+  // // ensure we use the right input type
+  // if Some(&input_ty_name) != prev_ret_ty.name.as_ref() {
+  //   return Err(syntax::GLSLConversionError::UnknownInputType(input_ty_name.clone()));
+  // }
+
+  // let inputs = syntax::inputs_from_outputs(prev_inputs);
+  // let ret_ty = syntax::get_fn_ret_ty(concat_map_prim, structs)?;
+  // let outputs = syntax::fields_to_single_decls(&ret_ty.fields, "spsl_g_")?;
+
+  // syntax::sink_single_as_ext_decls(sink, inputs.iter().chain(&outputs));
+
+  // writer::glsl::show_struct(sink, prev_ret_ty); // sink the previous stage’s return type
+  // writer::glsl::show_struct(sink, &ret_ty); // sink the return type of this stage
+
+  // // sink the concat_map_prim function
+  // let concat_map_prim_fixed = syntax::remove_unused_args_fn(concat_map_prim);
+  // writer::glsl::show_function_definition(sink, &concat_map_prim_fixed);
+
+  // // void main
+  // let _ = sink.write_str("void main() {\n  ");
+
+  // let _ = write!(sink, "{0} i = {0}(", prev_ret_ty.name.as_ref().unwrap());
+
+  // let _ = sink.write_str(inputs[0].name.as_ref().unwrap());
+
+  // for input in &inputs[1..] {
+  //   let _ = write!(sink, ", {}", input.name.as_ref().unwrap());
+  // }
+
+  // let _ = sink.write_str(");\n");
+  // let _ = write!(sink, "  {} o = {}(i);\n", ret_ty.name.as_ref().unwrap(), "concat_map_prim");
+
+  // for (output, ret_ty_field) in outputs.iter().zip(&ret_ty.fields) {
+  //   let _ = write!(sink, "  {} = o.{};\n", output.name.as_ref().unwrap(), ret_ty_field.identifiers[0].0);
+  // }
+
+  // // end of the main function
+  // let _ = sink.write_str("}\n\n");
+
+  // Ok((ret_ty, outputs))
 }
 
 /// Sink a fragment shader.
@@ -685,34 +651,27 @@ fn sink_fragment_shader<F>(sink: &mut F,
                            map_frag_data: &syntax::FunctionDefinition,
                            structs: &[syntax::StructSpecifier],
                            prev_ret_ty: &syntax::StructSpecifier,
-                           prev_inputs: &[syntax::SingleDeclaration])
-                           -> Result<syntax::StructSpecifier, GLSLConversionError>
+                           prev_inputs: &[syntax::SingleDeclaration],
+                           ) -> Result<(syntax::StructSpecifier, Vec<syntax::SingleDeclaration>), syntax::GLSLConversionError>
                            where F: Write {
-  let input_ty_name = get_fn_input_ty_name(map_frag_data)?;
+  let input_ty_name = syntax::get_fn1_input_ty_name(map_frag_data)?;
 
   // ensure we use the right input type
   if Some(&input_ty_name) != prev_ret_ty.name.as_ref() {
-    return Err(GLSLConversionError::UnknownInputType(input_ty_name.clone()));
+    return Err(syntax::GLSLConversionError::UnknownInputType(input_ty_name.clone()));
   }
 
-  let inputs = fragment_shader_inputs(prev_inputs); // this is wrong, need to adapt the previous inputs instead
-  let ret_ty = get_fn_ret_ty(map_frag_data, structs)?;
-  let outputs = fields_to_single_decls(&ret_ty.fields, "spsl_f_")?;
+  let inputs = syntax::inputs_from_outputs(prev_inputs);
+  let ret_ty = syntax::get_fn_ret_ty(map_frag_data, structs)?;
+  let outputs = syntax::fields_to_single_decls(&ret_ty.fields, "spsl_f_")?;
 
-  // sink inputs and outputs
-  for sd in inputs.iter().chain(&outputs) {
-    let ed = single_to_external_declaration(sd.clone());
-    writer::glsl::show_external_declaration(sink, &ed);
-  }
+  syntax::sink_single_as_ext_decls(sink, inputs.iter().chain(&outputs));
 
-  // sink the previous return type (from the previous stage)
-  writer::glsl::show_struct(sink, prev_ret_ty);
-
-  // sink the return type
-  writer::glsl::show_struct(sink, &ret_ty);
+  writer::glsl::show_struct(sink, prev_ret_ty); // sink the previous stage’s return type
+  writer::glsl::show_struct(sink, &ret_ty); // sink the return type of this stage
 
   // sink the map_frag_data function
-  let map_frag_data_reduced = remove_unused_args_fn(map_frag_data);
+  let map_frag_data_reduced = syntax::remove_unused_args_fn(map_frag_data);
   writer::glsl::show_function_definition(sink, &map_frag_data_reduced);
 
   // void main
@@ -727,7 +686,7 @@ fn sink_fragment_shader<F>(sink: &mut F,
   }
 
   let _ = sink.write_str(");\n");
-  let _ = write!(sink, "  {} o = map_frag_data(i);\n", ret_ty.name.as_ref().unwrap());
+  let _ = write!(sink, "  {} o = {}(i);\n", ret_ty.name.as_ref().unwrap(), "map_frag_data");
 
   for (output, ret_ty_field) in outputs.iter().zip(&ret_ty.fields) {
     let _ = write!(sink, "  {} = o.{};\n", output.name.as_ref().unwrap(), ret_ty_field.identifiers[0].0);
@@ -736,42 +695,58 @@ fn sink_fragment_shader<F>(sink: &mut F,
   // end of the main function
   let _ = sink.write_str("}\n\n");
 
-  Ok(ret_ty)
+  Ok((ret_ty, outputs))
 }
 
-/// Replace an input declaration by its output declaration dual.
-fn replace_out_in_single_declaration(input: syntax::SingleDeclaration) -> syntax::SingleDeclaration {
-  let qualifier = input.ty.qualifier.map(|q| {
-    syntax::TypeQualifier {
-      qualifiers: q.qualifiers.into_iter().map(|qs| {
-        match qs {
-          syntax::TypeQualifierSpec::Storage(syntax::StorageQualifier::Out) =>
-            syntax::TypeQualifierSpec::Storage(syntax::StorageQualifier::In),
-          _ => qs
-        }
-      }).collect()
-    }
-  });
+fn filter_out_special_functions<'a, I>(
+  functions: I
+) -> impl Iterator<Item = &'a syntax::FunctionDefinition>
+where I: Iterator<Item = &'a syntax::FunctionDefinition>
+{
+  functions.filter(|f| {
+    let n: &str = &f.prototype.name;
+    n != "map_vertex" && n != "concat_map_prim" && n != "map_frag_data"
+  })
+}
 
-  syntax::SingleDeclaration {
-    ty: syntax::FullySpecifiedType {
-      qualifier,
-      .. input.ty
+fn guess_gs_input_prim(array_specifier: &Option<syntax::ArraySpecifier>) -> Option<syntax::LayoutQualifierSpec> {
+  match *array_specifier {
+    Some(syntax::ArraySpecifier::ExplicitlySized(box syntax::Expr::IntConst(size))) => {
+      match size {
+        1 => Some(syntax::LayoutQualifierSpec::Identifier("points".to_owned(), None)),
+        2 => Some(syntax::LayoutQualifierSpec::Identifier("lines".to_owned(), None)),
+        3 => Some(syntax::LayoutQualifierSpec::Identifier("triangles".to_owned(), None)),
+        4 => Some(syntax::LayoutQualifierSpec::Identifier("lines_adjacency".to_owned(), None)),
+        6 => Some(syntax::LayoutQualifierSpec::Identifier("triangles_adjacency".to_owned(), None)),
+        _ => None
+      }
     },
-    .. input
+    _ => None
   }
 }
 
-fn fragment_shader_inputs(inputs: &[syntax::SingleDeclaration]) -> Vec<syntax::SingleDeclaration> {
-  inputs.into_iter().map(|sd| replace_out_in_single_declaration(sd.clone())).collect()
+fn get_gs_output_layout_metadata(qual: &Option<syntax::TypeQualifier>) -> Result<syntax::LayoutQualifier, syntax::GLSLConversionError> {
+  let qual = qual.ok_or(syntax::GLSLConversionError::WrongGeometryOutputLayout)?;
+
+  match qual.qualifiers.as_slice() {
+    &[syntax::TypeQualifierSpec::Layout(ref layout_qual), syntax::TypeQualifierSpec::Storage(syntax::StorageQualifier::Out)] => {
+      match layout_qual.ids.as_slice() {
+        &[syntax::LayoutQualifierSpec::Identifier(ref output_prim_str, None),
+          syntax::LayoutQualifierSpec::Identifier(ref max_vertices_str, Some(box syntax::Expr::IntConst(max_vertices)))] if max_vertices_str == "max_vertices" => {
+          let output_prim = check_gs_output_prim(output_prim_str)?;
+
+          Ok(layout_qual.clone())
+        },
+        _ => Err(syntax::GLSLConversionError::WrongGeometryOutputLayout)
+      }
+    },
+    _ => Err(syntax::GLSLConversionError::WrongGeometryOutputLayout)
+  }
 }
 
-/// Class of errors that can happen in dependencies.
-#[derive(Clone, Debug, PartialEq)]
-pub enum DepsError {
-  /// If a module’s dependencies has any cycle, the dependencies are unusable and the cycle is
-  /// returned.
-  Cycle(ModuleKey, ModuleKey),
-  /// There was a loading error of a module.
-  LoadError(ModuleKey)
+fn check_gs_output_prim(s: &str) -> Result<(), syntax::GLSLConversionError> {
+  match s {
+    "points" | "line_strip" | "triangle_strip" => Ok(()),
+    _ => Err(syntax::GLSLConversionError::WrongGeometryOutputLayout)
+  }
 }

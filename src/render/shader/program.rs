@@ -10,12 +10,10 @@
 use luminance::shader::program::Program as LProgram;
 pub use luminance::shader::program::{ProgramError, Uniform, Uniformable, UniformBuilder,
                                      UniformInterface, UniformWarning};
-use luminance::shader::stage::{Stage, StageError, Type};
+use luminance::shader::stage::StageError;
 use luminance::vertex::Vertex;
 use std::fmt;
-use std::fs::File;
 use std::hash;
-use std::io::{BufRead, BufReader};
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -130,10 +128,15 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni>
         info!("vertex shader");
         annotate_shader(&fold.vs);
 
+        if let Some(ref gs) = fold.gs {
+          info!("geometry shader");
+          annotate_shader(gs);
+        }
+
         info!("fragment shader");
         annotate_shader(&fold.fs);
 
-        match LProgram::from_strings(None, &fold.vs, None, &fold.fs) {
+        match LProgram::from_strings(None, &fold.vs, fold.gs.as_ref().map(String::as_str), &fold.fs) {
           Err(err) => {
             err!("{:?}", err);
             Err(LoadError::ConversionFailed("damn".to_owned()))

@@ -39,6 +39,7 @@
 //! - **shader**: provides 
 //! - **extra**: some extra (but not mandatory) other modules
 
+#![feature(box_patterns)]
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(macro_reexport)]
@@ -58,7 +59,7 @@ extern crate glsl;
 extern crate nom;
 extern crate notify;
 extern crate num_traits;
-extern crate rusttype;
+//extern crate rusttype; // FIXME: uncomment when we support text render back
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
