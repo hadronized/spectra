@@ -586,32 +586,38 @@ fn vertex_shader_outputs(fsty: &syntax::FullySpecifiedType, structs: &[syntax::S
 }
 
 /// Sink a geometry shader.
-fn sink_geometry_shader<F>(sink: &mut F,
-                           concat_map_prim: &syntax::FunctionDefinition,
-                           structs: &[syntax::StructSpecifier],
-                           prev_ret_ty: &syntax::StructSpecifier,
-                           prev_inputs: &[syntax::SingleDeclaration],
-                           ) -> Result<(syntax::StructSpecifier, Vec<syntax::SingleDeclaration>), syntax::GLSLConversionError>
-                           where F: Write {
-  let _ = match concat_map_prim.prototype.parameters.as_slice() {
+fn sink_geometry_shader<F>(
+  sink: &mut F,
+  concat_map_prim: &syntax::FunctionDefinition,
+  structs: &[syntax::StructSpecifier],
+  prev_ret_ty: &syntax::StructSpecifier,
+  prev_inputs: &[syntax::SingleDeclaration],
+) -> Result<(syntax::StructSpecifier, Vec<syntax::SingleDeclaration>),
+             syntax::GLSLConversionError>
+where F: Write {
+  let fn_args = concat_map_prim.prototype.parameters.as_slice();
+  let (input_ty_name, input_prim, output_layout_metadata) = match fn_args {
     &[ref arg0, ref arg1] => {
       let input = syntax::fn_arg_as_fully_spec_ty(arg0);
       let output = syntax::fn_arg_as_fully_spec_ty(arg1);
 
-      let input_ty_name = syntax::get_ty_name_from_full_spec_ty(&input);
-      let input_prim = guess_gs_input_prim(&input.ty.array_specifier);
-      let output_layout_metadata = get_gs_output_layout_metadata(&input.qualifier);
+      let input_ty_name = syntax::get_ty_name_from_fully_spec_ty(&input)?;
+      let input_prim = guess_gs_input_prim(&input.ty.array_specifier)?;
+      let output_layout_metadata = get_gs_output_layout_metadata(&input.qualifier)?;
+
+      Ok((input_ty_name, input_prim, output_layout_metadata))
     }
-  };
+    _ => Err(syntax::GLSLConversionError::WrongNumberOfArgs(2, fn_args.len()))
+  }?;
 
-  // // ensure we use the right input type
-  // if Some(&input_ty_name) != prev_ret_ty.name.as_ref() {
-  //   return Err(syntax::GLSLConversionError::UnknownInputType(input_ty_name.clone()));
-  // }
+  // ensure we use the right input type
+  if Some(&input_ty_name) != prev_ret_ty.name.as_ref() {
+    return Err(syntax::GLSLConversionError::UnknownInputType(input_ty_name.clone()));
+  }
 
-  // let inputs = syntax::inputs_from_outputs(prev_inputs);
-  // let ret_ty = syntax::get_fn_ret_ty(concat_map_prim, structs)?;
-  // let outputs = syntax::fields_to_single_decls(&ret_ty.fields, "spsl_g_")?;
+  let inputs = syntax::inputs_from_outputs(prev_inputs);
+  let ret_ty = syntax::get_fn_ret_ty(concat_map_prim, structs)?;
+  let outputs = syntax::fields_to_single_decls(&ret_ty.fields, "spsl_g_")?;
 
   // syntax::sink_single_as_ext_decls(sink, inputs.iter().chain(&outputs));
 
@@ -709,19 +715,19 @@ where I: Iterator<Item = &'a syntax::FunctionDefinition>
   })
 }
 
-fn guess_gs_input_prim(array_specifier: &Option<syntax::ArraySpecifier>) -> Option<syntax::LayoutQualifierSpec> {
+fn guess_gs_input_prim(array_specifier: &Option<syntax::ArraySpecifier>) -> Result<syntax::LayoutQualifierSpec, syntax::GLSLConversionError> {
   match *array_specifier {
     Some(syntax::ArraySpecifier::ExplicitlySized(box syntax::Expr::IntConst(size))) => {
       match size {
-        1 => Some(syntax::LayoutQualifierSpec::Identifier("points".to_owned(), None)),
-        2 => Some(syntax::LayoutQualifierSpec::Identifier("lines".to_owned(), None)),
-        3 => Some(syntax::LayoutQualifierSpec::Identifier("triangles".to_owned(), None)),
-        4 => Some(syntax::LayoutQualifierSpec::Identifier("lines_adjacency".to_owned(), None)),
-        6 => Some(syntax::LayoutQualifierSpec::Identifier("triangles_adjacency".to_owned(), None)),
-        _ => None
+        1 => Ok(syntax::LayoutQualifierSpec::Identifier("points".to_owned(), None)),
+        2 => Ok(syntax::LayoutQualifierSpec::Identifier("lines".to_owned(), None)),
+        3 => Ok(syntax::LayoutQualifierSpec::Identifier("triangles".to_owned(), None)),
+        4 => Ok(syntax::LayoutQualifierSpec::Identifier("lines_adjacency".to_owned(), None)),
+        6 => Ok(syntax::LayoutQualifierSpec::Identifier("triangles_adjacency".to_owned(), None)),
+        _ => Err(syntax::GLSLConversionError::WrongGeometryInputDim(size as usize))
       }
     },
-    _ => None
+    _ => Err(syntax::GLSLConversionError::WrongGeometryInput)
   }
 }
 

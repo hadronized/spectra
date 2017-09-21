@@ -49,6 +49,8 @@ pub enum GLSLConversionError {
   UnknownInputType(TypeName),
   WrongNumberOfArgs(ExpectedNumberOfArgs, FoundNumberOfArgs),
   NotTypeName,
+  WrongGeometryInput,
+  WrongGeometryInputDim(usize),
   WrongGeometryOutputLayout
 }
 
@@ -211,11 +213,11 @@ pub fn fn_arg_as_fully_spec_ty(arg: &FunctionParameterDeclaration) -> FullySpeci
 
 /// Extract the type name of a fully specified type. If the type is not a typename, nothing is
 /// returned.
-pub fn get_ty_name_from_full_spec_ty(fst: &FullySpecifiedType) -> Option<TypeName> {
+pub fn get_ty_name_from_fully_spec_ty(fst: &FullySpecifiedType) -> Result<TypeName, GLSLConversionError> {
   if let TypeSpecifierNonArray::TypeName(ref n) = fst.ty.ty {
-    Some(n.clone())
+    Ok(n.clone())
   } else {
-    None
+    Err(GLSLConversionError::NotTypeName)
   }
 }
 
@@ -226,7 +228,7 @@ pub fn get_fn1_input_ty_name(f: &FunctionDefinition) -> Result<TypeName, GLSLCon
   match slice {
     &[ref arg] => {
       let fst = fn_arg_as_fully_spec_ty(arg);
-      get_ty_name_from_full_spec_ty(&fst).ok_or(GLSLConversionError::NotTypeName)
+      get_ty_name_from_fully_spec_ty(&fst)
     }
     _ => Err(GLSLConversionError::WrongNumberOfArgs(1, slice.len()))
   }
