@@ -4,7 +4,7 @@
 //! app so that you can start working on interesting things.
 use clap::{App, Arg};
 use luminance_glfw;
-pub use luminance_glfw::{DeviceError, Key, MouseButton, WindowDim, WindowOpt};
+pub use luminance_glfw::{Device as DeviceTrait, GLFWDeviceError, Key, MouseButton, WindowDim, WindowOpt};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -16,7 +16,7 @@ pub type Time = f64;
 ///
 /// Upon bootstrapping, this type is created to add interaction and context handling.
 pub struct Device {
-  raw: luminance_glfw::Device,
+  raw: luminance_glfw::GLFWDevice,
   /// Some kind of epoch start the application started at.
   start_time: Instant
 }
@@ -33,7 +33,7 @@ impl Device {
              author: &str,
              title: &str,
              win_opt: WindowOpt)
-             -> Result<Self, DeviceError> {
+             -> Result<Self, GLFWDeviceError> {
     let options = App::new(title)
       .version(version)
       .author(author)
@@ -76,7 +76,7 @@ impl Device {
     info!("window mode: {:?}", win_dim);
     info!("window options: {:?}", win_opt);
 
-    let dev = luminance_glfw::Device::new(win_dim, title, win_opt)?;
+    let dev = luminance_glfw::GLFWDevice::new(win_dim, title, win_opt)?;
 
     info!("bootstrapping finished");
 

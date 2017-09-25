@@ -51,7 +51,7 @@ pub enum GLSLConversionError {
   NotTypeName,
   WrongGeometryInput,
   WrongGeometryInputDim(usize),
-  WrongGeometryOutputLayout
+  WrongGeometryOutputLayout(Option<TypeQualifier>)
 }
 
 /// Sink single declarations as external declarations.

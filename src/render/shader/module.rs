@@ -105,6 +105,7 @@ use glsl::writer;
 use std::fmt::Write;
 use std::fs::File;
 use std::io::Read;
+use std::iter::once;
 use std::path::PathBuf;
 
 use render::shader::lang::parser;
@@ -596,16 +597,16 @@ fn sink_geometry_shader<F>(
              syntax::GLSLConversionError>
 where F: Write {
   let fn_args = concat_map_prim.prototype.parameters.as_slice();
-  let (input_ty_name, input_prim, output_layout_metadata) = match fn_args {
+  let (input_ty_name, input_dim, input_layout, output_ty, output_layout) = match fn_args {
     &[ref arg0, ref arg1] => {
       let input = syntax::fn_arg_as_fully_spec_ty(arg0);
       let output = syntax::fn_arg_as_fully_spec_ty(arg1);
 
       let input_ty_name = syntax::get_ty_name_from_fully_spec_ty(&input)?;
-      let input_prim = guess_gs_input_prim(&input.ty.array_specifier)?;
-      let output_layout_metadata = get_gs_output_layout_metadata(&input.qualifier)?;
+      let (input_dim, input_layout) = guess_gs_input_prim(&input.ty.array_specifier)?;
+      let output_layout = get_gs_output_layout_metadata(&output.qualifier)?;
 
-      Ok((input_ty_name, input_prim, output_layout_metadata))
+      Ok((input_ty_name, input_dim, input_layout, output_ty, output_layout))
     }
     _ => Err(syntax::GLSLConversionError::WrongNumberOfArgs(2, fn_args.len()))
   }?;
@@ -615,41 +616,41 @@ where F: Write {
     return Err(syntax::GLSLConversionError::UnknownInputType(input_ty_name.clone()));
   }
 
+  // sink the metadata of the geometry shader (input primitive, output primitive, max output vertices)
+  // TODO
+  let gs_metadata_input = gs_layout_storage_external_decl(input_layout, syntax::StorageQualifier::In);
+  let gs_metadata_output = gs_layout_storage_external_decl(output_layout, syntax::StorageQualifier::Out);
+
+  writer::glsl::show_external_declaration(sink, &gs_metadata_input);
+  writer::glsl::show_external_declaration(sink, &gs_metadata_output);
+
   let inputs = syntax::inputs_from_outputs(prev_inputs);
   let ret_ty = syntax::get_fn_ret_ty(concat_map_prim, structs)?;
   let outputs = syntax::fields_to_single_decls(&ret_ty.fields, "spsl_g_")?;
 
-  // syntax::sink_single_as_ext_decls(sink, inputs.iter().chain(&outputs));
+  syntax::sink_single_as_ext_decls(sink, inputs.iter().chain(&outputs));
 
-  // writer::glsl::show_struct(sink, prev_ret_ty); // sink the previous stage’s return type
-  // writer::glsl::show_struct(sink, &ret_ty); // sink the return type of this stage
+  writer::glsl::show_struct(sink, prev_ret_ty); // sink the previous stage’s return type
+  writer::glsl::show_struct(sink, &ret_ty); // sink the return type of this stage
 
-  // // sink the concat_map_prim function
-  // let concat_map_prim_fixed = syntax::remove_unused_args_fn(concat_map_prim);
-  // writer::glsl::show_function_definition(sink, &concat_map_prim_fixed);
+  // sink the concat_map_prim function
+  let concat_map_prim_fixed = fix_concat_map_prim(concat_map_prim.clone(), &ret_ty)?;
+  writer::glsl::show_function_definition(sink, &concat_map_prim_fixed);
 
-  // // void main
-  // let _ = sink.write_str("void main() {\n  ");
+  // void main
+  let _ = sink.write_str("void main() {\n  ");
 
-  // let _ = write!(sink, "{0} i = {0}(", prev_ret_ty.name.as_ref().unwrap());
+  // sink the vertex array input variable as "_ v = "
+  let v_name = "v";
+  let _ = writer::glsl::show_statement(sink, &gs_create_vertex_array(&prev_ret_ty, input_dim, v_name));
 
-  // let _ = sink.write_str(inputs[0].name.as_ref().unwrap());
+  // call the concat_map_prim function
+  let _ = write!(sink, "  concat_map_prim({});\n", v_name);
 
-  // for input in &inputs[1..] {
-  //   let _ = write!(sink, ", {}", input.name.as_ref().unwrap());
-  // }
+  // end of the main function
+  let _ = sink.write_str("}\n\n");
 
-  // let _ = sink.write_str(");\n");
-  // let _ = write!(sink, "  {} o = {}(i);\n", ret_ty.name.as_ref().unwrap(), "concat_map_prim");
-
-  // for (output, ret_ty_field) in outputs.iter().zip(&ret_ty.fields) {
-  //   let _ = write!(sink, "  {} = o.{};\n", output.name.as_ref().unwrap(), ret_ty_field.identifiers[0].0);
-  // }
-
-  // // end of the main function
-  // let _ = sink.write_str("}\n\n");
-
-  // Ok((ret_ty, outputs))
+  Ok((ret_ty, outputs))
 }
 
 /// Sink a fragment shader.
@@ -715,15 +716,15 @@ where I: Iterator<Item = &'a syntax::FunctionDefinition>
   })
 }
 
-fn guess_gs_input_prim(array_specifier: &Option<syntax::ArraySpecifier>) -> Result<syntax::LayoutQualifierSpec, syntax::GLSLConversionError> {
+fn guess_gs_input_prim(array_specifier: &Option<syntax::ArraySpecifier>) -> Result<(usize, syntax::LayoutQualifier), syntax::GLSLConversionError> {
   match *array_specifier {
     Some(syntax::ArraySpecifier::ExplicitlySized(box syntax::Expr::IntConst(size))) => {
       match size {
-        1 => Ok(syntax::LayoutQualifierSpec::Identifier("points".to_owned(), None)),
-        2 => Ok(syntax::LayoutQualifierSpec::Identifier("lines".to_owned(), None)),
-        3 => Ok(syntax::LayoutQualifierSpec::Identifier("triangles".to_owned(), None)),
-        4 => Ok(syntax::LayoutQualifierSpec::Identifier("lines_adjacency".to_owned(), None)),
-        6 => Ok(syntax::LayoutQualifierSpec::Identifier("triangles_adjacency".to_owned(), None)),
+        1 => Ok((1, syntax::LayoutQualifier { ids: vec![syntax::LayoutQualifierSpec::Identifier("points".to_owned(), None)] })),
+        2 => Ok((2, syntax::LayoutQualifier { ids: vec![syntax::LayoutQualifierSpec::Identifier("lines".to_owned(), None)] })),
+        3 => Ok((3, syntax::LayoutQualifier { ids: vec![syntax::LayoutQualifierSpec::Identifier("triangles".to_owned(), None)] })),
+        4 => Ok((4, syntax::LayoutQualifier { ids: vec![syntax::LayoutQualifierSpec::Identifier("lines_adjacency".to_owned(), None)] })),
+        6 => Ok((6, syntax::LayoutQualifier { ids: vec![syntax::LayoutQualifierSpec::Identifier("triangles_adjacency".to_owned(), None)] })),
         _ => Err(syntax::GLSLConversionError::WrongGeometryInputDim(size as usize))
       }
     },
@@ -731,28 +732,200 @@ fn guess_gs_input_prim(array_specifier: &Option<syntax::ArraySpecifier>) -> Resu
   }
 }
 
+fn gs_layout_storage_external_decl(
+  layout: syntax::LayoutQualifier,
+  storage: syntax::StorageQualifier
+) -> syntax::ExternalDeclaration {
+  let ty_qual =
+    syntax::TypeQualifier {
+      qualifiers:
+        vec![
+          syntax::TypeQualifierSpec::Layout(layout),
+          syntax::TypeQualifierSpec::Storage(storage)
+        ]
+    };
+
+  syntax::ExternalDeclaration::Declaration(syntax::Declaration::Global(ty_qual, Vec::new()))
+}
+
 fn get_gs_output_layout_metadata(qual: &Option<syntax::TypeQualifier>) -> Result<syntax::LayoutQualifier, syntax::GLSLConversionError> {
-  let qual = qual.ok_or(syntax::GLSLConversionError::WrongGeometryOutputLayout)?;
+  let qual = qual.as_ref().ok_or(syntax::GLSLConversionError::WrongGeometryOutputLayout(qual.clone()))?;
 
   match qual.qualifiers.as_slice() {
     &[syntax::TypeQualifierSpec::Layout(ref layout_qual), syntax::TypeQualifierSpec::Storage(syntax::StorageQualifier::Out)] => {
       match layout_qual.ids.as_slice() {
         &[syntax::LayoutQualifierSpec::Identifier(ref output_prim_str, None),
-          syntax::LayoutQualifierSpec::Identifier(ref max_vertices_str, Some(box syntax::Expr::IntConst(max_vertices)))] if max_vertices_str == "max_vertices" => {
-          let output_prim = check_gs_output_prim(output_prim_str)?;
-
-          Ok(layout_qual.clone())
+          syntax::LayoutQualifierSpec::Identifier(ref max_vertices_str, Some(box syntax::Expr::IntConst(_)))] if max_vertices_str == "max_vertices" => {
+          if check_gs_output_prim(output_prim_str) {
+            Ok(layout_qual.clone())
+          } else {
+            Err(syntax::GLSLConversionError::WrongGeometryOutputLayout(Some(qual.clone())))
+          }
         },
-        _ => Err(syntax::GLSLConversionError::WrongGeometryOutputLayout)
+        _ => Err(syntax::GLSLConversionError::WrongGeometryOutputLayout(Some(qual.clone())))
       }
     },
-    _ => Err(syntax::GLSLConversionError::WrongGeometryOutputLayout)
+    _ => Err(syntax::GLSLConversionError::WrongGeometryOutputLayout(Some(qual.clone())))
   }
 }
 
-fn check_gs_output_prim(s: &str) -> Result<(), syntax::GLSLConversionError> {
+fn check_gs_output_prim(s: &str) -> bool {
   match s {
-    "points" | "line_strip" | "triangle_strip" => Ok(()),
-    _ => Err(syntax::GLSLConversionError::WrongGeometryOutputLayout)
+    "points" | "line_strip" | "triangle_strip" => true,
+    _ => false
   }
+}
+
+/// Fix the concat_map_prim function for geometry shaders. This function will remove all the
+/// GLSL that is normally illegal (only hints for us) and fix the EDSL one.
+///
+/// The first argument is a valid GLSL one – i.e. the input. The second one is used as hint
+/// only and must completely be removed.
+///
+/// This function will also replace any call to the `yield_vertex` and `yield_primitive` by the
+/// correct GLSL counterpart.
+fn fix_concat_map_prim(f: syntax::FunctionDefinition, out_ty: &syntax::StructSpecifier) -> Result<syntax::FunctionDefinition, syntax::GLSLConversionError> {
+  let statement: Result<_, syntax::GLSLConversionError> = f.statement.statement_list.into_iter().map(|st| {
+    match st {
+      syntax::Statement::Simple(
+        box syntax::SimpleStatement::Expression(
+          Some(syntax::Expr::FunCall(syntax::FunIdentifier::Identifier(ref fni), ref args)))) => {
+            match fni.as_str() {
+              "yield_vertex" => yield_vertex(&args, out_ty),
+              "yield_primitive" => Ok(yield_primitive()),
+              _ => Ok(st.clone())
+            }
+          }
+
+      _ => Ok(st)
+    }
+  }).collect();
+  let st = statement?;
+
+  Ok(syntax::FunctionDefinition {
+    prototype: syntax::FunctionPrototype {
+      parameters: f.prototype.parameters.into_iter().take(1).collect(),
+      .. f.prototype
+    },
+    statement: syntax::CompoundStatement {
+      statement_list: st
+    }
+  })
+}
+
+fn yield_vertex(args: &[syntax::Expr], out_ty: &syntax::StructSpecifier) -> Result<syntax::Statement, syntax::GLSLConversionError> {
+  match args {
+    &[ref arg] => {
+      // bind the argument to a variable so that we can re-use it if it’s a literal
+      let binding = syntax::Statement::Simple(
+        box syntax::SimpleStatement::Declaration(
+          syntax::Declaration::InitDeclaratorList(
+            syntax::InitDeclaratorList {
+              head: syntax::SingleDeclaration {
+                ty: syntax::FullySpecifiedType {
+                  qualifier: None,
+                  ty: syntax::TypeSpecifier {
+                    ty: syntax::TypeSpecifierNonArray::TypeName(out_ty.name.as_ref().unwrap().clone()),
+                    array_specifier: None
+                  },
+                },
+                name: Some("spsl_v".to_owned()), // special name to prevent from shadowing
+                array_specifier: None,
+                initializer: Some(syntax::Initializer::Simple(box arg.clone()))
+              },
+              tail: Vec::new()
+            }
+          )
+        )
+      );
+
+      // variable to refer the bindin
+      let bvar = box syntax::Expr::Variable("spsl_v".to_owned());
+
+      // iterate over the fields of the vertex
+      let assigns = out_ty.fields.iter().flat_map(|field| field.identifiers.iter().map(|&(ref field_name, _)| {
+        syntax::Statement::Simple(
+          box syntax::SimpleStatement::Expression(
+            Some(syntax::Expr::Assignment(
+              box syntax::Expr::Variable("spsl_v_".to_owned() + field_name),
+              syntax::AssignmentOp::Equal,
+              box syntax::Expr::Dot(bvar.clone(), field_name.to_owned())
+            ))
+          )
+        )
+      }));
+
+      // create the final block of GLSL code
+      let block = syntax::CompoundStatement { statement_list: once(binding).chain(assigns).collect() };
+      Ok(syntax::Statement::Compound(box block))
+    },
+    _ => Err(syntax::GLSLConversionError::WrongNumberOfArgs(1, args.len()))
+  }
+}
+
+fn yield_primitive() -> syntax::Statement {
+  syntax::Statement::Simple(
+    box syntax::SimpleStatement::Expression(
+      Some(syntax::Expr::FunCall(
+          syntax::FunIdentifier::Identifier("EndPrimitive".to_owned()),
+          Vec::new())
+      )
+    )
+  )
+}
+
+fn gs_create_vertex_array(v_ty: &syntax::StructSpecifier, dim: usize, binding_name: &str) -> syntax::Statement {
+  let v_ty_name = v_ty.name.as_ref().unwrap();
+
+  // rhs part of the assignment
+  let fun_id =
+    syntax::FunIdentifier::Expr(
+      box syntax::Expr::Bracket(box syntax::Expr::Variable(v_ty_name.to_owned()),
+                                syntax::ArraySpecifier::Unsized
+      )
+    );
+  let fun_args =
+    (0..dim).into_iter().map(|i| {
+      // arguments passed in the vertex constructor
+      let v_ctor_args =
+        v_ty.fields.iter().flat_map(|field| field.identifiers.iter().map(|&(ref field_name, _)| {
+          syntax::Expr::Bracket(box syntax::Expr::Variable(format!("spsl_v_{}", field_name)),
+                                syntax::ArraySpecifier::ExplicitlySized(
+                                  box syntax::Expr::IntConst(i as i32)
+                                )
+          )
+        })).collect();
+
+      // invoke the vertex constructor
+      syntax::Expr::FunCall(syntax::FunIdentifier::Identifier(v_ty_name.to_owned()), v_ctor_args)
+    }).collect();
+  let rhs = syntax::Expr::FunCall(fun_id, fun_args);
+
+  // type specifier of the resulting value
+  let res_ty = syntax::TypeSpecifier {
+    ty: syntax::TypeSpecifierNonArray::TypeName(v_ty_name.to_owned()),
+    array_specifier: Some(syntax::ArraySpecifier::ExplicitlySized(box syntax::Expr::IntConst(dim as i32)))
+  };
+
+  // return the assignment as a statement
+  syntax::Statement::Simple(
+    box syntax::SimpleStatement::Declaration(
+      syntax::Declaration::InitDeclaratorList(
+        syntax::InitDeclaratorList {
+          head:
+            syntax::SingleDeclaration {
+              ty:
+                syntax::FullySpecifiedType {
+                  qualifier: None,
+                  ty: res_ty,
+                },
+              name: Some(binding_name.to_owned()),
+              array_specifier: None,
+              initializer: Some(syntax::Initializer::Simple(box rhs))
+            },
+          tail: Vec::new()
+        }
+      )
+    )
+  )
 }

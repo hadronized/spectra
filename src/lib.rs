@@ -40,6 +40,7 @@
 //! - **extra**: some extra (but not mandatory) other modules
 
 #![feature(box_patterns)]
+#![feature(box_syntax)]
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(macro_reexport)]
