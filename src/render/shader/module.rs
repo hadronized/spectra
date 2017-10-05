@@ -135,7 +135,6 @@ impl StoreKey for ModuleKey {
   }
 }
 
-
 impl Load for Module {
   type Key = ModuleKey;
 
@@ -601,6 +600,7 @@ where F: Write {
     &[ref arg0, ref arg1] => {
       let input = syntax::fn_arg_as_fully_spec_ty(arg0);
       let output = syntax::fn_arg_as_fully_spec_ty(arg1);
+      let output_ty = syntax::struct_from_ty_spec(&output.ty, structs)?;
 
       let input_ty_name = syntax::get_ty_name_from_fully_spec_ty(&input)?;
       let (input_dim, input_layout) = guess_gs_input_prim(&input.ty.array_specifier)?;
@@ -624,17 +624,16 @@ where F: Write {
   writer::glsl::show_external_declaration(sink, &gs_metadata_input);
   writer::glsl::show_external_declaration(sink, &gs_metadata_output);
 
-  let inputs = syntax::inputs_from_outputs(prev_inputs);
-  let ret_ty = syntax::get_fn_ret_ty(concat_map_prim, structs)?;
-  let outputs = syntax::fields_to_single_decls(&ret_ty.fields, "spsl_g_")?;
+  let inputs = syntax::inputs_from_outputs(prev_inputs, true);
+  let outputs = syntax::fields_to_single_decls(&output_ty.fields, "spsl_g_")?;
 
   syntax::sink_single_as_ext_decls(sink, inputs.iter().chain(&outputs));
 
   writer::glsl::show_struct(sink, prev_ret_ty); // sink the previous stage’s return type
-  writer::glsl::show_struct(sink, &ret_ty); // sink the return type of this stage
+  writer::glsl::show_struct(sink, &output_ty); // sink the return type of this stage
 
   // sink the concat_map_prim function
-  let concat_map_prim_fixed = fix_concat_map_prim(concat_map_prim.clone(), &ret_ty)?;
+  let concat_map_prim_fixed = fix_concat_map_prim(concat_map_prim.clone(), &output_ty)?;
   writer::glsl::show_function_definition(sink, &concat_map_prim_fixed);
 
   // void main
@@ -650,7 +649,7 @@ where F: Write {
   // end of the main function
   let _ = sink.write_str("}\n\n");
 
-  Ok((ret_ty, outputs))
+  Ok((output_ty, outputs))
 }
 
 /// Sink a fragment shader.
@@ -668,7 +667,7 @@ fn sink_fragment_shader<F>(sink: &mut F,
     return Err(syntax::GLSLConversionError::UnknownInputType(input_ty_name.clone()));
   }
 
-  let inputs = syntax::inputs_from_outputs(prev_inputs);
+  let inputs = syntax::inputs_from_outputs(prev_inputs, false);
   let ret_ty = syntax::get_fn_ret_ty(map_frag_data, structs)?;
   let outputs = syntax::fields_to_single_decls(&ret_ty.fields, "spsl_f_")?;
 
@@ -839,7 +838,7 @@ fn yield_vertex(args: &[syntax::Expr], out_ty: &syntax::StructSpecifier) -> Resu
         )
       );
 
-      // variable to refer the bindin
+      // variable to refer the binding
       let bvar = box syntax::Expr::Variable("spsl_v".to_owned());
 
       // iterate over the fields of the vertex
@@ -847,7 +846,7 @@ fn yield_vertex(args: &[syntax::Expr], out_ty: &syntax::StructSpecifier) -> Resu
         syntax::Statement::Simple(
           box syntax::SimpleStatement::Expression(
             Some(syntax::Expr::Assignment(
-              box syntax::Expr::Variable("spsl_v_".to_owned() + field_name),
+              box syntax::Expr::Variable("spsl_g_".to_owned() + field_name),
               syntax::AssignmentOp::Equal,
               box syntax::Expr::Dot(bvar.clone(), field_name.to_owned())
             ))
@@ -855,8 +854,19 @@ fn yield_vertex(args: &[syntax::Expr], out_ty: &syntax::StructSpecifier) -> Resu
         )
       }));
 
+      let emit =
+        syntax::Statement::Simple(
+          box syntax::SimpleStatement::Expression(
+            Some(syntax::Expr::FunCall(syntax::FunIdentifier::Identifier("EmitVertex".to_owned()),
+                                       Vec::new()))
+          )
+        );
+
       // create the final block of GLSL code
-      let block = syntax::CompoundStatement { statement_list: once(binding).chain(assigns).collect() };
+      let block =
+        syntax::CompoundStatement {
+          statement_list: once(binding).chain(assigns).chain(once(emit)).collect()
+        };
       Ok(syntax::Statement::Compound(box block))
     },
     _ => Err(syntax::GLSLConversionError::WrongNumberOfArgs(1, args.len()))

@@ -87,31 +87,34 @@ pub fn drop_first_field(s: &StructSpecifier) -> StructSpecifier {
 /// Replace an output declaration by its input declaration dual.
 ///
 /// Useful when an input interface must match an output one.
-pub fn input_from_output(output: SingleDeclaration) -> SingleDeclaration {
-  let qualifier = output.ty.qualifier.map(|q| {
-    TypeQualifier {
-      qualifiers: q.qualifiers.into_iter().map(|qs| {
-        match qs {
-          TypeQualifierSpec::Storage(StorageQualifier::Out) =>
-            TypeQualifierSpec::Storage(StorageQualifier::In),
-          _ => qs
-        }
-      }).collect()
-    }
-  });
+pub fn input_from_output(output: SingleDeclaration, has_array: bool) -> SingleDeclaration {
+  let
+    qualifier = output.ty.qualifier.map(|q| {
+      TypeQualifier {
+        qualifiers: q.qualifiers.into_iter().map(|qs| {
+          match qs {
+            TypeQualifierSpec::Storage(StorageQualifier::Out) =>
+              TypeQualifierSpec::Storage(StorageQualifier::In),
+            _ => qs
+          }
+        }).collect()
+      }
+    });
+  let ty =
+    TypeSpecifier {
+      array_specifier: if has_array { Some(ArraySpecifier::Unsized) } else { None },
+      .. output.ty.ty
+    };
 
   SingleDeclaration {
-    ty: FullySpecifiedType {
-      qualifier,
-      .. output.ty
-    },
+    ty: FullySpecifiedType { qualifier, ty },
     .. output 
   }
 }
 
 /// Replace outputs by inputs.
-pub fn inputs_from_outputs(outputs: &[SingleDeclaration]) -> Vec<SingleDeclaration> {
-  outputs.into_iter().map(|sd| input_from_output(sd.clone())).collect()
+pub fn inputs_from_outputs(outputs: &[SingleDeclaration], has_array: bool) -> Vec<SingleDeclaration> {
+  outputs.into_iter().map(|sd| input_from_output(sd.clone(), has_array)).collect()
 }
 
 /// Map a StructFieldSpecifier to an ExternalDeclaration.
@@ -236,13 +239,21 @@ pub fn get_fn1_input_ty_name(f: &FunctionDefinition) -> Result<TypeName, GLSLCon
 
 /// Get the return type of a function by looking up its definition in the provided slice.
 pub fn get_fn_ret_ty(f: &FunctionDefinition, structs: &[StructSpecifier]) -> Result<StructSpecifier, GLSLConversionError> {
-  if let TypeSpecifierNonArray::TypeName(ref name) = f.prototype.ty.ty.ty {
+  struct_from_ty_spec(&f.prototype.ty.ty, structs)
+}
+
+/// Get the struct definition associated with a type specifier.
+pub fn struct_from_ty_spec(
+  ty_spec: &TypeSpecifier,
+  structs: &[StructSpecifier]
+) -> Result<StructSpecifier, GLSLConversionError> {
+  if let TypeSpecifierNonArray::TypeName(ref name) = ty_spec.ty {
     if let Some(ref ty) = structs.iter().find(|ref s| s.name.as_ref() == Some(name)) {
       Ok((*ty).clone())
     } else {
-      Err(GLSLConversionError::ReturnTypeMustBeAStruct(f.prototype.ty.ty.clone()))
+      Err(GLSLConversionError::ReturnTypeMustBeAStruct(ty_spec.clone()))
     }
   } else {
-    Err(GLSLConversionError::ReturnTypeMustBeAStruct(f.prototype.ty.ty.clone()))
+    Err(GLSLConversionError::ReturnTypeMustBeAStruct(ty_spec.clone()))
   }
 }
