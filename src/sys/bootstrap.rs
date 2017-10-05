@@ -100,7 +100,7 @@ impl Device {
 
   /// Get the last event and pop it from the event queue. Supposed to be called in a loop.
   pub fn events<'a>(&'a mut self) -> impl Iterator<Item = WindowEvent> + 'a {
-    self.raw.events().map(|(_, e)| e)
+    self.raw.events()
   }
 
   /// Step function.
