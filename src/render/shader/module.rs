@@ -4,16 +4,16 @@
 //! inherently tied to the filesystem’s tree.
 //!
 //! You’re not supposed to use modules at the Rust level, even though you can. You actually want to
-//! write modules that will be used by shader programs using the SPSL language.
+//! write modules that will be used by shader programs using the Cheddar language.
 //!
-//! # SPSL
+//! # Cheddar
 //!
-//! Spectra Shading Language is a superset of [GLSL](https://en.wikipedia.org/wiki/OpenGL_Shading_Language)
-//! with extra candies, such as:
+//! Cheddar is a superset of [GLSL](https://en.wikipedia.org/wiki/OpenGL_Shading_Language) with
+//! extra candies, such as:
 //!
-//! - module imports/exports;
-//! - interface, uniforms, blocks, structs, etc. deduplication
-//! - functional programming style
+//! - Module imports/exports.
+//! - Interface, uniforms, blocks, structs, etc. deduplication.
+//! - Functional programming style.
 //!
 //! ## Define once, use everywhere
 //!
@@ -22,18 +22,19 @@
 //!
 //! This is achieved with the `from foo.bar.zoo import (yyyy, zzzz)` pattern. You typically want to put
 //! that line at the top of your module – you can put several. This will import the `yyyy` and
-//! `zzzz` symbols from the `foo.bar.zoo` module. The `(*)` form is called an import list and must
-//! contain something.
+//! `zzzz` symbols from the `foo.bar.zoo` module. The `(_)` form is called an import list. In theory,
+//! you’re not allowed to let it empty. However, as the type of writing, this is allowed since the
+//! export list is not used by the compiler (it’s just a hint).
 //!
 //! > Note on paths: because of the bijective relation between modules and files, if you import the
-//! > `foo.bar.zoo` module, the file `foo/bar/zoo.spsl` must be reachable.
+//! > `foo.bar.zoo` module, the file `foo/bar/zoo.chdr` must be reachable.
 //!
 //! > Note on import lists: currently, import lists are just informative. By default, all symbols
-//! > are imported. Future plans will restrict them to the one only defined in the import lists.
+//! > are imported. Future plans will restrict them to the one·s only defined in the import lists.
 //!
 //! ## Pipeline modules
 //!
-//! In SPSL, there’s no such thing such as a *stage*. You cannot declare a *vertex shader*, a
+//! In Cheddar, there’s no such thing such as a *stage*. You cannot declare a *vertex shader*, a
 //! *geometry shader*, a *fragment shader* or any *tessellation shaders*. Instead, you write
 //! pipelines directly.
 //!
@@ -44,21 +45,21 @@
 //! | -------------     | ---------- | ----                                                              |
 //! | `map_vertex`      | yes        | Called on each vertex in the pipeline’s stream                    |
 //! | `concat_map_prim` | no         | Called on each primitive generated via the `map_vertex` function  |
-//! | `map_fragment`    | yes        | Called on each rasterized fragment                                |
+//! | `map_frag_data`   | yes        | Called on each rasterized fragment                                |
 //!
 //! ### `map_vertex`
 //!
 //! This mandatory function must be defined and will be called on each vertex in the input stream.
 //! It takes a variable number of arguments and its return type must be provided. Both the arguments
-//! and return types form a *contract* that binds the function to the input and output stream. The
+//! and return types form a *contract* that binds the function to the input and output streams. The
 //! order of the arguments matters, as it must be the same order as in your tessellation’s buffers.
 //!
 //! For instance, if you want to process a stream of vertices which have a 3D-floating position and
-//! a 4D-floating color and return only the color, you’d something like this:
+//! a 4D-floating color and return only the color, you’d go with something like this:
 //!
 //! ```glsl
 //! struct Vertex {
-//!   vec4 spsl_Position; // this is mandatory as it will be fetched by the pipeline
+//!   vec4 chdr_Position; // this is mandatory as it will be fetched by the pipeline
 //!   vec4 color;
 //! };
 //!
@@ -72,7 +73,7 @@
 //!
 //! ```glsl
 //! struct Vertex {
-//!   vec4 spsl_Position; // this is mandatory as it will be fetched by the pipeline
+//!   vec4 chdr_Position;
 //!   vec3 position;
 //!   vec4 color;
 //! };
@@ -83,7 +84,7 @@
 //! ```
 //!
 //! > Note on the return type: the name of this type is completely up to you. Nothing is enforced,
-//! > use the type name you think is the best. `Vertex` is a de facto name because it seems natural
+//! > use the type name you think is the best. `Vertex` is a *de facto* name because it seems natural
 //! > to use it, but if you dislike such a name, feel free to use another.
 //!
 //! ### `concat_map_prim`
@@ -92,13 +93,26 @@
 //! result’s type and outputs a stream of primitives:
 //!
 //! ```glsl
-//! layout (triangles_strip, max_vertices = 3) struct Prim {
-//!   // TODO
+//!
+//! struct GVertex {
+//!   vec3 co;
+//!   vec4 color;
 //! };
 //!
-//! void concat_map_prim(Vertex[3] vertices) {
-//!   
+//! void concat_map_prim(
+//!   Vertex[3] vertices,
+//!   layout (triangle_strip, max_vertices = 3) out GVertex
+//! ) {
+//!   yield_vertex(GVertex(vertices[0].position, vertices[0].color));
+//!   yield_vertex(GVertex(vertices[1].position, vertices[1].color));
+//!   yield_vertex(GVertex(vertices[2].position, vertices[2].color));
+//!   yield_primitive();
 //! }
+//!
+//! > Note: you’d be tempted to use a `for` loop here, and you’d be right. However, at the time of
+//! > writing, this is not yet supported and the `yield_vertex` and `yield_primitive` function calls
+//! > must be issued directly in the scope of `concat_map_prim`. Because this is very limiting, a
+//! > patch will be performed to fix that.
 //! ```
 
 use glsl::writer;
@@ -131,7 +145,7 @@ impl CacheKey for ModuleKey {
 
 impl StoreKey for ModuleKey {
   fn key_to_path(&self) -> PathBuf {
-    PathBuf::from(self.0.replace(".", "/") + ".spsl")
+    PathBuf::from(self.0.replace(".", "/") + ".chdr")
   }
 }
 
@@ -453,11 +467,11 @@ fn sink_vertex_shader_output<F, G>(sink: &mut F, assigns: &mut G, ty: &syntax::S
     panic!("cannot happen");
   }
 
-  let _ = assigns.write_str("  gl_Position = v.spsl_Position;\n");
+  let _ = assigns.write_str("  gl_Position = v.chdr_Position;\n");
 
   for field in &ty.fields[1..] {
     for &(ref identifier, _) in &field.identifiers {
-      let _ = write!(assigns, "  spsl_v_{0} = v.{0};\n", identifier);
+      let _ = write!(assigns, "  chdr_v_{0} = v.{0};\n", identifier);
     }
   }
 }
@@ -488,7 +502,7 @@ fn sink_vertex_shader_input_arg<F>(sink: &mut F, i: usize, arg: &syntax::Functio
       let _ = sink.write_str(&d.name);
     }
     syntax::FunctionParameterDeclaration::Unnamed(..) => {
-      let _ = write!(sink, "spsl_unused{}", i);
+      let _ = write!(sink, "chdr_unused{}", i);
     }
   }
 }
@@ -565,18 +579,18 @@ fn vertex_shader_outputs(fsty: &syntax::FullySpecifiedType, structs: &[syntax::S
 
       match real_ty {
         Some(ref s) => {
-          // the first field must be named "spsl_Position", has type vec4 and no qualifier
+          // the first field must be named "chdr_Position", has type vec4 and no qualifier
           let first_field = &s.fields[0];
 
           if first_field.qualifier.is_some() ||
              first_field.ty.ty != syntax::TypeSpecifierNonArray::Vec4 ||
-             first_field.identifiers != vec![("spsl_Position".to_owned(), None)] {
+             first_field.identifiers != vec![("chdr_Position".to_owned(), None)] {
             return Err(syntax::GLSLConversionError::WrongOutputFirstField(first_field.clone()));
           }
 
           // then, for all other fields, we check that they are not composite type (i.e. structs); if
           // they are not, add them to the interface; otherwise, fail
-          syntax::fields_to_single_decls(&s.fields[1..], "spsl_v_")
+          syntax::fields_to_single_decls(&s.fields[1..], "chdr_v_")
         }
         _ => Err(syntax::GLSLConversionError::ReturnTypeMustBeAStruct(ty.clone()))
       }
@@ -625,7 +639,7 @@ where F: Write {
   writer::glsl::show_external_declaration(sink, &gs_metadata_output);
 
   let inputs = syntax::inputs_from_outputs(prev_inputs, true);
-  let outputs = syntax::fields_to_single_decls(&output_ty.fields, "spsl_g_")?;
+  let outputs = syntax::fields_to_single_decls(&output_ty.fields, "chdr_g_")?;
 
   syntax::sink_single_as_ext_decls(sink, inputs.iter().chain(&outputs));
 
@@ -669,7 +683,7 @@ fn sink_fragment_shader<F>(sink: &mut F,
 
   let inputs = syntax::inputs_from_outputs(prev_inputs, false);
   let ret_ty = syntax::get_fn_ret_ty(map_frag_data, structs)?;
-  let outputs = syntax::fields_to_single_decls(&ret_ty.fields, "spsl_f_")?;
+  let outputs = syntax::fields_to_single_decls(&ret_ty.fields, "chdr_f_")?;
 
   syntax::sink_single_as_ext_decls(sink, inputs.iter().chain(&outputs));
 
@@ -828,7 +842,7 @@ fn yield_vertex(args: &[syntax::Expr], out_ty: &syntax::StructSpecifier) -> Resu
                     array_specifier: None
                   },
                 },
-                name: Some("spsl_v".to_owned()), // special name to prevent from shadowing
+                name: Some("chdr_v".to_owned()), // special name to prevent from shadowing
                 array_specifier: None,
                 initializer: Some(syntax::Initializer::Simple(box arg.clone()))
               },
@@ -839,14 +853,14 @@ fn yield_vertex(args: &[syntax::Expr], out_ty: &syntax::StructSpecifier) -> Resu
       );
 
       // variable to refer the binding
-      let bvar = box syntax::Expr::Variable("spsl_v".to_owned());
+      let bvar = box syntax::Expr::Variable("chdr_v".to_owned());
 
       // iterate over the fields of the vertex
       let assigns = out_ty.fields.iter().flat_map(|field| field.identifiers.iter().map(|&(ref field_name, _)| {
         syntax::Statement::Simple(
           box syntax::SimpleStatement::Expression(
             Some(syntax::Expr::Assignment(
-              box syntax::Expr::Variable("spsl_g_".to_owned() + field_name),
+              box syntax::Expr::Variable("chdr_g_".to_owned() + field_name),
               syntax::AssignmentOp::Equal,
               box syntax::Expr::Dot(bvar.clone(), field_name.to_owned())
             ))
@@ -899,7 +913,7 @@ fn gs_create_vertex_array(v_ty: &syntax::StructSpecifier, dim: usize, binding_na
       // arguments passed in the vertex constructor
       let v_ctor_args =
         v_ty.fields.iter().flat_map(|field| field.identifiers.iter().map(|&(ref field_name, _)| {
-          syntax::Expr::Bracket(box syntax::Expr::Variable(format!("spsl_v_{}", field_name)),
+          syntax::Expr::Bracket(box syntax::Expr::Variable(format!("chdr_v_{}", field_name)),
                                 syntax::ArraySpecifier::ExplicitlySized(
                                   box syntax::Expr::IntConst(i as i32)
                                 )
