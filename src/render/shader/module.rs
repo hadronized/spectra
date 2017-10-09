@@ -122,8 +122,8 @@ use std::io::Read;
 use std::iter::once;
 use std::path::PathBuf;
 
-use render::shader::lang::parser;
-use render::shader::lang::syntax;
+use render::shader::cheddar::parser;
+use render::shader::cheddar::syntax;
 use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
 
 /// Key to use to get a `Module`.
@@ -133,7 +133,9 @@ pub struct ModuleKey(String);
 impl ModuleKey {
   /// Create a new module key. The string must contain the module in the form:
   ///
+  /// ```ignore
   ///     foo.bar.zoo
+  /// ```
   pub fn new(key: &str) -> Self {
     ModuleKey(key.to_owned())
   }

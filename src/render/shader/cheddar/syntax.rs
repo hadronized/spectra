@@ -9,6 +9,9 @@ use glsl::writer;
 use std::fmt::Write;
 use std::iter::once;
 
+/// A module.
+///
+/// A module has a list of imports and a list of GLSL extern declaration.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Module {
   pub imports: Vec<ImportList>,
@@ -28,6 +31,7 @@ pub struct ModulePath {
   pub path: Vec<ModuleName>
 }
 
+/// Name of a module.
 pub type ModuleName = String;
 
 pub type ExpectedNumberOfArgs = usize;
@@ -38,19 +42,39 @@ pub type FoundNumberOfArgs = usize;
 /// Such an errors can happen when a module is ill-formed.
 #[derive(Clone, Debug, PartialEq)]
 pub enum GLSLConversionError {
+  /// No vertex shader was found. A vertex shader is required in order to build a shading pipeline.
   NoVertexShader,
+  /// No fragment shader was found. A fragment shader is required in order to build a shading pipeline.
   NoFragmentShader,
+  /// The output must not have a qualifier.
   OutputHasMainQualifier,
+  /// The returned value must not be a struct.
   ReturnTypeMustBeAStruct(TypeSpecifier),
+  /// The first field has the wrong type.
   WrongOutputFirstField(StructFieldSpecifier),
+  /// The field of a type used as output cannot be a struct.
+  ///
+  /// This variant also gives the index of the field.
   OutputFieldCannotBeStruct(usize, StructSpecifier),
+  /// The field of a type used as output cannot be a type name.
+  ///
+  /// This variant also gives the index of the field.
   OutputFieldCannotBeTypeName(usize, TypeName),
+  /// The field of a type used as output cannot have several identifiers (only one).
+  ///
+  /// This variant also gives the index of the field.
   OutputFieldCannotHaveSeveralIdentifiers(usize, StructFieldSpecifier),
+  /// The input type is unknown.
   UnknownInputType(TypeName),
+  /// Wrong number of arguments.
   WrongNumberOfArgs(ExpectedNumberOfArgs, FoundNumberOfArgs),
+  /// The type is not a required type name.
   NotTypeName,
+  /// The geometry input is wrong.
   WrongGeometryInput,
+  /// The geometry input’s dimension is wrong.
   WrongGeometryInputDim(usize),
+  /// The geometry output layout is wrong.
   WrongGeometryOutputLayout(Option<TypeQualifier>)
 }
 

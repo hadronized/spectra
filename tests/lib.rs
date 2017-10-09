@@ -2,8 +2,7 @@ extern crate rand;
 extern crate spectra;
 
 use rand::{Rng, thread_rng};
-use spectra::linear::Quaternion;
-use spectra::spline::*;
+use spectra::anim::spline::*;
 
 #[test]
 fn hold() {
