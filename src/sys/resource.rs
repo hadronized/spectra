@@ -37,9 +37,11 @@ use std::time::{Duration, Instant};
 /// important to note that you’re not supposed to load objects directly from this trait. Instead,
 /// you should use a `Store`.
 pub trait Load: 'static + Sized {
+  type Key: StoreKey<Target = Self>;
+
   /// Load a resource. The `Store` can be used to load or declare additional resource dependencies.
   /// The result type is used to register for dependency events.
-  fn load<K>(key: &K, cache: &mut Store) -> Result<LoadResult<Self>, LoadError> where K: StoreKey<Target = Self>;
+  fn load(key: &Self::Key, cache: &mut Store) -> Result<LoadResult<Self>, LoadError>;
 }
 
 /// Result of a resource loading. This type enables you to register a resource for reloading events
@@ -47,9 +49,9 @@ pub trait Load: 'static + Sized {
 /// the `.into()` function to lift your return value to `LoadResult<_>`.
 pub struct LoadResult<T> {
   /// The loaded object.
-  res: T,
+  pub res: T,
   /// The list of dependencies to listen for events.
-  dependencies: Vec<PathBuf>
+  pub dependencies: Vec<PathBuf>
 }
 
 impl<T> LoadResult<T> {
@@ -158,7 +160,7 @@ impl Store {
   /// resource.
   fn inject<K>(&mut self, key: &K, resource: K::Target, dependencies: Vec<PathBuf>) -> Res<K::Target>
       where K: StoreKey,
-            K::Target: Load {
+            K::Target: Load<Key = K> {
     // wrap the resource to make it shared mutably
     let res = Rc::new(RefCell::new(resource));
     let res_ = res.clone();
@@ -206,7 +208,7 @@ impl Store {
   }
 
   /// Get a resource from the cache and return an error if loading failed.
-  fn get_<K>(&mut self, key: &K) -> Result<Res<K::Target>, LoadError> where K: StoreKey, K::Target: Load {
+  fn get_<K>(&mut self, key: &K) -> Result<Res<K::Target>, LoadError> where K: StoreKey, K::Target: Load<Key = K> {
     let rekey = RKey(key.clone());
 
     match self.cache.get(&rekey).cloned() {
@@ -226,7 +228,7 @@ impl Store {
   }
 
   /// Get a resource from the cache for the given key.
-  pub fn get<K>(&mut self, key: &K) -> Option<Res<K::Target>> where K: StoreKey, K::Target: Load {
+  pub fn get<K>(&mut self, key: &K) -> Option<Res<K::Target>> where K: StoreKey, K::Target: Load<Key = K> {
     deb!("getting {:?}", key);
 
     match self.get_(key) {
@@ -242,7 +244,7 @@ impl Store {
   /// will get replaced by the resource once it’s available.
   pub fn get_proxied<K, P>(&mut self, key: &K, proxy: P) -> Result<Res<K::Target>, LoadError>
       where K: StoreKey,
-            K::Target: Load,
+            K::Target: Load<Key = K>,
             P: FnOnce() -> K::Target {
     match self.get_(key) {
       Ok(resource) => Ok(resource),

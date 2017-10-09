@@ -106,7 +106,9 @@ impl<A> StoreKey for CameraKey<A> where A: 'static {
 }
 
 impl<A> Load for Camera<A> where A: 'static + Default + DeserializeOwned {
-  fn load<K>(key: &K, _: &mut Store) -> Result<LoadResult<Self>, LoadError> where K: StoreKey<Target = Self> {
+  type Key = CameraKey<A>;
+
+  fn load(key: &Self::Key, _: &mut Store) -> Result<LoadResult<Self>, LoadError> {
     let path = key.key_to_path();
 
     let manifest: Manifest<A> = {
