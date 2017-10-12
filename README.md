@@ -1,5 +1,7 @@
 # spectra, a demoscene engine
 
+[![Join the chat at https://gitter.im/phaazon/spectra](https://badges.gitter.im/phaazon/spectra.svg)](https://gitter.im/phaazon/spectra?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 [![Build Status](https://travis-ci.org/phaazon/spectra.svg?branch=master)](https://travis-ci.org/phaazon/spectra)
 [![crates.io](https://img.shields.io/crates/v/spectra.svg)](https://crates.io/crates/spectra)
 ![License](https://img.shields.io/badge/license-BSD3-blue.svg?style=flat)
