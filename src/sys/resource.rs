@@ -10,6 +10,9 @@
 //! the [any-cache](https://crates.io/crates/any-cache) crate — as well as providing a type wrapper
 //! over the key to access to your resource.
 //!
+//! In order to have hot-reloading working, you have to call the `Store::sync` function that will
+//! perform disk syncing.
+//!
 //! # Note on keys
 //!
 //! If you use the resource system, your resources will be cached and accessible by their keys. The
