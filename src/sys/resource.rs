@@ -12,10 +12,11 @@
 //!
 //! # Note on keys
 //!
-//! If you use the resource system, your resources will be cached and accessible by their key. The
+//! If you use the resource system, your resources will be cached and accessible by their keys. The
 //! key type is not enforced. Resource’s keys are typed to enable namespacing: if you have two
-//! resources which ID is `34`, because the key type is different, you can safely cache the resource
-//! with the ID `34` without any clashing or undefined behaviors. More in the any-cache crate.
+//! resources which ID is `34`, because the key types are different, you can safely cache the
+//! resource with the ID `34` without any clashing or undefined behaviors. More in the any-cache
+//! crate.
 
 use any_cache::{Cache, HashCache};
 pub use any_cache::CacheKey;
@@ -55,6 +56,7 @@ pub struct LoadResult<T> {
 }
 
 impl<T> LoadResult<T> {
+  /// Return a resource along with its dependencies.
   pub fn with_dependencies(res: T, dependencies: Vec<PathBuf>) -> Self {
     LoadResult { res, dependencies }
   }
@@ -91,7 +93,7 @@ const UPDATE_AWAIT_TIME_MS: u64 = 1000;
 struct RKey<K>(K);
 
 impl<K, T> CacheKey for RKey<K> where K: CacheKey<Target = T> {
-  type Target = Rc<RefCell<T>>;
+  type Target = Res<T>;
 }
 
 /// Trait used to represent keys in a resource store.
@@ -117,7 +119,7 @@ pub struct Store {
 }
 
 impl Store {
-  /// Create a new store.
+  /// Create a new store. The `root` represents the root directory from all the resources come from.
   pub fn new<P>(root: P) -> Result<Self, StoreError> where P: AsRef<Path> {
     let dirty: Arc<Mutex<Vec<(PathBuf, Instant)>>> = Arc::new(Mutex::new(Vec::new()));
     let dirty_ = dirty.clone();
@@ -292,7 +294,9 @@ impl Store {
 
 /// Meta data about a resource.
 struct ResMetaData {
+  /// Function to call each time the resource must be reloaded.
   on_reload: Box<Fn(&mut Store) -> Result<(), LoadError>>,
+  /// The last time the resource was updated.
   last_update_instant: Instant,
 }
 
