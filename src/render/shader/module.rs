@@ -116,48 +116,24 @@
 //! ```
 
 use glsl::writer;
-use std::fmt::Write;
+use std::error::Error;
+use std::fmt::{self, Write};
 use std::fs::File;
 use std::io::Read;
 use std::iter::once;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use render::shader::cheddar::parser;
+use render::shader::cheddar::parser::{self, ParseError};
 use render::shader::cheddar::syntax;
-use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
-
-/// Key to use to get a `Module`.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct ModuleKey(String);
-
-impl ModuleKey {
-  /// Create a new module key. The string must contain the module in the form:
-  ///
-  /// ```ignore
-  ///     foo.bar.zoo
-  /// ```
-  pub fn new(key: &str) -> Self {
-    ModuleKey(key.to_owned())
-  }
-}
-
-impl CacheKey for ModuleKey {
-  type Target = Module;
-}
-
-impl StoreKey for ModuleKey {
-  fn key_to_path(&self) -> PathBuf {
-    PathBuf::from(self.0.replace(".", "/") + ".chdr")
-  }
-}
+use sys::resource::{Key, Load, Loaded, Store};
 
 impl Load for Module {
-  type Key = ModuleKey;
+  type Error = ModuleError;
 
-  fn load(key: &Self::Key, _: &mut Store) -> Result<LoadResult<Self>, LoadError> {
-    let path = key.key_to_path();
+  fn from_fs<P>(path: P, _: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
+    let path = path.as_ref();
 
-    let mut fh = File::open(&path).map_err(|_| LoadError::FileNotFound(path.into()))?;
+    let mut fh = File::open(path).map_err(|_| ModuleError::FileNotFound(path.into()))?;
     let mut src = String::new();
     let _ = fh.read_to_string(&mut src);
 
@@ -165,20 +141,72 @@ impl Load for Module {
       parser::ParseResult::Ok(module) => {
         Ok(Module(module).into())
       }
-      parser::ParseResult::Err(e) => Err(LoadError::ConversionFailed(format!("{:?}", e))),
-      _ => Err(LoadError::ConversionFailed("incomplete input".to_owned()))
+      parser::ParseResult::Err(e) => Err(ModuleError::ParseFailed(e)),
+      _ => Err(ModuleError::IncompleteInput)
+    }
+  }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ModuleError {
+  FileNotFound(PathBuf),
+  ParseFailed(ParseError),
+  IncompleteInput
+}
+
+impl fmt::Display for ModuleError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    f.write_str(self.description())
+  }
+}
+
+impl Error for ModuleError {
+  fn description(&self) -> &str {
+    match *self {
+      ModuleError::FileNotFound(_) => "file not found",
+      ModuleError::ParseFailed(_) => "parse failed",
+      ModuleError::IncompleteInput => "incomplete input"
+    }
+  }
+
+  fn cause(&self) -> Option<&Error> {
+    match *self {
+      ModuleError::ParseFailed(ref e) => Some(e),
+      _ => None
     }
   }
 }
 
 /// Errors that can happen in dependencies.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug)]
 pub enum DepsError {
   /// If a module’s dependencies has any cycle, the dependencies are unusable and the cycle is
   /// returned.
-  Cycle(ModuleKey, ModuleKey),
+  Cycle(Key<Module>, Key<Module>),
   /// There was a loading error of a module.
-  LoadError(ModuleKey)
+  LoadError(Key<Module>, Box<Error>)
+}
+
+impl fmt::Display for DepsError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    f.write_str(self.description())
+  }
+}
+
+impl Error for DepsError {
+  fn description(&self) -> &str {
+    match *self {
+      DepsError::Cycle(..) => "module cycle",
+      DepsError::LoadError(..) => "load error"
+    }
+  }
+
+  fn cause(&self) -> Option<&Error> {
+    match *self {
+      DepsError::LoadError(_, ref e) => Some(e.as_ref()),
+      _ => None
+    }
+  }
 }
 
 /// Shader module.
@@ -192,18 +220,18 @@ pub struct Module(syntax::Module);
 
 impl Module {
   /// Retrieve all the modules this module depends on, without duplicates.
-  pub fn deps(&self, store: &mut Store, key: &ModuleKey) -> Result<Vec<ModuleKey>, DepsError> {
+  pub fn deps(&self, store: &mut Store, key: &Key<Module>) -> Result<Vec<Key<Module>>, DepsError> {
     let mut deps = Vec::new();
     self.deps_no_cycle(store, &key, &mut Vec::new(), &mut deps).map(|_| deps)
   }
 
-  fn deps_no_cycle(&self, store: &mut Store, key: &ModuleKey, parents: &mut Vec<ModuleKey>, deps: &mut Vec<ModuleKey>) -> Result<(), DepsError> {
+  fn deps_no_cycle(&self, store: &mut Store, key: &Key<Module>, parents: &mut Vec<Key<Module>>, deps: &mut Vec<Key<Module>>) -> Result<(), DepsError> {
     let imports = self.0.imports.iter().map(|il| &il.module);
 
     parents.push(key.clone());
 
     for module_path in imports {
-      let module_key = ModuleKey(module_path.path.join("."));
+      let module_key = Key::new(module_path.path.join("."));
 
       // check whether it’s already in the deps
       if deps.contains(&module_key) {
@@ -215,8 +243,9 @@ impl Module {
         return Err(DepsError::Cycle(module_key.clone(), module_key.clone()));
       }
 
+      // FIXME
       // get the dependency module 
-      let module = store.get(&module_key).ok_or_else(|| DepsError::LoadError(module_key.clone()))?;
+      let module = store.get(&module_key).map_err(|e| DepsError::LoadError(module_key.clone(), box e))?;
       module.borrow().deps_no_cycle(store, &module_key, parents, deps)?;
 
       deps.push(module_key.clone());
@@ -228,7 +257,7 @@ impl Module {
 
   /// Fold a module and its dependencies into a single module. The list of dependencies is also
   /// returned.
-  pub fn gather(&self, store: &mut Store, key: &ModuleKey) -> Result<(Self, Vec<ModuleKey>), DepsError> {
+  pub fn gather(&self, store: &mut Store, key: &Key<Module>) -> Result<(Self, Vec<Key<Module>>), DepsError> {
     let deps = self.deps(store, key)?;
     let glsl =
       deps.iter()

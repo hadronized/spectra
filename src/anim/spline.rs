@@ -1,16 +1,15 @@
 use cgmath::{BaseFloat, InnerSpace};
 use serde::de::DeserializeOwned;
-use serde_json::from_reader;
+use serde_json::{Error as JsonError, from_reader};
+use std::error::Error;
+use std::fmt;
 use std::f32::consts;
 use std::fs::File;
-use std::fmt;
-use std::hash;
-use std::marker::PhantomData;
 use std::ops::{Add, Div, Mul, Sub};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use linear::{Scale, Quat, V2, V3, V4};
-use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
+use sys::resource::{Load, Loaded, Store};
 
 /// Time used as sampling type in splines.
 pub type Time = f32;
@@ -167,64 +166,46 @@ impl<T> Spline<T> {
   }
 }
 
-#[derive(Eq, PartialEq)]
-pub struct SplineKey<T> {
-  pub key: String, 
-  _t: PhantomData<*const T>
-}
-
-impl<T> SplineKey<T> {
-  pub fn new(key: &str) -> Self {
-    SplineKey {
-      key: key.to_owned(),
-      _t: PhantomData
-    }
-  }
-}
-
-impl<T> Clone for SplineKey<T> {
-  fn clone(&self) -> Self {
-    SplineKey {
-      key: self.key.clone(),
-      ..*self
-    }
-  }
-}
-
-impl<T> fmt::Debug for SplineKey<T> {
-  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-    self.key.fmt(f)
-  }
-}
-
-impl<T> hash::Hash for SplineKey<T> {
-  fn hash<H>(&self, hasher: &mut H) where H: hash::Hasher {
-    self.key.hash(hasher)
-  }
-}
-
-impl<T> CacheKey for SplineKey<T> where T: 'static {
-  type Target = Spline<T>;
-}
-
-impl<T> StoreKey for SplineKey<T> where T: 'static {
-  fn key_to_path(&self) -> PathBuf {
-    self.key.clone().into()
-  }
-}
-
 impl<T> Load for Spline<T> where T: 'static + SplineDeserializerAdapter {
-  type Key = SplineKey<T>;
+  type Error = SplineError;
 
-  fn load(key: &Self::Key, _: &mut Store) -> Result<LoadResult<Self>, LoadError> {
-    let path = key.key_to_path();
+  fn from_fs<P>(path: P, _: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
+    let path = path.as_ref();
 
-    let file = File::open(&path).map_err(|_| LoadError::FileNotFound(path))?;
-    let keys: Vec<Key<T::Deserialized>> = from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?;
+    let file = File::open(path).map_err(|_| SplineError::FileNotFound(path.to_owned()))?;
+    let keys: Vec<Key<T::Deserialized>> = from_reader(file).map_err(SplineError::ParseFailed)?;
 
     Ok(Spline::from_keys(keys.into_iter().map(|key|
       Key::new(key.t, T::from_deserialized(key.value), key.interpolation)
     ).collect()).into())
+  }
+}
+
+#[derive(Debug)]
+pub enum SplineError {
+  FileNotFound(PathBuf),
+  ParseFailed(JsonError)
+}
+
+impl fmt::Display for SplineError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    f.write_str(self.description())
+  }
+}
+
+impl Error for SplineError {
+  fn description(&self) -> &str {
+    match *self {
+      SplineError::FileNotFound(_) => "file not found",
+      SplineError::ParseFailed(_) => "parse failed"
+    }
+  }
+
+  fn cause(&self) -> Option<&Error> {
+    match *self {
+      SplineError::ParseFailed(ref e) => Some(e),
+      _ => None
+    }
   }
 }
 

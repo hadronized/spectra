@@ -58,7 +58,6 @@ extern crate luminance_glfw;
 extern crate glsl;
 #[macro_use]
 extern crate nom;
-extern crate notify;
 extern crate num_traits;
 //extern crate rusttype; // FIXME: uncomment when we support text render back
 extern crate serde;
@@ -67,6 +66,7 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate vorbis;
 extern crate wavefront_obj;
+extern crate warmy;
 
 #[macro_use]
 pub mod report;

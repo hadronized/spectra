@@ -1,9 +1,11 @@
-use serde_json::from_reader;
+use serde_json::{Error as JsonError, from_reader};
 use std::collections::HashMap;
+use std::error::Error;
+use std::fmt;
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
+use sys::resource::{Load, Loaded, Store};
 
 /// Time.
 pub type Time = f64;
@@ -163,32 +165,47 @@ pub enum Played<A> {
   Inactive
 }
 
+#[derive( Debug)]
+pub enum TimelineManifestError {
+  FileNotFound(PathBuf),
+  ParseFailed(JsonError)
+}
+
+impl fmt::Display for TimelineManifestError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    f.write_str(self.description())
+  }
+}
+
+impl Error for TimelineManifestError {
+  fn description(&self) -> &str {
+    match *self {
+      TimelineManifestError::FileNotFound(_) => "file not found",
+      TimelineManifestError::ParseFailed(_) => "parse failed"
+    }
+  }
+
+  fn cause(&self) -> Option<&Error> {
+    match *self {
+      TimelineManifestError::ParseFailed(ref e) => Some(e),
+      _ => None
+    }
+  }
+}
+
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 pub struct TimelineManifest {
   pub tracks: Vec<TrackManifest>
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct TimelineManifestKey(pub String);
-
-impl CacheKey for TimelineManifestKey {
-  type Target = TimelineManifest;
-}
-
-impl StoreKey for TimelineManifestKey {
-  fn key_to_path(&self) -> PathBuf {
-    self.0.clone().into()
-  }
-}
-
 impl Load for TimelineManifest {
-  type Key = TimelineManifestKey;
+  type Error = TimelineManifestError;
 
-  fn load(key: &Self::Key, _: &mut Store) -> Result<LoadResult<Self>, LoadError> {
-    let path = key.key_to_path();
+  fn from_fs<P>(path: P, _: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
+    let path = path.as_ref();
 
-    let file = File::open(&path).map_err(|_| LoadError::FileNotFound(path))?;
-    let res: Self = from_reader(file).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?;
+    let file = File::open(&path).map_err(|_| TimelineManifestError::FileNotFound(path.to_owned()))?;
+    let res: Self = from_reader(file).map_err(TimelineManifestError::ParseFailed)?;
 
     Ok(res.into())
   }

@@ -1,11 +1,14 @@
 pub use luminance::tess::{Mode, Tess, TessVertices};
 use std::collections::BTreeMap;
+use std::error::Error;
+use std::fmt;
 use std::fs::File;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use wavefront_obj::ParseError;
 use wavefront_obj::obj;
 
-use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
+use sys::resource::{Load, Loaded, Store};
 use scene::aabb::AABB;
 
 /// A model tree representing the structure of a model.
@@ -28,49 +31,23 @@ pub type ObjVertexPos = [f32; 3];
 pub type ObjVertexNor = [f32; 3];
 pub type ObjVertexTexCoord = [f32; 2];
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct ObjModelKey(pub String);
-
-impl ObjModelKey {
-  pub fn new(key: &str) -> Self {
-    ObjModelKey(key.to_owned())
-  }
-}
-
-impl<'a> From<&'a str> for ObjModelKey {
-  fn from(key: &str) -> Self {
-    ObjModelKey::new(key)
-  }
-}
-
-impl CacheKey for ObjModelKey {
-  type Target = ObjModel;
-}
-
-impl StoreKey for ObjModelKey {
-  fn key_to_path(&self) -> PathBuf {
-    self.0.clone().into()
-  }
-}
-
 impl Load for ObjModel {
-  type Key = ObjModelKey;
+  type Error = ModelError;
 
-  fn load(key: &Self::Key, _: &mut Store) -> Result<LoadResult<Self>, LoadError> {
-    let path = key.key_to_path();
-
+  fn from_fs<P>(path: P, _: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
+    let path = path.as_ref();
     let mut input = String::new();
 
     // load the data directly into memory; no buffering nor streaming
     {
-      let mut file = File::open(&path).map_err(|_| LoadError::FileNotFound(path))?;
+      let mut file = File::open(path).map_err(|_| ModelError::FileNotFound(path.to_owned()))?;
       let _ = file.read_to_string(&mut input);
     }
 
     // parse the obj file and convert it
-    let obj_set = obj::parse(input).map_err(|e| LoadError::ParseFailed(format!("{:?}", e)))?;
+    let obj_set = obj::parse(input).map_err(ModelError::ParseFailed)?;
 
-    convert_obj(obj_set).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e))).map(Into::into)
+    convert_obj(obj_set).map(Into::into)
   }
 }
 
@@ -198,12 +175,33 @@ fn guess_mode(prim: obj::Primitive) -> Mode {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ModelError {
+  FileNotFound(PathBuf),
+  ParseFailed(ParseError),
   UnsupportedVertex,
   NoVertex,
   NoGeometry,
   NoShape
+}
+
+impl fmt::Display for ModelError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    f.write_str(self.description())
+  }
+}
+
+impl Error for ModelError {
+  fn description(&self) -> &str {
+    match *self {
+      ModelError::FileNotFound(_) => "file not found",
+      ModelError::ParseFailed(_) => "parse failed",
+      ModelError::UnsupportedVertex => "unsupported vertex",
+      ModelError::NoVertex => "no vertex found",
+      ModelError::NoGeometry => "no geometry found",
+      ModelError::NoShape => "no shape found"
+    }
+  }
 }
 
 /// A material tree representing a possible interpretation of a model tree.
