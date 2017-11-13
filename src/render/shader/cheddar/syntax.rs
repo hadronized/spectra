@@ -6,7 +6,8 @@
 
 pub use glsl::syntax::*;
 use glsl::writer;
-use std::fmt::Write;
+use std::error::Error;
+use std::fmt::{self, Write};
 use std::iter::once;
 
 /// A module.
@@ -76,6 +77,34 @@ pub enum GLSLConversionError {
   WrongGeometryInputDim(usize),
   /// The geometry output layout is wrong.
   WrongGeometryOutputLayout(Option<TypeQualifier>)
+}
+
+impl fmt::Display for GLSLConversionError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    f.write_str(self.description())
+  }
+}
+
+
+impl Error for GLSLConversionError {
+  fn description(&self) -> &str {
+    match *self {
+      GLSLConversionError::NoVertexShader => "no vertex shader",
+      GLSLConversionError::NoFragmentShader => "no fragment shader",
+      GLSLConversionError::OutputHasMainQualifier => "output has main qualifier(s)",
+      GLSLConversionError::ReturnTypeMustBeAStruct(_) => "return type is not a struct",
+      GLSLConversionError::WrongOutputFirstField(_) => "first field’s type is forbidden as output",
+      GLSLConversionError::OutputFieldCannotBeStruct(..) => "output field cannot be a struct",
+      GLSLConversionError::OutputFieldCannotBeTypeName(..) => "output field cannot be a type name",
+      GLSLConversionError::OutputFieldCannotHaveSeveralIdentifiers(..) => "output field cannot have several identifiers",
+      GLSLConversionError::UnknownInputType(_) => "unknown input type",
+      GLSLConversionError::WrongNumberOfArgs(..) => "wrong number of arguments",
+      GLSLConversionError::NotTypeName => "not a type name",
+      GLSLConversionError::WrongGeometryInput => "wrong geometry input",
+      GLSLConversionError::WrongGeometryInputDim(_) => "wrong geometry input’s dimension",
+      GLSLConversionError::WrongGeometryOutputLayout(_) => "wrong geometry output layout"
+    }
+  }
 }
 
 /// Sink single declarations as external declarations.

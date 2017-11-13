@@ -10,22 +10,46 @@
 use luminance::shader::program::Program as LProgram;
 pub use luminance::shader::program::{ProgramError, Uniform, Uniformable, UniformBuilder,
                                      UniformInterface, UniformWarning};
-use luminance::shader::stage::StageError;
 use luminance::vertex::Vertex;
+use std::error::Error;
 use std::fmt;
-use std::hash;
-use std::marker::PhantomData;
 use std::ops::Deref;
-use std::path::PathBuf;
+use std::path::Path;
 
-use render::shader::module::ModuleKey;
-use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
+use render::shader::cheddar::syntax::GLSLConversionError;
+use render::shader::module::{Module, ModuleError};
+use sys::resource::{Key, Load, Loaded, Store};
 
 /// Errors that can be risen by a shader.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum ShaderError {
-  StageError(StageError),
+  ModuleError(ModuleError),
+  GLSLConversionError(GLSLConversionError),
   ProgramError(ProgramError)
+}
+
+impl fmt::Display for ShaderError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    f.write_str(self.description())
+  }
+}
+
+impl Error for ShaderError {
+  fn description(&self) -> &str {
+    match *self {
+      ShaderError::ModuleError(_) => "module error",
+      ShaderError::GLSLConversionError(_) => "GLSL conversion error",
+      ShaderError::ProgramError(_) => "program error"
+    }
+  }
+
+  fn cause(&self) -> Option<&Error> {
+    match *self {
+      ShaderError::ModuleError(ref err) => Some(err),
+      ShaderError::GLSLConversionError(ref err) => Some(err),
+      ShaderError::ProgramError(ref err) => Some(err)
+    }
+  }
 }
 
 /// Shader program.
@@ -41,105 +65,38 @@ impl<In, Out, Uni> Deref for Program<In, Out, Uni> {
   }
 }
 
-/// Key for loading `Program`s.
-#[derive(Eq, PartialEq)]
-pub struct ProgramKey<In, Out, Uni> {
-  pub key: String,
-  _in: PhantomData<*const In>,
-  _out: PhantomData<*const Out>,
-  _uni: PhantomData<*const Uni>
-}
-
-impl<In, Out, Uni> ProgramKey<In, Out, Uni> {
-  /// Create a new `Program` key.
-  ///
-  /// A `ProgramKey` must reference a module. See the documentation of `ModuleKey` for further
-  /// details.
-  pub fn new(key: &str) -> Self {
-    ProgramKey {
-      key: key.to_owned(),
-      _in: PhantomData,
-      _out: PhantomData,
-      _uni: PhantomData
-    }
-  }
-}
-
-impl<In, Out, Uni> Clone for ProgramKey<In, Out, Uni> {
-  fn clone(&self) -> Self {
-    ProgramKey {
-      key: self.key.clone(),
-      ..*self
-    }
-  }
-}
-
-impl<In, Out, Uni> fmt::Debug for ProgramKey<In, Out, Uni> {
-  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-    self.key.fmt(f)
-  }
-}
-
-impl<In, Out, Uni> hash::Hash for ProgramKey<In, Out, Uni> {
-  fn hash<H>(&self, hasher: &mut H) where H: hash::Hasher {
-    self.key.hash(hasher)
-  }
-}
-
-impl<'a, In, Out, Uni> From<&'a str> for ProgramKey<In, Out, Uni> {
-  fn from(key: &str) -> Self {
-    ProgramKey::new(key)
-  }
-}
-
-impl<In, Out, Uni> CacheKey for ProgramKey<In, Out, Uni>
-    where In: 'static,
-          Out: 'static,
-          Uni: 'static {
-  type Target = Program<In, Out, Uni>;
-}
-
-impl<In, Out, Uni> StoreKey for ProgramKey<In, Out, Uni>
-    where In: 'static,
-          Out: 'static,
-          Uni: 'static {
-  fn key_to_path(&self) -> PathBuf {
-    self.key.clone().into()
-  }
-}
-
 impl<In, Out, Uni> Load for Program<In, Out, Uni>
     where In: 'static + Vertex,
           Out: 'static,
           Uni: 'static + UniformInterface {
-  type Key = ProgramKey<In, Out, Uni>;
+  type Error = ShaderError;
 
-  fn load(key: &Self::Key, store: &mut Store) -> Result<LoadResult<Self>, LoadError> {
-    let module_key = ModuleKey::new(&key.key);
-    let module = store.get(&module_key).ok_or(LoadError::ConversionFailed("cannot get program".to_owned()))?;
+  fn from_fs<P>(path: P, store: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
+    let path = path.as_ref();
+    let module_key = Key::<Module>::new(path.to_owned());
+    let module = store.get(&module_key).map_err(ShaderError::ModuleError)?;
 
     let module_ = module.borrow();
+
     match module_.to_glsl_setup() {
       Err(err) => {
-        err!("{:?}", err);
-        Err(LoadError::ConversionFailed("cannot generate GLSL".to_owned()))
+        Err(ShaderError::GLSLConversionError(err))
       }
       Ok(fold) => {
-        info!("vertex shader");
+        deb!("vertex shader");
         annotate_shader(&fold.vs);
 
         if let Some(ref gs) = fold.gs {
-          info!("geometry shader");
+          deb!("geometry shader");
           annotate_shader(gs);
         }
 
-        info!("fragment shader");
+        deb!("fragment shader");
         annotate_shader(&fold.fs);
 
         match LProgram::from_strings(None, &fold.vs, fold.gs.as_ref().map(String::as_str), &fold.fs) {
           Err(err) => {
-            err!("{:?}", err);
-            Err(LoadError::ConversionFailed("damn".to_owned()))
+            Err(ShaderError::ProgramError(err))
           }
           Ok((program, warnings)) => {
             // print warnings in case there’s any

@@ -6,7 +6,7 @@ use nom::alphanumeric;
 use std::str::from_utf8_unchecked;
 
 use glsl::parser::{external_declaration, identifier};
-pub use glsl::parser::{ParseResult, parse, parse_str};
+pub use glsl::parser::{ParseError, ParseResult, parse, parse_str};
 use render::shader::cheddar::syntax;
 
 // Turn a &[u8] into a String.

@@ -1,10 +1,13 @@
 pub use luminance::pixel::{Depth32F, R32F, RGB32F, RGBA32F};
-pub use luminance::texture::{Dim2, Flat, MagFilter, MinFilter, Sampler, Texture, Wrap};
+pub use luminance::texture::{Dim2, Flat, MagFilter, MinFilter, Sampler, Texture, TextureError, Wrap};
 use image;
+use image::ImageError;
+use std::error::Error;
+use std::fmt;
 use std::ops::Deref;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use sys::resource::{CacheKey, Load, LoadError, LoadResult, Store, StoreKey};
+use sys::resource::{Load, Loaded, Store};
 
 // Common texture aliases.
 pub type TextureRGB32F = Texture<Flat, Dim2, RGB32F>;
@@ -16,14 +19,14 @@ pub type TextureDepth32F = Texture<Flat, Dim2, Depth32F>;
 ///
 /// The `linearizer` argument is an option that gives the factor to apply to linearize if needed. Pass
 /// `None` if the texture is already linearized.
-pub fn load_rgba_texture<P>(path: P) -> Result<TextureRGBA32F, LoadError> where P: AsRef<Path> {
-  let img = image::open(path).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?.flipv().to_rgba();
+pub fn load_rgba_texture<P>(path: P) -> Result<TextureRGBA32F, TextureImageError> where P: AsRef<Path> {
+  let img = image::open(path).map_err(TextureImageError::ParseFailed)?.flipv().to_rgba();
   let (w, h) = img.dimensions();
   let raw: Vec<f32> = img.into_raw().into_iter().map(|x| {
     x as f32 / 255.
   }).collect();
 
-  let tex = Texture::new([w, h], 0, &Sampler::default()).map_err(|e| LoadError::ConversionFailed(format!("{:?}", e)))?;
+  let tex = Texture::new([w, h], 0, &Sampler::default()).map_err(TextureImageError::ConversionFailed)?;
   tex.upload_raw(false, &raw);
 
   Ok(tex)
@@ -55,36 +58,38 @@ impl Deref for TextureImage {
   }
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct TextureKey(pub String);
-
-impl TextureKey {
-  pub fn new(key: &str) -> Self {
-    TextureKey(key.to_owned())
-  }
-}
-
-impl<'a> From<&'a str> for TextureKey {
-  fn from(key: &str) -> Self {
-    TextureKey::new(key)
-  }
-}
-
-impl CacheKey for TextureKey {
-  type Target = TextureImage;
-}
-
-impl StoreKey for TextureKey {
-  fn key_to_path(&self) -> PathBuf {
-    self.0.clone().into()
-  }
-}
-
 impl Load for TextureImage {
-  type Key = TextureKey;
+  type Error = TextureImageError;
 
-  fn load(key: &Self::Key, _: &mut Store) -> Result<LoadResult<Self>, LoadError> {
-    let result = load_rgba_texture(key.key_to_path()).map(TextureImage)?.into();
-    Ok(result)
+  fn from_fs<P>(path: P, _: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
+    load_rgba_texture(path).map(|rgba32f_tex| TextureImage(rgba32f_tex).into())
+  }
+}
+
+#[derive(Debug)]
+pub enum TextureImageError {
+  ParseFailed(ImageError),
+  ConversionFailed(TextureError)
+}
+
+impl fmt::Display for TextureImageError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    f.write_str(self.description())
+  }
+}
+
+impl Error for TextureImageError {
+  fn description(&self) -> &str {
+    match *self {
+      TextureImageError::ParseFailed(_) => "parse failed",
+      TextureImageError::ConversionFailed(_) => "conversion failed"
+    }
+  }
+
+  fn cause(&self) -> Option<&Error> {
+    match *self {
+      TextureImageError::ParseFailed(ref err) => Some(err),
+      TextureImageError::ConversionFailed(ref err) => Some(err)
+    }
   }
 }
