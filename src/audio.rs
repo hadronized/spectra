@@ -1,17 +1,17 @@
-use alto::{self, SourceTrait};
+use alto::{self, Source};
 use std::fs::File;
 use std::path::Path;
 use vorbis::Decoder;
 
 /// The audio object you can use to interact with the soundtrack.
-pub struct Audio<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
+pub struct Audio {
   /// Length of the track.
   len: f32,
   /// OpenAL source.
-  source: &'c mut alto::StreamingSource<'a, 'b>
+  source: alto::StreamingSource
 }
 
-impl<'a, 'b, 'c> Audio<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
+impl Audio {
   pub fn len(&self) -> f32 {
     self.len
   }
@@ -19,7 +19,7 @@ impl<'a, 'b, 'c> Audio<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
   pub fn cursor(&mut self) -> f32 {
     let source = &mut self.source;
 
-    let c = source.sec_offset().unwrap();
+    let c = source.sec_offset();
 
     // loop the device if we hit the end of the demo
     if c > self.len {
@@ -46,7 +46,7 @@ impl<'a, 'b, 'c> Audio<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
   pub fn toggle(&mut self) -> bool {
     let source = &mut self.source;
 
-    if source.state().unwrap() == alto::SourceState::Playing {
+    if source.state() == alto::SourceState::Playing {
       // pause the OpenAL source
       let _ = source.pause();
       false
@@ -57,16 +57,13 @@ impl<'a, 'b, 'c> Audio<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
     }
   }
 
-  pub fn open<P, A, F>(track_path: P, f: F) -> A where P: AsRef<Path>, F: FnOnce(Audio) -> A {
-    deb!("initializing OpenAL");
+  // FIXME: return the object instead
+  pub fn from_track_path<P>(track_path: P) -> Self where P: AsRef<Path> {
+    deb!("initializing alto");
 
     let alto = alto::Alto::load_default().unwrap();
     let al_device = alto.open(None).unwrap();
-    let al_ctx = al_device.new_context(None).unwrap();
-
-    // create the required objects to play the soundtrack
-    let mut al_buffer = al_ctx.new_buffer().unwrap();
-    let mut al_source = al_ctx.new_streaming_source().unwrap();
+    let ctx = al_device.new_context(None).unwrap();
 
     info!("loading soundtrack {:?}", track_path.as_ref());
 
@@ -79,17 +76,15 @@ impl<'a, 'b, 'c> Audio<'a, 'b, 'c> where 'a: 'b, 'b: 'c {
       pcm_buffer.extend(packet.data);
     }
 
-    // fill the OpenAL buffers with the PCM data
-    let _ = al_buffer.set_data::<alto::Stereo<_>, _>(&pcm_buffer[..], 44100);
+    // create the required objects to play the soundtrack
+    let buffer = ctx.new_buffer::<alto::Stereo<i16>, _>(&pcm_buffer[..], 44100).unwrap();
+    let mut source = ctx.new_streaming_source().unwrap();
 
     // compute the length of soundtrack
-    let len = (al_buffer.size().unwrap() * 8 / (al_buffer.channels().unwrap() * al_buffer.bits().unwrap())) as f32 / al_buffer.frequency().unwrap() as f32;
+    let len = (buffer.size() * 8 / (buffer.channels() * buffer.bits())) as f32 / buffer.frequency() as f32;
 
-    let _ = al_source.queue_buffer(al_buffer);
+    let _ = source.queue_buffer(buffer);
 
-    let audio = Audio { len: len, source: &mut al_source };
-
-    f(audio)
+    Audio { len, source }
   }
-
 }
