@@ -20,7 +20,7 @@ doc = false
 [dependencies]
 alto = "3.0"
 any-cache = "0.2"
-cgmath = "0.14"
+cgmath = "0.15"
 chrono = "0.3"
 clap = "2.19"
 luminance = "0.23"
