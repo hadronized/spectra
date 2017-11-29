@@ -530,7 +530,7 @@ fn sink_vertex_shader_input_args<F>(sink: &mut F, map_vertex: &syntax::FunctionD
 fn sink_vertex_shader_input_arg<F>(sink: &mut F, i: usize, arg: &syntax::FunctionParameterDeclaration) where F: Write {
   match *arg {
     syntax::FunctionParameterDeclaration::Named(_, ref d) => {
-      let _ = sink.write_str(&d.name);
+      let _ = write!(sink, "chdr_{}", d.name);
     }
     syntax::FunctionParameterDeclaration::Unnamed(..) => {
       let _ = write!(sink, "chdr_unused{}", i);
@@ -570,7 +570,7 @@ fn vertex_shader_inputs<'a, I>(args: I) -> Result<Vec<syntax::SingleDeclaration>
       syntax::FunctionParameterDeclaration::Named(ref ty_qual, ref decl) => {
         let qualifier = vertex_shader_input_qualifier(i, ty_qual);
         let ty = decl.ty.clone();
-        let name = Some(decl.name.clone());
+        let name = Some(format!("chdr_{}",  decl.name));
         let array_spec = decl.array_spec.clone();
         let sd = 
           syntax::SingleDeclaration {
@@ -610,16 +610,9 @@ fn vertex_shader_outputs(fsty: &syntax::FullySpecifiedType, structs: &[syntax::S
 
       match real_ty {
         Some(ref s) => {
-          // the first field must be named "chdr_Position", has type vec4 and no qualifier
-          let first_field = &s.fields[0];
+          check_1st_field_chdr_position(&s.fields[0])?;
 
-          if first_field.qualifier.is_some() ||
-             first_field.ty.ty != syntax::TypeSpecifierNonArray::Vec4 ||
-             first_field.identifiers != vec![("chdr_Position".to_owned(), None)] {
-            return Err(syntax::GLSLConversionError::WrongOutputFirstField(first_field.clone()));
-          }
-
-          // then, for all other fields, we check that they are not composite type (i.e. structs); if
+          // for all other fields, we check that they are not composite type (i.e. structs); if
           // they are not, add them to the interface; otherwise, fail
           syntax::fields_to_single_decls(&s.fields[1..], "chdr_v_")
         }
@@ -627,6 +620,17 @@ fn vertex_shader_outputs(fsty: &syntax::FullySpecifiedType, structs: &[syntax::S
       }
     }
     _ => Err(syntax::GLSLConversionError::ReturnTypeMustBeAStruct(ty.clone()))
+  }
+}
+
+fn check_1st_field_chdr_position(field: &syntax::StructFieldSpecifier) -> Result<(), syntax::GLSLConversionError> {
+  // the first field must be named "chdr_Position", has type vec4 and no qualifier
+  if field.qualifier.is_some() ||
+     field.ty.ty != syntax::TypeSpecifierNonArray::Vec4 ||
+     field.identifiers.as_slice() != &[("chdr_Position".to_owned(), None)] {
+    Err(syntax::GLSLConversionError::WrongOutputFirstField(field.clone()))
+  } else {
+    Ok(())
   }
 }
 
@@ -661,8 +665,9 @@ where F: Write {
     return Err(syntax::GLSLConversionError::UnknownInputType(input_ty_name.clone()));
   }
 
-  // sink the metadata of the geometry shader (input primitive, output primitive, max output vertices)
-  // TODO
+  // ensure the first field of the output struct is correct
+  check_1st_field_chdr_position(&output_ty.fields[0])?;
+
   let gs_metadata_input = gs_layout_storage_external_decl(input_layout, syntax::StorageQualifier::In);
   let gs_metadata_output = gs_layout_storage_external_decl(output_layout, syntax::StorageQualifier::Out);
 
@@ -670,7 +675,7 @@ where F: Write {
   writer::glsl::show_external_declaration(sink, &gs_metadata_output);
 
   let inputs = syntax::inputs_from_outputs(prev_inputs, true);
-  let outputs = syntax::fields_to_single_decls(&output_ty.fields, "chdr_g_")?;
+  let outputs = syntax::fields_to_single_decls(&output_ty.fields[1..], "chdr_g_")?;
 
   syntax::sink_single_as_ext_decls(sink, inputs.iter().chain(&outputs));
 
