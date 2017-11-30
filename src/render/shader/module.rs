@@ -683,7 +683,7 @@ where F: Write {
   writer::glsl::show_struct(sink, &output_ty); // sink the return type of this stage
 
   // sink the concat_map_prim function
-  let concat_map_prim_fixed = fix_concat_map_prim(concat_map_prim.clone(), &output_ty)?;
+  let concat_map_prim_fixed = unannotate_concat_map_prim(concat_map_prim.clone(), &output_ty)?;
   writer::glsl::show_function_definition(sink, &concat_map_prim_fixed);
 
   // void main
@@ -833,7 +833,7 @@ fn check_gs_output_prim(s: &str) -> bool {
 ///
 /// This function will also replace any call to the `yield_vertex` and `yield_primitive` by the
 /// correct GLSL counterpart.
-fn fix_concat_map_prim(f: syntax::FunctionDefinition, out_ty: &syntax::StructSpecifier) -> Result<syntax::FunctionDefinition, syntax::GLSLConversionError> {
+fn unannotate_concat_map_prim(f: syntax::FunctionDefinition, out_ty: &syntax::StructSpecifier) -> Result<syntax::FunctionDefinition, syntax::GLSLConversionError> {
   let statement: Result<_, syntax::GLSLConversionError> = f.statement.statement_list.into_iter().map(|st| {
     match st {
       syntax::Statement::Simple(
