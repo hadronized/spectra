@@ -862,6 +862,135 @@ fn unannotate_concat_map_prim(f: syntax::FunctionDefinition, out_ty: &syntax::St
   })
 }
 
+/// Recursively remove any "yield_*" annotations from a statement and replace them with correct GLSL
+/// code.
+fn unyield_stmt(st: &syntax::Statement, out_ty: &syntax::StructSpecifier) -> Result<syntax::Statement, syntax::GLSLConversionError> {
+  match *st {
+    syntax::Statement::Simple(box ref sst) => {
+      match *sst {
+        syntax::SimpleStatement::Expression(Some(ref e)) => {
+          let st =
+            syntax::Statement::Simple(
+              box syntax::SimpleStatement::Expression(
+                Some(unyield_expr(e, out_ty)?)
+              )
+            );
+
+          Ok(st)
+        }
+
+        syntax::SimpleStatement::Selection(ref sst) => {
+          let st =
+            syntax::Statement::Simple(
+              box syntax::SimpleStatement::Selection(
+                syntax::SelectionStatement {
+                  rest:
+                    match sst.rest {
+                      syntax::SelectionRestStatement::Statement(box st) =>
+                        syntax::SelectionRestStatement::Statement(box unyield_stmt(&st, out_ty)?),
+
+                      syntax::SelectionRestStatement::Else(box ist, box est) =>
+                        syntax::SelectionRestStatement::Else(box unyield_stmt(&ist, out_ty)?, box unyield_stmt(&est, out_ty)?)
+                    },
+                  .. sst.clone()
+                }
+              )
+            );
+
+          Ok(st)
+        }
+
+        syntax::SimpleStatement::Switch(ref sst) => {
+          let st =
+            syntax::Statement::Simple(
+              box syntax::SimpleStatement::Switch(
+                syntax::SwitchStatement {
+                  body: sst.body.iter().map(unyield_stmt, out_ty).collect()
+                  .. sst.clone()
+                }
+              )
+            );
+
+          Ok(st)
+        }
+
+        syntax::SimpleStatement::CaseLabel(syntax::CaseLabel::Case(box e)) => {
+          let st =
+            syntax::Statement::Simple(
+              box syntax::SimpleStatement::CaseLabel(
+                syntax::CaseLabel::Case(box unyield_expr(&e, out_ty))
+              )
+            );
+
+          Ok(st)
+        }
+
+        syntax::SimpleStatement::Iteration(ref ist) => {
+          match *ist {
+            syntax::IterationStatement::While(ref cond, box s) => {
+              let st =
+                syntax::Statement::Simple(
+                  box syntax::SimpleStatement::Iteration(
+                    syntax::IterationStatement::While(cond.clone(), box unyield_stmt(&s, out_ty))
+                  )
+                );
+
+              Ok(st)
+            }
+
+            syntax::IterationStatement::DoWhile(box s, ref x) => {
+              let st =
+                syntax::Statement::Simple(
+                  box syntax::SimpleStatement::Iteration(
+                    syntax::IterationStatement::DoWhile(box unyield_stmt(&s, out_ty), x.clone())
+                  )
+                );
+
+              Ok(st)
+            }
+
+            syntax::IterationStatement::For(ref i, ref cond, box s) => {
+              let st =
+                syntax::Statement::Simple(
+                  box syntax::SimpleStatement::Iteration(
+                    syntax::IterationStatement::For(i.clone(), cond.clone(), box unyield_stmt(&s, out_ty))
+                  )
+                );
+
+              Ok(st)
+            }
+          }
+        }
+
+        _ => Ok(st)
+      }
+    }
+
+    syntax::Statement::Compound(box syntax::CompoundStatement { statement_list: ref stmts }) => {
+      let st =
+        syntax::Statement::Compound(
+          box syntax::CompoundStatement {
+            statement_list: stmts.iter().map(unyield_stmt, out_ty).collect()
+          }
+        );
+
+      Ok(st)
+    }
+  }
+}
+
+fn unyield_expr(expr: &syntax::Expr, out_ty: &syntax::StructSpecifier) -> Result<syntax::Expr, syntax::GLSLConversionError> {
+  match *expr {
+    syntax::Expr::FunCall(syntax::FunIdentifier::Identifier(ref fni), ref args) => {
+      match fni.as_str() {
+        "yield_vertex" => yield_vertex(&args, out_ty),
+        "yield_primitive" => Ok(yield_primitive()),
+        _ => Ok(expr.clone())
+      }
+    }
+  }
+}
+
 fn yield_vertex(args: &[syntax::Expr], out_ty: &syntax::StructSpecifier) -> Result<syntax::Statement, syntax::GLSLConversionError> {
   match args {
     &[ref arg] => {
