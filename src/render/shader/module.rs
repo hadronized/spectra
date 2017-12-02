@@ -283,6 +283,7 @@ impl Module {
     let blocks = self.blocks();
     let structs = self.structs();
     let functions = self.functions();
+    let globals = self.globals();
 
     let mut common = String::new();
     let mut vs = String::new();
@@ -290,7 +291,7 @@ impl Module {
     let mut fs = String::new();
     let mut structs_str = String::new();
 
-    // sink uniforms, blocks and first as a common framework
+    // sink uniforms, blocks, constants and functions as a common framework
     for uniform in &uniforms {
       writer::glsl::show_single_declaration(&mut common, uniform);
       let _ = common.write_str(";\n");
@@ -298,6 +299,11 @@ impl Module {
 
     for block in &blocks {
       writer::glsl::show_block(&mut common, block);
+    }
+
+    for global in &globals {
+      writer::glsl::show_single_declaration(&mut common, global);
+      let _ = common.write_str(";\n");
     }
 
     for f in filter_out_special_functions(functions.iter()) {
@@ -436,6 +442,37 @@ impl Module {
         _ => None
       }
     }).collect()
+  }
+
+  /// Get all the globals.
+  fn globals(&self) -> Vec<syntax::SingleDeclaration> {
+    let mut consts = Vec::new();
+
+    for glsl in &self.0.glsl {
+      if let syntax::ExternalDeclaration::Declaration(syntax::Declaration::InitDeclaratorList(ref i)) = *glsl {
+        if let Some(ref q) = i.head.ty.qualifier {
+          match q.qualifiers.as_slice() {
+            &[syntax::TypeQualifierSpec::Storage(syntax::StorageQualifier::Const)] | &[] => {
+              consts.push(i.head.clone());
+
+              // check whether we have more
+              for next in &i.tail {
+                consts.push(syntax::SingleDeclaration {
+                  ty: i.head.ty.clone(),
+                  name: Some(next.name.clone()),
+                  array_specifier: next.array_specifier.clone(),
+                  initializer: None
+                });
+              }
+            }
+
+            _ => ()
+          }
+        }
+      }
+    }
+
+    consts
   }
 }
 
