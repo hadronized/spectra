@@ -315,10 +315,8 @@ impl Module {
 
     // sink the vertex shader
     let (vertex_ret_ty, vertex_outputs) = sink_vertex_shader(&mut vs, map_vertex, &structs)?;
-    // since this type has its first field reserved, we must drop it for next stage
-    let vertex_ret_ty_fixed = syntax::drop_first_field(&vertex_ret_ty);
 
-    filter_out_struct_def.push(vertex_ret_ty_fixed.name.clone());
+    filter_out_struct_def.push(vertex_ret_ty.name.clone());
 
     // if there’s any, sink the geometry shader and get its return type – it’ll be passed to the
     // fragment shader; otherwise, just return the vertex type
@@ -326,13 +324,13 @@ impl Module {
       let (ret_ty, outputs) = sink_geometry_shader(&mut gs,
                                                    &concat_map_prim,
                                                    &structs,
-                                                   &vertex_ret_ty_fixed,
+                                                   &vertex_ret_ty,
                                                    &vertex_outputs)?;
 
       filter_out_struct_def.push(ret_ty.name.clone());
       (ret_ty, outputs)
     } else {
-      (vertex_ret_ty_fixed, vertex_outputs)
+      (vertex_ret_ty, vertex_outputs)
     };
 
     // sink the fragment shader
@@ -467,6 +465,9 @@ fn sink_vertex_shader<F>(sink: &mut F,
   // sink the return type
   writer::glsl::show_struct(sink, &ret_ty);
 
+  // remove the first field of the return type since we already know what it is
+  let ret_ty_without_1st = syntax::drop_1st_field(&ret_ty);
+
   // sink the map_vertex function, but remove its unused arguments
   let map_vertex_reduced = syntax::remove_unused_args_fn(map_vertex);
   writer::glsl::show_function_definition(sink, &map_vertex_reduced);
@@ -476,7 +477,7 @@ fn sink_vertex_shader<F>(sink: &mut F,
 
   // call the map_vertex function
   let mut assigns = String::new();
-  sink_vertex_shader_output(sink, &mut assigns, &ret_ty);
+  sink_vertex_shader_output(sink, &mut assigns, &ret_ty_without_1st);
   let _ = sink.write_str(" v = map_vertex(");
   sink_vertex_shader_input_args(sink, &map_vertex_reduced);
   let _ = sink.write_str(");\n");
@@ -487,7 +488,7 @@ fn sink_vertex_shader<F>(sink: &mut F,
   // end of the main function
   let _ = sink.write_str("}\n\n");
 
-  Ok((ret_ty, outputs))
+  Ok((ret_ty_without_1st, outputs))
 }
 
 /// Sink a vertex shader’s output.
@@ -500,7 +501,7 @@ fn sink_vertex_shader_output<F, G>(sink: &mut F, assigns: &mut G, ty: &syntax::S
 
   let _ = assigns.write_str("  gl_Position = v.chdr_Position;\n");
 
-  for field in &ty.fields[1..] {
+  for field in &ty.fields {
     for &(ref identifier, _) in &field.identifiers {
       let _ = write!(assigns, "  chdr_v_{0} = v.{0};\n", identifier);
     }
@@ -668,6 +669,9 @@ where F: Write {
   // ensure the first field of the output struct is correct
   check_1st_field_chdr_position(&output_ty.fields[0])?;
 
+  // remove the first field of the return type since we already know what it is
+  let output_ty_without_1st = syntax::drop_1st_field(&output_ty);
+
   let gs_metadata_input = gs_layout_storage_external_decl(input_layout, syntax::StorageQualifier::In);
   let gs_metadata_output = gs_layout_storage_external_decl(output_layout, syntax::StorageQualifier::Out);
 
@@ -675,7 +679,7 @@ where F: Write {
   writer::glsl::show_external_declaration(sink, &gs_metadata_output);
 
   let inputs = syntax::inputs_from_outputs(prev_inputs, true);
-  let outputs = syntax::fields_to_single_decls(&output_ty.fields[1..], "chdr_g_")?;
+  let outputs = syntax::fields_to_single_decls(&output_ty_without_1st.fields, "chdr_g_")?;
 
   syntax::sink_single_as_ext_decls(sink, inputs.iter().chain(&outputs));
 
@@ -683,7 +687,7 @@ where F: Write {
   writer::glsl::show_struct(sink, &output_ty); // sink the return type of this stage
 
   // sink the concat_map_prim function
-  let concat_map_prim_fixed = unannotate_concat_map_prim(concat_map_prim.clone(), &output_ty)?;
+  let concat_map_prim_fixed = unannotate_concat_map_prim(concat_map_prim.clone(), &output_ty_without_1st)?;
   writer::glsl::show_function_definition(sink, &concat_map_prim_fixed);
 
   // void main
@@ -699,7 +703,7 @@ where F: Write {
   // end of the main function
   let _ = sink.write_str("}\n\n");
 
-  Ok((output_ty, outputs))
+  Ok((output_ty_without_1st, outputs))
 }
 
 /// Sink a fragment shader.
@@ -834,22 +838,7 @@ fn check_gs_output_prim(s: &str) -> bool {
 /// This function will also replace any call to the `yield_vertex` and `yield_primitive` by the
 /// correct GLSL counterpart.
 fn unannotate_concat_map_prim(f: syntax::FunctionDefinition, out_ty: &syntax::StructSpecifier) -> Result<syntax::FunctionDefinition, syntax::GLSLConversionError> {
-  let statement: Result<_, syntax::GLSLConversionError> = f.statement.statement_list.into_iter().map(|st| {
-    match st {
-      syntax::Statement::Simple(
-        box syntax::SimpleStatement::Expression(
-          Some(syntax::Expr::FunCall(syntax::FunIdentifier::Identifier(ref fni), ref args)))) => {
-            match fni.as_str() {
-              "yield_vertex" => yield_vertex(&args, out_ty),
-              "yield_primitive" => Ok(yield_primitive()),
-              _ => Ok(st.clone())
-            }
-          }
-
-      _ => Ok(st)
-    }
-  }).collect();
-  let st = statement?;
+  let st = f.statement.statement_list.iter().map(|st| unyield_stmt(st, out_ty)).collect::<Result<_, _>>()?;
 
   Ok(syntax::FunctionDefinition {
     prototype: syntax::FunctionPrototype {
@@ -862,22 +851,21 @@ fn unannotate_concat_map_prim(f: syntax::FunctionDefinition, out_ty: &syntax::St
   })
 }
 
-/// Recursively remove any "yield_*" annotations from a statement and replace them with correct GLSL
+/// Recursively remove any `yield_*` annotations from a statement and replace them with correct GLSL
 /// code.
 fn unyield_stmt(st: &syntax::Statement, out_ty: &syntax::StructSpecifier) -> Result<syntax::Statement, syntax::GLSLConversionError> {
   match *st {
     syntax::Statement::Simple(box ref sst) => {
       match *sst {
-        syntax::SimpleStatement::Expression(Some(ref e)) => {
-          let st =
-            syntax::Statement::Simple(
-              box syntax::SimpleStatement::Expression(
-                Some(unyield_expr(e, out_ty)?)
-              )
-            );
-
-          Ok(st)
-        }
+        syntax::SimpleStatement::Expression(
+          Some(
+            syntax::Expr::FunCall(syntax::FunIdentifier::Identifier(ref fni), ref args))) => {
+              match fni.as_str() {
+                "yield_vertex" => yield_vertex(&args, out_ty),
+                "yield_primitive" => Ok(yield_primitive()),
+                _ => Ok(st.clone())
+              }
+            }
 
         syntax::SimpleStatement::Selection(ref sst) => {
           let st =
@@ -886,10 +874,10 @@ fn unyield_stmt(st: &syntax::Statement, out_ty: &syntax::StructSpecifier) -> Res
                 syntax::SelectionStatement {
                   rest:
                     match sst.rest {
-                      syntax::SelectionRestStatement::Statement(box st) =>
+                      syntax::SelectionRestStatement::Statement(box ref st) =>
                         syntax::SelectionRestStatement::Statement(box unyield_stmt(&st, out_ty)?),
 
-                      syntax::SelectionRestStatement::Else(box ist, box est) =>
+                      syntax::SelectionRestStatement::Else(box ref ist, box ref est) =>
                         syntax::SelectionRestStatement::Else(box unyield_stmt(&ist, out_ty)?, box unyield_stmt(&est, out_ty)?)
                     },
                   .. sst.clone()
@@ -905,20 +893,9 @@ fn unyield_stmt(st: &syntax::Statement, out_ty: &syntax::StructSpecifier) -> Res
             syntax::Statement::Simple(
               box syntax::SimpleStatement::Switch(
                 syntax::SwitchStatement {
-                  body: sst.body.iter().map(unyield_stmt, out_ty).collect()
-                  .. sst.clone()
+                  head: sst.head.clone(),
+                  body: sst.body.iter().map(|s| unyield_stmt(&s, out_ty)).collect::<Result<_, _>>()?
                 }
-              )
-            );
-
-          Ok(st)
-        }
-
-        syntax::SimpleStatement::CaseLabel(syntax::CaseLabel::Case(box e)) => {
-          let st =
-            syntax::Statement::Simple(
-              box syntax::SimpleStatement::CaseLabel(
-                syntax::CaseLabel::Case(box unyield_expr(&e, out_ty))
               )
             );
 
@@ -927,33 +904,33 @@ fn unyield_stmt(st: &syntax::Statement, out_ty: &syntax::StructSpecifier) -> Res
 
         syntax::SimpleStatement::Iteration(ref ist) => {
           match *ist {
-            syntax::IterationStatement::While(ref cond, box s) => {
+            syntax::IterationStatement::While(ref cond, box ref s) => {
               let st =
                 syntax::Statement::Simple(
                   box syntax::SimpleStatement::Iteration(
-                    syntax::IterationStatement::While(cond.clone(), box unyield_stmt(&s, out_ty))
+                    syntax::IterationStatement::While(cond.clone(), box unyield_stmt(&s, out_ty)?)
                   )
                 );
 
               Ok(st)
             }
 
-            syntax::IterationStatement::DoWhile(box s, ref x) => {
+            syntax::IterationStatement::DoWhile(box ref s, ref x) => {
               let st =
                 syntax::Statement::Simple(
                   box syntax::SimpleStatement::Iteration(
-                    syntax::IterationStatement::DoWhile(box unyield_stmt(&s, out_ty), x.clone())
+                    syntax::IterationStatement::DoWhile(box unyield_stmt(&s, out_ty)?, x.clone())
                   )
                 );
 
               Ok(st)
             }
 
-            syntax::IterationStatement::For(ref i, ref cond, box s) => {
+            syntax::IterationStatement::For(ref i, ref cond, box ref s) => {
               let st =
                 syntax::Statement::Simple(
                   box syntax::SimpleStatement::Iteration(
-                    syntax::IterationStatement::For(i.clone(), cond.clone(), box unyield_stmt(&s, out_ty))
+                    syntax::IterationStatement::For(i.clone(), cond.clone(), box unyield_stmt(&s, out_ty)?)
                   )
                 );
 
@@ -962,7 +939,7 @@ fn unyield_stmt(st: &syntax::Statement, out_ty: &syntax::StructSpecifier) -> Res
           }
         }
 
-        _ => Ok(st)
+        _ => Ok(st.clone())
       }
     }
 
@@ -970,7 +947,7 @@ fn unyield_stmt(st: &syntax::Statement, out_ty: &syntax::StructSpecifier) -> Res
       let st =
         syntax::Statement::Compound(
           box syntax::CompoundStatement {
-            statement_list: stmts.iter().map(unyield_stmt, out_ty).collect()
+            statement_list: stmts.iter().map(|s| unyield_stmt(s, out_ty)).collect::<Result<_, _>>()?
           }
         );
 
@@ -979,18 +956,7 @@ fn unyield_stmt(st: &syntax::Statement, out_ty: &syntax::StructSpecifier) -> Res
   }
 }
 
-fn unyield_expr(expr: &syntax::Expr, out_ty: &syntax::StructSpecifier) -> Result<syntax::Expr, syntax::GLSLConversionError> {
-  match *expr {
-    syntax::Expr::FunCall(syntax::FunIdentifier::Identifier(ref fni), ref args) => {
-      match fni.as_str() {
-        "yield_vertex" => yield_vertex(&args, out_ty),
-        "yield_primitive" => Ok(yield_primitive()),
-        _ => Ok(expr.clone())
-      }
-    }
-  }
-}
-
+/// Turn a `yield_vertex` function into a block of GLSL assigning outputs and emitting a vertex.
 fn yield_vertex(args: &[syntax::Expr], out_ty: &syntax::StructSpecifier) -> Result<syntax::Statement, syntax::GLSLConversionError> {
   match args {
     &[ref arg] => {
@@ -1020,6 +986,18 @@ fn yield_vertex(args: &[syntax::Expr], out_ty: &syntax::StructSpecifier) -> Resu
       // variable to refer the binding
       let bvar = box syntax::Expr::Variable("chdr_v".to_owned());
 
+      // assign gl_Position
+      let assign_gl_position =
+        syntax::Statement::Simple(
+          box syntax::SimpleStatement::Expression(
+            Some(syntax::Expr::Assignment(
+              box syntax::Expr::Variable("gl_Position".to_owned()),
+              syntax::AssignmentOp::Equal,
+              box syntax::Expr::Dot(bvar.clone(), "chdr_Position".to_owned())
+            ))
+          )
+        );
+
       // iterate over the fields of the vertex
       let assigns = out_ty.fields.iter().flat_map(|field| field.identifiers.iter().map(|&(ref field_name, _)| {
         syntax::Statement::Simple(
@@ -1044,7 +1022,12 @@ fn yield_vertex(args: &[syntax::Expr], out_ty: &syntax::StructSpecifier) -> Resu
       // create the final block of GLSL code
       let block =
         syntax::CompoundStatement {
-          statement_list: once(binding).chain(assigns).chain(once(emit)).collect()
+          statement_list:
+            once(binding)
+            .chain(once(assign_gl_position))
+            .chain(assigns)
+            .chain(once(emit))
+            .collect()
         };
       Ok(syntax::Statement::Compound(box block))
     },
