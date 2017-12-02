@@ -437,8 +437,8 @@ impl Module {
               },
               ..
             }
-          )
-        ) => Some(s.clone()),
+            )
+          ) => Some(s.clone()),
         _ => None
       }
     }).collect()
@@ -448,25 +448,38 @@ impl Module {
   fn globals(&self) -> Vec<syntax::SingleDeclaration> {
     let mut consts = Vec::new();
 
-    for glsl in &self.0.glsl {
-      if let syntax::ExternalDeclaration::Declaration(syntax::Declaration::InitDeclaratorList(ref i)) = *glsl {
-        if let Some(ref q) = i.head.ty.qualifier {
-          match q.qualifiers.as_slice() {
-            &[syntax::TypeQualifierSpec::Storage(syntax::StorageQualifier::Const)] | &[] => {
-              consts.push(i.head.clone());
+    {
+      let mut push_const = |i: &syntax::InitDeclaratorList| {
+        consts.push(i.head.clone());
 
-              // check whether we have more
-              for next in &i.tail {
-                consts.push(syntax::SingleDeclaration {
-                  ty: i.head.ty.clone(),
-                  name: Some(next.name.clone()),
-                  array_specifier: next.array_specifier.clone(),
-                  initializer: None
-                });
+        // check whether we have more
+        for next in &i.tail {
+          consts.push(syntax::SingleDeclaration {
+            ty: i.head.ty.clone(),
+            name: Some(next.name.clone()),
+            array_specifier: next.array_specifier.clone(),
+            initializer: None
+          });
+        }
+      };
+
+      for glsl in &self.0.glsl {
+        if let syntax::ExternalDeclaration::Declaration(syntax::Declaration::InitDeclaratorList(ref i)) = *glsl {
+          if let syntax::TypeSpecifierNonArray::Struct(_) = i.head.ty.ty.ty {
+            // discard struct declaration
+            continue;
+          }
+
+          if let Some(ref q) = i.head.ty.qualifier { // if we have at least one qualifier
+            match q.qualifiers.as_slice() {
+              &[syntax::TypeQualifierSpec::Storage(syntax::StorageQualifier::Const)] => {
+                push_const(i);
               }
-            }
 
-            _ => ()
+              _ => ()
+            }
+          } else { // no qualifier is a hacky global, but some GLSL implementations allow it…
+            push_const(i);
           }
         }
       }

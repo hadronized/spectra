@@ -20,6 +20,8 @@ pub type TextureDepth32F = Texture<Flat, Dim2, Depth32F>;
 /// The `linearizer` argument is an option that gives the factor to apply to linearize if needed. Pass
 /// `None` if the texture is already linearized.
 pub fn load_rgba_texture<P>(path: P) -> Result<TextureRGBA32F, TextureImageError> where P: AsRef<Path> {
+  info!("loading RGBA texture image: {:?}", path.as_ref());
+
   let img = image::open(path).map_err(TextureImageError::ParseFailed)?.flipv().to_rgba();
   let (w, h) = img.dimensions();
   let raw: Vec<f32> = img.into_raw().into_iter().map(|x| {
@@ -62,6 +64,8 @@ impl Load for TextureImage {
   type Error = TextureImageError;
 
   fn from_fs<P>(path: P, _: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
+    info!("loading texture: {:?}", path.as_ref());
+
     load_rgba_texture(path).map(|rgba32f_tex| TextureImage(rgba32f_tex).into())
   }
 }
