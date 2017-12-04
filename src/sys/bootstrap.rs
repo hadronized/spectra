@@ -12,13 +12,17 @@ pub use sys::event::WindowEvent;
 
 pub type Time = f64;
 
+pub type Fps = f64;
+
 /// Device object.
 ///
 /// Upon bootstrapping, this type is created to add interaction and context handling.
 pub struct Device {
   raw: luminance_glfw::GLFWDevice,
   /// Some kind of epoch start the application started at.
-  start_time: Instant
+  start_time: Instant,
+  /// Frame rate limit to use when rendering. If none, no limit.
+  framerate_limit_ms: Option<Fps>
 }
 
 impl Device {
@@ -41,25 +45,33 @@ impl Device {
            .short("w")
            .long("width")
            .value_name("WIDTH")
-           .help("Sets the width of the viewport used for render")
+           .help("Set the width of the viewport used for render")
            .takes_value(true))
       .arg(Arg::with_name("height")
            .short("h")
            .long("height")
            .value_name("HEIGHT")
-           .help("Sets the height of the viewport used for render")
+           .help("Set the height of the viewport used for render")
            .takes_value(true))
       .arg(Arg::with_name("fullscreen")
            .short("f")
            .long("fullscreen")
            .value_name("FULLSCREEN")
-           .help("Sets the viewport to be displayed in fullscreen mode")
+           .help("Set the viewport to be displayed in fullscreen mode")
+           .takes_value(false))
+      .arg(Arg::with_name("framerate-limit")
+           .short("r")
+           .long("limit-framerate-to")
+           .value_name("FRAMERATE_LIMIT")
+           .help("Set the framerate limit")
            .takes_value(false))
       .get_matches();
 
     let width = options.value_of("width").map(|s| s.parse().unwrap_or(def_width)).unwrap_or(def_width);
     let height = options.value_of("height").map(|s| s.parse().unwrap_or(def_height)).unwrap_or(def_height);
     let fullscreen = options.is_present("fullscreen");
+    let framerate_limit_hz: Option<u16> = options.value_of("framerate-limit").and_then(|l| l.parse().ok());
+    let framerate_limit_ms = framerate_limit_hz.map(|hz| 1. / (hz as f64));
 
     // build the WindowDim
     let win_dim = if fullscreen {
@@ -82,7 +94,8 @@ impl Device {
 
     Ok(Device {
       raw: dev,
-      start_time: Instant::now()
+      start_time: Instant::now(),
+      framerate_limit_ms
     })
   }
 
@@ -116,7 +129,7 @@ impl Device {
   ///
   /// > Note: if you pass `None`, no idleing will take place. However, you might be blocked by the
   /// *VSync* if enabled in your driver.
-  pub fn step<FPS, R>(&mut self, fps: FPS, mut draw_frame: R) -> bool where FPS: Into<Option<u32>>, R: FnMut(Time) {
+  pub fn step<R>(&mut self, mut draw_frame: R) -> bool where R: FnMut(Time) {
     let t = self.time();
 
     self.raw.draw(|| {
@@ -124,13 +137,11 @@ impl Device {
     });
 
     // wait for next frame according to the wished FPS
-    if let Some(fps) = fps.into() {
-      let fps = fps as f64;
-      let max_time = 1. / fps;
+    if let Some(framerate_limit_ms) = self.framerate_limit_ms {
       let elapsed_time = self.time() - t;
 
-      if elapsed_time < max_time {
-        let sleep_time = max_time - elapsed_time;
+      if elapsed_time < framerate_limit_ms {
+        let sleep_time = framerate_limit_ms - elapsed_time;
         thread::sleep(Duration::from_millis((sleep_time * 1e3) as u64));
       }
     }
