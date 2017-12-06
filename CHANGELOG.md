@@ -1,3 +1,15 @@
+# 0.7.0
+
+- Expose a framerate limit in CLI.
+- Update all the dependencies.
+- Add Gitter badge.
+- Enhanced a little bit the documentation (yet still very bad).
+- Some internal fixed about `bootstrap::Device::events`.
+- All the hot-reloading resource code now lives in the [warmy](https://crates.io/crates/warmy)
+  crate.
+- The Cheddar shading language is now the default – and only – way to build shaders.
+- Internal refactoring.
+
 # 0.6
 
 - New resource system, with types keys, lasers, ninja and shit.
