@@ -1,3 +1,8 @@
+## 0.7.1
+
+- Fix modules dependencies gathering.
+- Various internal patches in Cheddar.
+
 # 0.7.0
 
 - Expose a framerate limit in CLI.
