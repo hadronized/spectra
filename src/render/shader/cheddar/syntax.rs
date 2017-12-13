@@ -129,14 +129,6 @@ pub fn single_to_external_declaration(sd: SingleDeclaration) -> ExternalDeclarat
   )
 }
 
-/// Drop the first field of a struct.
-pub fn drop_1st_field(s: &StructSpecifier) -> StructSpecifier {
-  StructSpecifier {
-    name: s.name.clone(),
-    fields: s.fields.iter().skip(1).cloned().collect(),
-  }
-}
-
 /// Replace an output declaration by its input declaration dual.
 ///
 /// Useful when an input interface must match an output one.

@@ -515,9 +515,6 @@ fn sink_vertex_shader<F>(sink: &mut F,
   // sink the return type
   writer::glsl::show_struct(sink, &ret_ty);
 
-  // remove the first field of the return type since we already know what it is
-  let ret_ty_without_1st = syntax::drop_1st_field(&ret_ty);
-
   // sink the map_vertex function, but remove its unused arguments
   let map_vertex_reduced = syntax::remove_unused_args_fn(map_vertex);
   writer::glsl::show_function_definition(sink, &map_vertex_reduced);
@@ -527,7 +524,7 @@ fn sink_vertex_shader<F>(sink: &mut F,
 
   // call the map_vertex function
   let mut assigns = String::new();
-  sink_vertex_shader_output(sink, &mut assigns, &ret_ty_without_1st);
+  sink_vertex_shader_output(sink, &mut assigns, &ret_ty);
   let _ = sink.write_str(" v = map_vertex(");
   sink_vertex_shader_input_args(sink, &map_vertex_reduced);
   let _ = sink.write_str(");\n");
@@ -538,7 +535,7 @@ fn sink_vertex_shader<F>(sink: &mut F,
   // end of the main function
   let _ = sink.write_str("}\n\n");
 
-  Ok((ret_ty_without_1st, outputs))
+  Ok((ret_ty, outputs))
 }
 
 /// Sink a vertex shader’s output.
@@ -551,7 +548,8 @@ fn sink_vertex_shader_output<F, G>(sink: &mut F, assigns: &mut G, ty: &syntax::S
 
   let _ = assigns.write_str("  gl_Position = v.chdr_Position;\n");
 
-  for field in &ty.fields {
+  // we don’t want to sink chdr_Position
+  for field in &ty.fields[1..] {
     for &(ref identifier, _) in &field.identifiers {
       let _ = write!(assigns, "  chdr_v_{0} = v.{0};\n", identifier);
     }
@@ -719,9 +717,6 @@ where F: Write {
   // ensure the first field of the output struct is correct
   check_1st_field_chdr_position(&output_ty.fields[0])?;
 
-  // remove the first field of the return type since we already know what it is
-  let output_ty_without_1st = syntax::drop_1st_field(&output_ty);
-
   let gs_metadata_input = gs_layout_storage_external_decl(input_layout, syntax::StorageQualifier::In);
   let gs_metadata_output = gs_layout_storage_external_decl(output_layout, syntax::StorageQualifier::Out);
 
@@ -729,7 +724,7 @@ where F: Write {
   writer::glsl::show_external_declaration(sink, &gs_metadata_output);
 
   let inputs = syntax::inputs_from_outputs(prev_inputs, true);
-  let outputs = syntax::fields_to_single_decls(&output_ty_without_1st.fields, "chdr_g_")?;
+  let outputs = syntax::fields_to_single_decls(&output_ty.fields[1..], "chdr_g_")?;
 
   syntax::sink_single_as_ext_decls(sink, inputs.iter().chain(&outputs));
 
@@ -737,7 +732,7 @@ where F: Write {
   writer::glsl::show_struct(sink, &output_ty); // sink the return type of this stage
 
   // sink the concat_map_prim function
-  let concat_map_prim_fixed = unannotate_concat_map_prim(concat_map_prim.clone(), &output_ty_without_1st)?;
+  let concat_map_prim_fixed = unannotate_concat_map_prim(concat_map_prim.clone(), &output_ty)?;
   writer::glsl::show_function_definition(sink, &concat_map_prim_fixed);
 
   // void main
@@ -753,7 +748,7 @@ where F: Write {
   // end of the main function
   let _ = sink.write_str("}\n\n");
 
-  Ok((output_ty_without_1st, outputs))
+  Ok((output_ty, outputs))
 }
 
 /// Sink a fragment shader.
@@ -789,13 +784,17 @@ fn sink_fragment_shader<F>(sink: &mut F,
 
   let _ = write!(sink, "{0} i = {0}(", prev_ret_ty.name.as_ref().unwrap());
 
-  let _ = sink.write_str(inputs[0].name.as_ref().unwrap());
+  if inputs.len() > 0 {
+    let _ = sink.write_str(inputs[0].name.as_ref().unwrap());
 
-  for input in &inputs[1..] {
-    let _ = write!(sink, ", {}", input.name.as_ref().unwrap());
+    for input in &inputs[1..] {
+      let _ = write!(sink, ", {}", input.name.as_ref().unwrap());
+    }
   }
 
   let _ = sink.write_str(");\n");
+
+
   let _ = write!(sink, "  {} o = {}(i);\n", ret_ty.name.as_ref().unwrap(), "map_frag_data");
 
   for (output, ret_ty_field) in outputs.iter().zip(&ret_ty.fields) {
@@ -1048,8 +1047,9 @@ fn yield_vertex(args: &[syntax::Expr], out_ty: &syntax::StructSpecifier) -> Resu
           )
         );
 
-      // iterate over the fields of the vertex
-      let assigns = out_ty.fields.iter().flat_map(|field| field.identifiers.iter().map(|&(ref field_name, _)| {
+      // iterate over the fields of the vertex, but don’t include the first one, which is always
+      // chdr_Position
+      let assigns = out_ty.fields.iter().skip(1).flat_map(|field| field.identifiers.iter().map(|&(ref field_name, _)| {
         syntax::Statement::Simple(
           box syntax::SimpleStatement::Expression(
             Some(syntax::Expr::Assignment(
