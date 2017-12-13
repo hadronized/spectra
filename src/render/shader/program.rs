@@ -21,7 +21,7 @@ use render::shader::module::{Module, ModuleError};
 use sys::resource::{Key, Load, Loaded, Store};
 
 /// Errors that can be risen by a shader.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum ShaderError {
   ModuleError(ModuleError),
   GLSLConversionError(GLSLConversionError),

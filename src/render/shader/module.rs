@@ -130,7 +130,7 @@ use sys::resource::{Key, Load, Loaded, Store};
 impl Load for Module {
   type Error = ModuleError;
 
-  fn from_fs<P>(path: P, _: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
+  fn from_fs<P>(path: P, store: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
     let path = path.as_ref();
 
     let mut fh = File::open(path).map_err(|_| ModuleError::FileNotFound(path.into()))?;
@@ -139,7 +139,11 @@ impl Load for Module {
 
     match parser::parse_str(&src[..], parser::module) {
       parser::ParseResult::Ok(module) => {
-        Ok(Module(module).into())
+        let (gathered, deps) =
+          Module(module).gather(store, &Key::new(path.to_owned())).map_err(ModuleError::DepsError)?;
+        let deps_paths = deps.into_iter().map(|k| k.as_path().to_owned()).collect();
+
+        Ok(Loaded::with_deps(gathered, deps_paths))
       }
       parser::ParseResult::Err(e) => Err(ModuleError::ParseFailed(e)),
       _ => Err(ModuleError::IncompleteInput)
@@ -147,11 +151,12 @@ impl Load for Module {
   }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug)]
 pub enum ModuleError {
   FileNotFound(PathBuf),
   ParseFailed(ParseError),
-  IncompleteInput
+  IncompleteInput,
+  DepsError(DepsError)
 }
 
 impl fmt::Display for ModuleError {
@@ -165,13 +170,15 @@ impl Error for ModuleError {
     match *self {
       ModuleError::FileNotFound(_) => "file not found",
       ModuleError::ParseFailed(_) => "parse failed",
-      ModuleError::IncompleteInput => "incomplete input"
+      ModuleError::IncompleteInput => "incomplete input",
+      ModuleError::DepsError(_) => "error in dependencies"
     }
   }
 
   fn cause(&self) -> Option<&Error> {
     match *self {
       ModuleError::ParseFailed(ref e) => Some(e),
+      ModuleError::DepsError(ref e) => Some(e),
       _ => None
     }
   }
@@ -231,7 +238,7 @@ impl Module {
     parents.push(key.clone());
 
     for module_path in imports {
-      let module_key = Key::new(module_path.path.join("."));
+      let module_key = Key::new(module_path.path.join("/") + ".chdr");
 
       // check whether it’s already in the deps
       if deps.contains(&module_key) {
