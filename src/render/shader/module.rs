@@ -299,6 +299,7 @@ impl Module {
 
     for block in &blocks {
       writer::glsl::show_block(&mut common, block);
+      let _ = common.write_str(";\n");
     }
 
     for global in &globals {
