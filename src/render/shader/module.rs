@@ -773,7 +773,11 @@ fn sink_fragment_shader<F>(sink: &mut F,
 
   syntax::sink_single_as_ext_decls(sink, inputs.iter().chain(&outputs));
 
-  writer::glsl::show_struct(sink, prev_ret_ty); // sink the previous stage’s return type
+  // we don’t sink the return type of the fragment shader if it only has one field
+  if prev_ret_ty.fields.len() > 1 {
+    writer::glsl::show_struct(sink, prev_ret_ty); // sink the previous stage’s return type
+  }
+
   writer::glsl::show_struct(sink, &ret_ty); // sink the return type of this stage
 
   // sink the map_frag_data function
@@ -781,22 +785,24 @@ fn sink_fragment_shader<F>(sink: &mut F,
   writer::glsl::show_function_definition(sink, &map_frag_data_reduced);
 
   // void main
-  let _ = sink.write_str("void main() {\n  ");
-
-  let _ = write!(sink, "{0} i = {0}(", prev_ret_ty.name.as_ref().unwrap());
+  let _ = sink.write_str("void main() {\n");
 
   if inputs.len() > 0 {
+    // if we have at least one input, we must construct the input type, bindi it to a local i
+    // varible and pass it to map_frag_data
+    let _ = write!(sink, "{0} i = {0}(", prev_ret_ty.name.as_ref().unwrap());
     let _ = sink.write_str(inputs[0].name.as_ref().unwrap());
 
     for input in &inputs[1..] {
       let _ = write!(sink, ", {}", input.name.as_ref().unwrap());
     }
+
+    let _ = sink.write_str(");\n");
+    let _ = write!(sink, "  {} o = {}(i);\n", ret_ty.name.as_ref().unwrap(), "map_frag_data");
+  } else {
+    // no argument, we don’t need to build the type; just direct call to map_frag_data
+    let _ = write!(sink, "  {} o = {}();\n", ret_ty.name.as_ref().unwrap(), "map_frag_data");
   }
-
-  let _ = sink.write_str(");\n");
-
-
-  let _ = write!(sink, "  {} o = {}(i);\n", ret_ty.name.as_ref().unwrap(), "map_frag_data");
 
   for (output, ret_ty_field) in outputs.iter().zip(&ret_ty.fields) {
     let _ = write!(sink, "  {} = o.{};\n", output.name.as_ref().unwrap(), ret_ty_field.identifiers[0].0);
