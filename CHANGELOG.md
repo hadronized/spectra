@@ -1,3 +1,7 @@
+# 0.8.0
+
+- Support for luminance-0.25.0.
+
 ## 0.7.1
 
 - Fix modules dependencies gathering.
