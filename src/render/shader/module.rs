@@ -782,7 +782,9 @@ fn sink_fragment_shader<F>(sink: &mut F,
 
   // we don’t sink the return type of the fragment shader if it only has one field
   if prev_ret_ty.fields.len() > 1 {
-    writer::glsl::show_struct(sink, prev_ret_ty); // sink the previous stage’s return type
+    // we remove the first field of that struct since it’s chdr_Position
+    let dropped_ret_ty = syntax::drop_1st_field(&prev_ret_ty);
+    writer::glsl::show_struct(sink, &dropped_ret_ty); // sink the previous stage’s return type
   }
 
   writer::glsl::show_struct(sink, &ret_ty); // sink the return type of this stage

@@ -1,3 +1,7 @@
+## 0.8.1
+
+- Fix the fragment shader stage when the previous struct has only one field.
+
 # 0.8.0
 
 - Support for luminance-0.25.0.
