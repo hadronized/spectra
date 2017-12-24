@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use linear::{M44, Quat, V3};
 use render::projection::{Projectable, Projection};
 use scene::transform::{Transform, Transformable};
-use sys::resource::{Load, Loaded, Store};
+use sys::resource::{DebugRes, Load, Loaded, Store, load_with};
 
 #[derive(Clone, Debug)]
 pub struct Camera<P> {
@@ -59,22 +59,28 @@ struct Manifest<P> {
   properties: P
 }
 
+impl<A> DebugRes for Camera<A> {
+  const TYPE_DESC: &'static str = "camera";
+}
+
 impl<A> Load for Camera<A> where A: 'static + Default + DeserializeOwned {
   type Error = CameraError;
 
   fn from_fs<P>(path: P, _: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
     let path = path.as_ref();
 
-    let manifest: Manifest<A> = {
-      let file = File::open(path).map_err(|_| CameraError::FileNotFound(path.to_owned()))?;
-      from_reader(file).map_err(CameraError::ParseFailed)?
-    };
+    load_with::<Self, _, _>(path, move || {
+      let manifest: Manifest<A> = {
+        let file = File::open(path).map_err(|_| CameraError::FileNotFound(path.to_owned()))?;
+        from_reader(file).map_err(CameraError::ParseFailed)?
+      };
 
-    Ok((Camera {
-      position: manifest.position.into(),
-      orientation: manifest.orientation.into(),
-      properties: manifest.properties
-    }).into())
+      Ok((Camera {
+        position: manifest.position.into(),
+        orientation: manifest.orientation.into(),
+        properties: manifest.properties
+      }).into())
+    })
   }
 }
 

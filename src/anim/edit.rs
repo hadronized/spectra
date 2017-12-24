@@ -5,7 +5,7 @@ use std::fmt;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
-use sys::resource::{Load, Loaded, Store};
+use sys::resource::{DebugRes, Load, Loaded, Store, load_with};
 
 /// Time.
 pub type Time = f64;
@@ -198,16 +198,22 @@ pub struct TimelineManifest {
   pub tracks: Vec<TrackManifest>
 }
 
+impl DebugRes for TimelineManifest {
+  const TYPE_DESC: &'static str = "timeline manifest";
+}
+
 impl Load for TimelineManifest {
   type Error = TimelineManifestError;
 
   fn from_fs<P>(path: P, _: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
     let path = path.as_ref();
 
-    let file = File::open(&path).map_err(|_| TimelineManifestError::FileNotFound(path.to_owned()))?;
-    let res: Self = from_reader(file).map_err(TimelineManifestError::ParseFailed)?;
+    load_with::<Self, _, _>(path, move || {
+      let file = File::open(&path).map_err(|_| TimelineManifestError::FileNotFound(path.to_owned()))?;
+      let res: Self = from_reader(file).map_err(TimelineManifestError::ParseFailed)?;
 
-    Ok(res.into())
+      Ok(res.into())
+    })
   }
 }
 

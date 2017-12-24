@@ -18,7 +18,7 @@ use std::path::Path;
 
 use render::shader::cheddar::syntax::GLSLConversionError;
 use render::shader::module::{Module, ModuleError};
-use sys::resource::{Key, Load, Loaded, Store};
+use sys::resource::{DebugRes, Key, Load, Loaded, Store, load_with};
 
 /// Errors that can be risen by a shader.
 #[derive(Debug)]
@@ -65,6 +65,10 @@ impl<In, Out, Uni> Deref for Program<In, Out, Uni> {
   }
 }
 
+impl<In, Out, Uni> DebugRes for Program<In, Out, Uni> {
+  const TYPE_DESC: &'static str = "program";
+}
+
 impl<In, Out, Uni> Load for Program<In, Out, Uni>
     where In: 'static + Vertex,
           Out: 'static,
@@ -73,42 +77,45 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni>
 
   fn from_fs<P>(path: P, store: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
     let path = path.as_ref();
-    let module_key = Key::<Module>::new(path.to_owned());
-    let module = store.get(&module_key).map_err(ShaderError::ModuleError)?;
 
-    let module_ = module.borrow();
+    load_with::<Self, _, _>(path, move || {
+      let module_key = Key::<Module>::new(path.to_owned());
+      let module = store.get(&module_key).map_err(ShaderError::ModuleError)?;
 
-    match module_.to_glsl_setup() {
-      Err(err) => {
-        Err(ShaderError::GLSLConversionError(err))
-      }
-      Ok(fold) => {
-        deb!("vertex shader");
-        annotate_shader(&fold.vs);
+      let module_ = module.borrow();
 
-        if let Some(ref gs) = fold.gs {
-          deb!("geometry shader");
-          annotate_shader(gs);
+      match module_.to_glsl_setup() {
+        Err(err) => {
+          Err(ShaderError::GLSLConversionError(err))
         }
+        Ok(fold) => {
+          deb!("vertex shader");
+          annotate_shader(&fold.vs);
 
-        deb!("fragment shader");
-        annotate_shader(&fold.fs);
-
-        match LProgram::from_strings(None, &fold.vs, fold.gs.as_ref().map(String::as_str), &fold.fs) {
-          Err(err) => {
-            Err(ShaderError::ProgramError(err))
+          if let Some(ref gs) = fold.gs {
+            deb!("geometry shader");
+            annotate_shader(gs);
           }
-          Ok((program, warnings)) => {
-            // print warnings in case there’s any
-            for warning in &warnings {
-              warn!("{:?}", warning);
+
+          deb!("fragment shader");
+          annotate_shader(&fold.fs);
+
+          match LProgram::from_strings(None, &fold.vs, fold.gs.as_ref().map(String::as_str), &fold.fs) {
+            Err(err) => {
+              Err(ShaderError::ProgramError(err))
             }
+            Ok((program, warnings)) => {
+              // print warnings in case there’s any
+              for warning in &warnings {
+                warn!("{:?}", warning);
+              }
 
-            Ok(Program(program).into()) // FIXME: deps
+              Ok(Program(program).into()) // FIXME: deps
+            }
           }
         }
       }
-    }
+    })
   }
 }
 

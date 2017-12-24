@@ -7,7 +7,7 @@ use std::fmt;
 use std::ops::Deref;
 use std::path::Path;
 
-use sys::resource::{Load, Loaded, Store};
+use sys::resource::{DebugRes, Load, Loaded, Store, load_with};
 
 // Common texture aliases.
 pub type TextureRGB32F = Texture<Flat, Dim2, RGB32F>;
@@ -60,13 +60,19 @@ impl Deref for TextureImage {
   }
 }
 
+impl DebugRes for TextureImage {
+  const TYPE_DESC: &'static str = "texture image";
+}
+
 impl Load for TextureImage {
   type Error = TextureImageError;
 
   fn from_fs<P>(path: P, _: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
-    info!("loading texture: {:?}", path.as_ref());
+    let path = path.as_ref();
 
-    load_rgba_texture(path).map(|rgba32f_tex| TextureImage(rgba32f_tex).into())
+    load_with::<Self, _, _>(path, move || {
+      load_rgba_texture(path).map(|rgba32f_tex| TextureImage(rgba32f_tex).into())
+    })
   }
 }
 

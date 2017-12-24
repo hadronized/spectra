@@ -125,7 +125,11 @@ use std::path::{Path, PathBuf};
 
 use render::shader::cheddar::parser::{self, ParseError};
 use render::shader::cheddar::syntax;
-use sys::resource::{Key, Load, Loaded, Store};
+use sys::resource::{DebugRes, Key, Load, Loaded, Store, load_with};
+
+impl DebugRes for Module {
+  const TYPE_DESC: &'static str = "module";
+}
 
 impl Load for Module {
   type Error = ModuleError;
@@ -133,21 +137,23 @@ impl Load for Module {
   fn from_fs<P>(path: P, store: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
     let path = path.as_ref();
 
-    let mut fh = File::open(path).map_err(|_| ModuleError::FileNotFound(path.into()))?;
-    let mut src = String::new();
-    let _ = fh.read_to_string(&mut src);
+    load_with::<Self, _, _>(path, move || {
+      let mut fh = File::open(path).map_err(|_| ModuleError::FileNotFound(path.into()))?;
+      let mut src = String::new();
+      let _ = fh.read_to_string(&mut src);
 
-    match parser::parse_str(&src[..], parser::module) {
-      parser::ParseResult::Ok(module) => {
-        let (gathered, deps) =
-          Module(module).gather(store, &Key::new(path.to_owned())).map_err(ModuleError::DepsError)?;
-        let deps_paths = deps.into_iter().map(|k| k.as_path().to_owned()).collect();
+      match parser::parse_str(&src[..], parser::module) {
+        parser::ParseResult::Ok(module) => {
+          let (gathered, deps) =
+            Module(module).gather(store, &Key::new(path.to_owned())).map_err(ModuleError::DepsError)?;
+          let deps_paths = deps.into_iter().map(|k| k.as_path().to_owned()).collect();
 
-        Ok(Loaded::with_deps(gathered, deps_paths))
+          Ok(Loaded::with_deps(gathered, deps_paths))
+        }
+        parser::ParseResult::Err(e) => Err(ModuleError::ParseFailed(e)),
+        _ => Err(ModuleError::IncompleteInput)
       }
-      parser::ParseResult::Err(e) => Err(ModuleError::ParseFailed(e)),
-      _ => Err(ModuleError::IncompleteInput)
-    }
+    })
   }
 }
 

@@ -9,7 +9,7 @@ use std::ops::{Add, Div, Mul, Sub};
 use std::path::{Path, PathBuf};
 
 use linear::{Scale, Quat, V2, V3, V4};
-use sys::resource::{Load, Loaded, Store};
+use sys::resource::{DebugRes, Load, Loaded, Store, load_with};
 
 /// Time used as sampling type in splines.
 pub type Time = f32;
@@ -166,18 +166,24 @@ impl<T> Spline<T> {
   }
 }
 
+impl<T> DebugRes for Spline<T> {
+  const TYPE_DESC: &'static str = "spline";
+}
+
 impl<T> Load for Spline<T> where T: 'static + SplineDeserializerAdapter {
   type Error = SplineError;
 
   fn from_fs<P>(path: P, _: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
     let path = path.as_ref();
 
-    let file = File::open(path).map_err(|_| SplineError::FileNotFound(path.to_owned()))?;
-    let keys: Vec<Key<T::Deserialized>> = from_reader(file).map_err(SplineError::ParseFailed)?;
+    load_with::<Self, _, _>(path, move || {
+      let file = File::open(path).map_err(|_| SplineError::FileNotFound(path.to_owned()))?;
+      let keys: Vec<Key<T::Deserialized>> = from_reader(file).map_err(SplineError::ParseFailed)?;
 
-    Ok(Spline::from_keys(keys.into_iter().map(|key|
-      Key::new(key.t, T::from_deserialized(key.value), key.interpolation)
-    ).collect()).into())
+      Ok(Spline::from_keys(keys.into_iter().map(|key|
+        Key::new(key.t, T::from_deserialized(key.value), key.interpolation)
+      ).collect()).into())
+    })
   }
 }
 

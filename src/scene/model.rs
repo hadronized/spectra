@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use wavefront_obj::ParseError;
 use wavefront_obj::obj;
 
-use sys::resource::{Load, Loaded, Store};
+use sys::resource::{DebugRes, Load, Loaded, Store, load_with};
 use scene::aabb::AABB;
 
 /// A model tree representing the structure of a model.
@@ -31,23 +31,30 @@ pub type ObjVertexPos = [f32; 3];
 pub type ObjVertexNor = [f32; 3];
 pub type ObjVertexTexCoord = [f32; 2];
 
+impl DebugRes for ObjModel {
+  const TYPE_DESC: &'static str = "model";
+}
+
 impl Load for ObjModel {
   type Error = ModelError;
 
   fn from_fs<P>(path: P, _: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
     let path = path.as_ref();
-    let mut input = String::new();
 
-    // load the data directly into memory; no buffering nor streaming
-    {
-      let mut file = File::open(path).map_err(|_| ModelError::FileNotFound(path.to_owned()))?;
-      let _ = file.read_to_string(&mut input);
-    }
+    load_with::<Self, _, _>(path, move || {
+      let mut input = String::new();
 
-    // parse the obj file and convert it
-    let obj_set = obj::parse(input).map_err(ModelError::ParseFailed)?;
+      // load the data directly into memory; no buffering nor streaming
+      {
+        let mut file = File::open(path).map_err(|_| ModelError::FileNotFound(path.to_owned()))?;
+        let _ = file.read_to_string(&mut input);
+      }
 
-    convert_obj(obj_set).map(Into::into)
+      // parse the obj file and convert it
+      let obj_set = obj::parse(input).map_err(ModelError::ParseFailed)?;
+
+      convert_obj(obj_set).map(Into::into)
+    })
   }
 }
 
