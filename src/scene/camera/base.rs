@@ -7,12 +7,12 @@ use std::default::Default;
 use std::error::Error;
 use std::fmt;
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use linear::{M44, Quat, V3};
 use render::projection::{Projectable, Projection};
 use scene::transform::{Transform, Transformable};
-use sys::resource::{DebugRes, Load, Loaded, Store, load_with};
+use sys::resource::{DebugRes, Load, Loaded, PathKey, Store, load_with};
 
 #[derive(Clone, Debug)]
 pub struct Camera<P> {
@@ -64,10 +64,11 @@ impl<A> DebugRes for Camera<A> {
 }
 
 impl<A> Load for Camera<A> where A: 'static + Default + DeserializeOwned {
+  type Key = PathKey;
   type Error = CameraError;
 
-  fn from_fs<P>(path: P, _: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
-    let path = path.as_ref();
+  fn load(key: Self::Key, _: &mut Store) -> Result<Loaded<Self>, Self::Error> {
+    let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {
       let manifest: Manifest<A> = {
@@ -82,6 +83,8 @@ impl<A> Load for Camera<A> where A: 'static + Default + DeserializeOwned {
       }).into())
     })
   }
+  
+  impl_reload_passthrough!();
 }
 
 #[derive(Debug)]

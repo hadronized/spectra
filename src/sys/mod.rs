@@ -4,4 +4,5 @@
 #[macro_use]
 pub mod bootstrap;
 pub mod event;
+#[macro_use]
 pub mod resource;

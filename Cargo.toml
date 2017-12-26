@@ -34,7 +34,7 @@ serde_derive = "1.0"
 serde_json = "1.0"
 vorbis = "0.1"
 wavefront_obj = "5.1"
-warmy = "0.3"
+warmy = "0.5"
 
 [dependencies.nom]
 version = "3.2"

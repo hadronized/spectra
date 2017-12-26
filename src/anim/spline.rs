@@ -6,10 +6,10 @@ use std::fmt;
 use std::f32::consts;
 use std::fs::File;
 use std::ops::{Add, Div, Mul, Sub};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use linear::{Scale, Quat, V2, V3, V4};
-use sys::resource::{DebugRes, Load, Loaded, Store, load_with};
+use sys::resource::{DebugRes, Load, Loaded, PathKey, Store, load_with};
 
 /// Time used as sampling type in splines.
 pub type Time = f32;
@@ -171,10 +171,12 @@ impl<T> DebugRes for Spline<T> {
 }
 
 impl<T> Load for Spline<T> where T: 'static + SplineDeserializerAdapter {
+  type Key = PathKey;
+
   type Error = SplineError;
 
-  fn from_fs<P>(path: P, _: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
-    let path = path.as_ref();
+  fn load(key: Self::Key, _: &mut Store) -> Result<Loaded<Self>, Self::Error> {
+    let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {
       let file = File::open(path).map_err(|_| SplineError::FileNotFound(path.to_owned()))?;
@@ -185,6 +187,8 @@ impl<T> Load for Spline<T> where T: 'static + SplineDeserializerAdapter {
       ).collect()).into())
     })
   }
+
+  impl_reload_passthrough!();
 }
 
 #[derive(Debug)]

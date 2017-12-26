@@ -70,6 +70,8 @@ extern crate warmy;
 
 #[macro_use]
 pub mod report;
+#[macro_use]
+pub mod sys;
 
 pub mod audio;
 //pub mod gui;
@@ -80,5 +82,3 @@ pub mod linear;
 pub mod anim;
 pub mod render;
 pub mod scene;
-#[macro_use]
-pub mod sys;

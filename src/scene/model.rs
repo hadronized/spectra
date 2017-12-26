@@ -4,11 +4,11 @@ use std::error::Error;
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use wavefront_obj::ParseError;
 use wavefront_obj::obj;
 
-use sys::resource::{DebugRes, Load, Loaded, Store, load_with};
+use sys::resource::{DebugRes, Load, Loaded, PathKey, Store, load_with};
 use scene::aabb::AABB;
 
 /// A model tree representing the structure of a model.
@@ -36,10 +36,12 @@ impl DebugRes for ObjModel {
 }
 
 impl Load for ObjModel {
+  type Key = PathKey;
+
   type Error = ModelError;
 
-  fn from_fs<P>(path: P, _: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
-    let path = path.as_ref();
+  fn load(key: Self::Key, _: &mut Store) -> Result<Loaded<Self>, Self::Error> {
+    let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {
       let mut input = String::new();
@@ -56,6 +58,8 @@ impl Load for ObjModel {
       convert_obj(obj_set).map(Into::into)
     })
   }
+
+  impl_reload_passthrough!();
 }
 
 // Turn a wavefront obj object into a `Model`

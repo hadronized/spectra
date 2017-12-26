@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use sys::resource::{DebugRes, Load, Loaded, Store, load_with};
+use sys::resource::{DebugRes, Load, Loaded, PathKey, Store, load_with};
 
 /// Time.
 pub type Time = f64;
@@ -203,10 +203,12 @@ impl DebugRes for TimelineManifest {
 }
 
 impl Load for TimelineManifest {
+  type Key = PathKey;
+
   type Error = TimelineManifestError;
 
-  fn from_fs<P>(path: P, _: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
-    let path = path.as_ref();
+  fn load(key: Self::Key, _: &mut Store) -> Result<Loaded<Self>, Self::Error> {
+    let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {
       let file = File::open(&path).map_err(|_| TimelineManifestError::FileNotFound(path.to_owned()))?;
@@ -215,6 +217,8 @@ impl Load for TimelineManifest {
       Ok(res.into())
     })
   }
+
+  impl_reload_passthrough!();
 }
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]

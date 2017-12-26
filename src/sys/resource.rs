@@ -1,5 +1,6 @@
 //! Resource system.
 
+use std::fmt;
 use std::path::Path;
 use std::time::Instant;
 
@@ -12,7 +13,10 @@ pub trait DebugRes {
   const TYPE_DESC: &'static str;
 }
 
-#[inline]
+/// Load helper.
+///
+/// Call this function whenever you need to load a resource and that you want logged information,
+/// such as failures, timing, etc.
 pub fn load_with<T, A, F>(
   path: &Path,
   loader: F
@@ -41,5 +45,35 @@ fn load_time<'a>(ns: f64) -> (f64, &'a str) {
     (ns * 1e-3, "μs")
   } else {
     (ns, "ns")
+  }
+}
+
+/// Default reload helper (pass-through).
+///
+/// This function will log any error that happens.
+///
+/// Whatever the result of the computation, this function returns it untouched.
+pub fn reload_passthrough<T>(
+  _: &T,
+  key: T::Key,
+  store: &mut Store
+) -> Result<T, T::Error>
+where T: Load,
+      T::Key: Clone + fmt::Debug {
+  let r = T::load(key.clone(), store);
+
+  if let Err(ref e) = r {
+    err!("cannot reload {:?}: {:#?}", key, e);
+  }
+
+  r.map(|x| x.res)
+}
+
+#[macro_export]
+macro_rules! impl_reload_passthrough {
+  () => {
+    fn reload(&self, key: Self::Key, store: &mut Store) -> Result<Self, Self::Error> {
+      $crate::sys::resource::reload_passthrough(self, key, store)
+    }
   }
 }

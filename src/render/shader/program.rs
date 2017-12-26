@@ -13,19 +13,20 @@ pub use luminance::shader::program::{ProgramError, Uniform, Uniformable, Uniform
 use luminance::vertex::Vertex;
 use std::error::Error;
 use std::fmt;
+use std::io;
 use std::ops::Deref;
-use std::path::Path;
 
 use render::shader::cheddar::syntax::GLSLConversionError;
-use render::shader::module::{Module, ModuleError};
-use sys::resource::{DebugRes, Key, Load, Loaded, Store, load_with};
+use render::shader::module::Module;
+use sys::resource::{DebugRes, Key, Load, Loaded, LogicalKey, Store, StoreErrorOr, load_with};
 
 /// Errors that can be risen by a shader.
 #[derive(Debug)]
 pub enum ShaderError {
-  ModuleError(ModuleError),
+  ModuleError(StoreErrorOr<Module>),
   GLSLConversionError(GLSLConversionError),
-  ProgramError(ProgramError)
+  ProgramError(ProgramError),
+  KeyError(io::Error)
 }
 
 impl fmt::Display for ShaderError {
@@ -39,7 +40,8 @@ impl Error for ShaderError {
     match *self {
       ShaderError::ModuleError(_) => "module error",
       ShaderError::GLSLConversionError(_) => "GLSL conversion error",
-      ShaderError::ProgramError(_) => "program error"
+      ShaderError::ProgramError(_) => "program error",
+      ShaderError::KeyError(_) => "key error"
     }
   }
 
@@ -47,7 +49,8 @@ impl Error for ShaderError {
     match *self {
       ShaderError::ModuleError(ref err) => Some(err),
       ShaderError::GLSLConversionError(ref err) => Some(err),
-      ShaderError::ProgramError(ref err) => Some(err)
+      ShaderError::ProgramError(ref err) => Some(err),
+      ShaderError::KeyError(ref err) => Some(err)
     }
   }
 }
@@ -73,13 +76,15 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni>
     where In: 'static + Vertex,
           Out: 'static,
           Uni: 'static + UniformInterface {
+  type Key = LogicalKey;
+
   type Error = ShaderError;
 
-  fn from_fs<P>(path: P, store: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
-    let path = path.as_ref();
+  fn load(key: Self::Key, store: &mut Store) -> Result<Loaded<Self>, Self::Error> {
+    let path = key.as_str().as_ref();
 
     load_with::<Self, _, _>(path, move || {
-      let module_key = Key::<Module>::new(path.to_owned());
+      let module_key = Key::<Module>::path(path.to_owned()).map_err(|e| ShaderError::KeyError(e))?;
       let module = store.get(&module_key).map_err(ShaderError::ModuleError)?;
 
       let module_ = module.borrow();
@@ -110,13 +115,16 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni>
                 warn!("{:?}", warning);
               }
 
-              Ok(Program(program).into()) // FIXME: deps
+              let res = Program(program);
+              Ok(Loaded::with_deps(res, vec![module_key.into()]))
             }
           }
         }
       }
     })
   }
+
+  impl_reload_passthrough!();
 }
 
 fn annotate_shader(s: &str) {

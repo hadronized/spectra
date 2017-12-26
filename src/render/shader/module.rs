@@ -108,34 +108,31 @@
 //!   yield_vertex(GVertex(vertices[2].position, vertices[2].color));
 //!   yield_primitive();
 //! }
-//!
-//! > Note: you’d be tempted to use a `for` loop here, and you’d be right. However, at the time of
-//! > writing, this is not yet supported and the `yield_vertex` and `yield_primitive` function calls
-//! > must be issued directly in the scope of `concat_map_prim`. Because this is very limiting, a
-//! > patch will be performed to fix that.
 //! ```
 
 use glsl::writer;
 use std::error::Error;
 use std::fmt::{self, Write};
 use std::fs::File;
-use std::io::Read;
+use std::io::{self, Read};
 use std::iter::once;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use render::shader::cheddar::parser::{self, ParseError};
 use render::shader::cheddar::syntax;
-use sys::resource::{DebugRes, Key, Load, Loaded, Store, load_with};
+use sys::resource::{DebugRes, Key, Load, Loaded, PathKey, Store, load_with};
 
 impl DebugRes for Module {
   const TYPE_DESC: &'static str = "module";
 }
 
 impl Load for Module {
+  type Key = PathKey;
+
   type Error = ModuleError;
 
-  fn from_fs<P>(path: P, store: &mut Store) -> Result<Loaded<Self>, Self::Error> where P: AsRef<Path> {
-    let path = path.as_ref();
+  fn load(key: Self::Key, store: &mut Store) -> Result<Loaded<Self>, Self::Error> {
+    let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {
       let mut fh = File::open(path).map_err(|_| ModuleError::FileNotFound(path.into()))?;
@@ -144,17 +141,20 @@ impl Load for Module {
 
       match parser::parse_str(&src[..], parser::module) {
         parser::ParseResult::Ok(module) => {
+          let key = Key::path(path).map_err(|e| ModuleError::DepsError(DepsError::UnknownPathKey(path.to_owned(), e)))?;
           let (gathered, deps) =
-            Module(module).gather(store, &Key::new(path.to_owned())).map_err(ModuleError::DepsError)?;
-          let deps_paths = deps.into_iter().map(|k| k.as_path().to_owned()).collect();
+            Module(module).gather(store, &key).map_err(ModuleError::DepsError)?;
+          let dep_keys = deps.into_iter().map(|k| k.into()).collect();
 
-          Ok(Loaded::with_deps(gathered, deps_paths))
+          Ok(Loaded::with_deps(gathered, dep_keys))
         }
         parser::ParseResult::Err(e) => Err(ModuleError::ParseFailed(e)),
         _ => Err(ModuleError::IncompleteInput)
       }
     })
   }
+
+  impl_reload_passthrough!();
 }
 
 #[derive(Debug)]
@@ -197,7 +197,9 @@ pub enum DepsError {
   /// returned.
   Cycle(Key<Module>, Key<Module>),
   /// There was a loading error of a module.
-  LoadError(Key<Module>, Box<Error>)
+  LoadError(Key<Module>, Box<Error>),
+  /// Unknown path key.
+  UnknownPathKey(PathBuf, io::Error)
 }
 
 impl fmt::Display for DepsError {
@@ -210,13 +212,15 @@ impl Error for DepsError {
   fn description(&self) -> &str {
     match *self {
       DepsError::Cycle(..) => "module cycle",
-      DepsError::LoadError(..) => "load error"
+      DepsError::LoadError(..) => "load error",
+      DepsError::UnknownPathKey(..) => "unknown path key"
     }
   }
 
   fn cause(&self) -> Option<&Error> {
     match *self {
       DepsError::LoadError(_, ref e) => Some(e.as_ref()),
+      DepsError::UnknownPathKey(_, ref e) => Some(e),
       _ => None
     }
   }
@@ -244,7 +248,8 @@ impl Module {
     parents.push(key.clone());
 
     for module_path in imports {
-      let module_key = Key::new(module_path.path.join("/") + ".chdr");
+      let path = PathBuf::from(store.root().join(module_path.path.join("/") + ".chdr"));
+      let module_key = Key::path(&path).map_err(|e| DepsError::UnknownPathKey(path, e))?;
 
       // check whether it’s already in the deps
       if deps.contains(&module_key) {
