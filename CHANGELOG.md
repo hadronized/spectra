@@ -1,3 +1,7 @@
+# 0.9.0
+
+- Migrate to `warmy-0.5.2`.
+
 ## 0.8.1
 
 - Fix the fragment shader stage when the previous struct has only one field.
