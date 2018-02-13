@@ -132,16 +132,3 @@ fn annotate_shader(s: &str) {
     info!("{:3}: {}", i + 1, line);
   }
 }
-
-pub trait UnwrapOrUnbound<T> {
-  fn unwrap_or_unbound(self, builder: &UniformBuilder, warnings: &mut Vec<UniformWarning>) -> Uniform<T> where T: Uniformable;
-}
-
-impl<T> UnwrapOrUnbound<T> for Result<Uniform<T>, UniformWarning> {
-  fn unwrap_or_unbound(self, builder: &UniformBuilder, warnings: &mut Vec<UniformWarning>) -> Uniform<T> where T: Uniformable {
-    self.unwrap_or_else(|w| {
-      warnings.push(w);
-      builder.unbound()
-    })
-  }
-}
