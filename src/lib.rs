@@ -53,7 +53,8 @@ extern crate chrono;
 #[macro_reexport(crate_authors, crate_name, crate_version)]
 extern crate clap;
 extern crate image;
-#[macro_reexport(gtup, uniform_interface)]
+#[macro_reexport(gtup, uniform_interface, uniform_interface_build_struct, uniform_interface,
+                 uniform_interface_impl_trait, uniform_interface_impl_trait_map)]
 pub extern crate luminance;
 extern crate luminance_glfw;
 extern crate glsl;
