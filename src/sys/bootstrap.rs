@@ -64,7 +64,7 @@ impl Device {
            .long("limit-framerate-to")
            .value_name("FRAMERATE_LIMIT")
            .help("Set the framerate limit")
-           .takes_value(false))
+           .takes_value(true))
       .get_matches();
 
     let width = options.value_of("width").map(|s| s.parse().unwrap_or(def_width)).unwrap_or(def_width);

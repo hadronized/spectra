@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use linear::{M44, Quat, V3};
 use render::projection::{Projectable, Projection};
 use scene::transform::{Transform, Transformable};
-use sys::resource::{DebugRes, Load, Loaded, PathKey, Store, load_with};
+use sys::resource::{DebugRes, Load, Loaded, PathKey, Storage, load_with};
 
 #[derive(Clone, Debug)]
 pub struct Camera<P> {
@@ -60,14 +60,14 @@ struct Manifest<P> {
 }
 
 impl<A> DebugRes for Camera<A> {
-  const TYPE_DESC: &'static str = "camera";
+  const TY_DESC: &'static str = "camera";
 }
 
 impl<A> Load for Camera<A> where A: 'static + Default + DeserializeOwned {
   type Key = PathKey;
   type Error = CameraError;
 
-  fn load(key: Self::Key, _: &mut Store) -> Result<Loaded<Self>, Self::Error> {
+  fn load(key: Self::Key, _: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {

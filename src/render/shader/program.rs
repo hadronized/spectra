@@ -18,7 +18,7 @@ use std::ops::Deref;
 
 use render::shader::cheddar::syntax::GLSLConversionError;
 use render::shader::module::Module;
-use sys::resource::{DebugRes, Key, Load, Loaded, LogicalKey, Store, StoreErrorOr, load_with};
+use sys::resource::{DebugRes, Key, Load, Loaded, LogicalKey, Storage, StoreErrorOr, load_with};
 
 /// Errors that can be risen by a shader.
 #[derive(Debug)]
@@ -69,7 +69,7 @@ impl<In, Out, Uni> Deref for Program<In, Out, Uni> {
 }
 
 impl<In, Out, Uni> DebugRes for Program<In, Out, Uni> {
-  const TYPE_DESC: &'static str = "program";
+  const TY_DESC: &'static str = "program";
 }
 
 impl<In, Out, Uni> Load for Program<In, Out, Uni>
@@ -80,7 +80,7 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni>
 
   type Error = ShaderError;
 
-  fn load(key: Self::Key, store: &mut Store) -> Result<Loaded<Self>, Self::Error> {
+  fn load(key: Self::Key, store: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_str().as_ref();
 
     load_with::<Self, _, _>(path, move || {

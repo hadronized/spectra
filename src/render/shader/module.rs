@@ -120,10 +120,10 @@ use std::path::PathBuf;
 
 use render::shader::cheddar::parser::{self, ParseError};
 use render::shader::cheddar::syntax;
-use sys::resource::{DebugRes, Key, Load, Loaded, PathKey, Store, load_with};
+use sys::resource::{DebugRes, Key, Load, Loaded, PathKey, Storage, load_with};
 
 impl DebugRes for Module {
-  const TYPE_DESC: &'static str = "module";
+  const TY_DESC: &'static str = "module";
 }
 
 impl Load for Module {
@@ -131,7 +131,7 @@ impl Load for Module {
 
   type Error = ModuleError;
 
-  fn load(key: Self::Key, store: &mut Store) -> Result<Loaded<Self>, Self::Error> {
+  fn load(key: Self::Key, store: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {
@@ -237,18 +237,18 @@ pub struct Module(syntax::Module);
 
 impl Module {
   /// Retrieve all the modules this module depends on, without duplicates.
-  pub fn deps(&self, store: &mut Store, key: &Key<Module>) -> Result<Vec<Key<Module>>, DepsError> {
+  pub fn deps(&self, storage: &mut Storage, key: &Key<Module>) -> Result<Vec<Key<Module>>, DepsError> {
     let mut deps = Vec::new();
-    self.deps_no_cycle(store, &key, &mut Vec::new(), &mut deps).map(|_| deps)
+    self.deps_no_cycle(storage, &key, &mut Vec::new(), &mut deps).map(|_| deps)
   }
 
-  fn deps_no_cycle(&self, store: &mut Store, key: &Key<Module>, parents: &mut Vec<Key<Module>>, deps: &mut Vec<Key<Module>>) -> Result<(), DepsError> {
+  fn deps_no_cycle(&self, storage: &mut Storage, key: &Key<Module>, parents: &mut Vec<Key<Module>>, deps: &mut Vec<Key<Module>>) -> Result<(), DepsError> {
     let imports = self.0.imports.iter().map(|il| &il.module);
 
     parents.push(key.clone());
 
     for module_path in imports {
-      let path = PathBuf::from(store.root().join(module_path.path.join("/") + ".chdr"));
+      let path = PathBuf::from(storage.root().join(module_path.path.join("/") + ".chdr"));
       let module_key = Key::path(&path).map_err(|e| DepsError::UnknownPathKey(path, e))?;
 
       // check whether it’s already in the deps
@@ -263,8 +263,8 @@ impl Module {
 
       // FIXME
       // get the dependency module 
-      let module = store.get(&module_key).map_err(|e| DepsError::LoadError(module_key.clone(), box e))?;
-      module.borrow().deps_no_cycle(store, &module_key, parents, deps)?;
+      let module = storage.get(&module_key).map_err(|e| DepsError::LoadError(module_key.clone(), box e))?;
+      module.borrow().deps_no_cycle(storage, &module_key, parents, deps)?;
 
       deps.push(module_key.clone());
       parents.pop();
@@ -275,12 +275,12 @@ impl Module {
 
   /// Fold a module and its dependencies into a single module. The list of dependencies is also
   /// returned.
-  pub fn gather(&self, store: &mut Store, key: &Key<Module>) -> Result<(Self, Vec<Key<Module>>), DepsError> {
-    let deps = self.deps(store, key)?;
+  pub fn gather(&self, storage: &mut Storage, key: &Key<Module>) -> Result<(Self, Vec<Key<Module>>), DepsError> {
+    let deps = self.deps(storage, key)?;
     let glsl =
       deps.iter()
           .flat_map(|kd| {
-              let m = store.get(kd).unwrap();
+              let m = storage.get(kd).unwrap();
               let g = m.borrow().0.glsl.clone();
               g
             })

@@ -10,7 +10,7 @@ pub use warmy::*;
 /// core::intrisics::type_name, but without the unsafe / unstable interface, and more customizable
 /// as it’s a closed set (not all types implement this trait).
 pub trait DebugRes {
-  const TYPE_DESC: &'static str;
+  const TY_DESC: &'static str;
 }
 
 /// Load helper.
@@ -23,7 +23,7 @@ pub fn load_with<T, A, F>(
 ) -> A
 where F: FnOnce() -> A,
       T: DebugRes {
-  info!("loading \x1b[0;35m{}\x1b[0m \x1b[1;32m{}\x1b[0m", T::TYPE_DESC, path.display());
+  info!("loading \x1b[0;35m{}\x1b[0m \x1b[1;32m{}\x1b[0m", T::TY_DESC, path.display());
 
   let start_time = Instant::now();
   let a = loader();
@@ -31,7 +31,7 @@ where F: FnOnce() -> A,
   let ns = t.as_secs() as f64 * 1e9 + t.subsec_nanos() as f64;
   let (pretty_time, suffix) = load_time(ns);
 
-  info!("loaded \x1b[0;35m{}\x1b[0m \x1b[1;32m{}\x1b[0m: \x1b[1;31m{:.3}{}\x1b[0m", T::TYPE_DESC, path.display(), pretty_time, suffix);
+  info!("loaded \x1b[0;35m{}\x1b[0m \x1b[1;32m{}\x1b[0m: \x1b[1;31m{:.3}{}\x1b[0m", T::TY_DESC, path.display(), pretty_time, suffix);
 
   a
 }
@@ -56,11 +56,11 @@ fn load_time<'a>(ns: f64) -> (f64, &'a str) {
 pub fn reload_passthrough<T>(
   _: &T,
   key: T::Key,
-  store: &mut Store
+  storage: &mut Storage
 ) -> Result<T, T::Error>
 where T: Load,
       T::Key: Clone + fmt::Debug {
-  let r = T::load(key.clone(), store);
+  let r = T::load(key.clone(), storage);
 
   if let Err(ref e) = r {
     err!("cannot reload {:?}: {:#?}", key, e);
@@ -72,8 +72,8 @@ where T: Load,
 #[macro_export]
 macro_rules! impl_reload_passthrough {
   () => {
-    fn reload(&self, key: Self::Key, store: &mut Store) -> Result<Self, Self::Error> {
-      $crate::sys::resource::reload_passthrough(self, key, store)
+    fn reload(&self, key: Self::Key, storage: &mut Storage) -> Result<Self, Self::Error> {
+      $crate::sys::resource::reload_passthrough(self, key, storage)
     }
   }
 }

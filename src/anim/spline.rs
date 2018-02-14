@@ -9,7 +9,7 @@ use std::ops::{Add, Div, Mul, Sub};
 use std::path::PathBuf;
 
 use linear::{Scale, Quat, V2, V3, V4};
-use sys::resource::{DebugRes, Load, Loaded, PathKey, Store, load_with};
+use sys::resource::{DebugRes, Load, Loaded, PathKey, Storage, load_with};
 
 /// Time used as sampling type in splines.
 pub type Time = f32;
@@ -167,7 +167,7 @@ impl<T> Spline<T> {
 }
 
 impl<T> DebugRes for Spline<T> {
-  const TYPE_DESC: &'static str = "spline";
+  const TY_DESC: &'static str = "spline";
 }
 
 impl<T> Load for Spline<T> where T: 'static + SplineDeserializerAdapter {
@@ -175,7 +175,7 @@ impl<T> Load for Spline<T> where T: 'static + SplineDeserializerAdapter {
 
   type Error = SplineError;
 
-  fn load(key: Self::Key, _: &mut Store) -> Result<Loaded<Self>, Self::Error> {
+  fn load(key: Self::Key, _: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {

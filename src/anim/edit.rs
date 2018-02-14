@@ -5,7 +5,7 @@ use std::fmt;
 use std::fs::File;
 use std::path::PathBuf;
 
-use sys::resource::{DebugRes, Load, Loaded, PathKey, Store, load_with};
+use sys::resource::{DebugRes, Load, Loaded, PathKey, Storage, load_with};
 
 /// Time.
 pub type Time = f64;
@@ -199,7 +199,7 @@ pub struct TimelineManifest {
 }
 
 impl DebugRes for TimelineManifest {
-  const TYPE_DESC: &'static str = "timeline manifest";
+  const TY_DESC: &'static str = "timeline manifest";
 }
 
 impl Load for TimelineManifest {
@@ -207,7 +207,7 @@ impl Load for TimelineManifest {
 
   type Error = TimelineManifestError;
 
-  fn load(key: Self::Key, _: &mut Store) -> Result<Loaded<Self>, Self::Error> {
+  fn load(key: Self::Key, _: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {

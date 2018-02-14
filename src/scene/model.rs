@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use wavefront_obj::ParseError;
 use wavefront_obj::obj;
 
-use sys::resource::{DebugRes, Load, Loaded, PathKey, Store, load_with};
+use sys::resource::{DebugRes, Load, Loaded, PathKey, Storage, load_with};
 use scene::aabb::AABB;
 
 /// A model tree representing the structure of a model.
@@ -32,7 +32,7 @@ pub type ObjVertexNor = [f32; 3];
 pub type ObjVertexTexCoord = [f32; 2];
 
 impl DebugRes for ObjModel {
-  const TYPE_DESC: &'static str = "model";
+  const TY_DESC: &'static str = "model";
 }
 
 impl Load for ObjModel {
@@ -40,7 +40,7 @@ impl Load for ObjModel {
 
   type Error = ModelError;
 
-  fn load(key: Self::Key, _: &mut Store) -> Result<Loaded<Self>, Self::Error> {
+  fn load(key: Self::Key, _: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {

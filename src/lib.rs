@@ -14,7 +14,7 @@
 //! impossible that some of its features get moved out of the framework to become a set of
 //! dependencies – so that people who don’t want those features can just preclude them from the
 //! compilation chain.
-//! 
+//!
 //! Up to now, the framework provides you with several modules:
 //!
 //! - **audio**: this module gives you the ability to play a soundtrack (no streaming implemented
@@ -36,7 +36,7 @@
 //!   *models* – so that you can actually have them in your scenes
 //! - **overlay**: this module provides 2D primitives and rendering functions
 //! - **projection**: projection trait and functions
-//! - **shader**: provides 
+//! - **shader**: provides
 //! - **extra**: some extra (but not mandatory) other modules
 
 #![feature(box_patterns)]
@@ -48,6 +48,7 @@
 
 extern crate alto;
 extern crate any_cache;
+extern crate cargo;
 extern crate cgmath;
 extern crate chrono;
 #[macro_reexport(crate_authors, crate_name, crate_version)]
@@ -56,6 +57,7 @@ extern crate image;
 #[macro_reexport(gtup, uniform_interface, uniform_interface_build_struct, uniform_interface,
                  uniform_interface_impl_trait, uniform_interface_impl_trait_map)]
 pub extern crate luminance;
+extern crate libloading;
 extern crate luminance_glfw;
 extern crate glsl;
 #[macro_use]
@@ -66,6 +68,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
+extern crate tempdir;
 extern crate vorbis;
 extern crate wavefront_obj;
 extern crate warmy;
