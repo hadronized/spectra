@@ -11,6 +11,7 @@ use std::str::from_utf8_unchecked;
 use tempdir::TempDir;
 
 use render::pipeline::Gpu;
+use sys::event::WindowEvent;
 use sys::resource::{DebugRes, Load, Loaded, PathKey, Storage, load_with};
 
 pub struct Plugin {
@@ -106,6 +107,7 @@ impl Error for PluginError {
 }
 
 pub trait Demo {
+  fn react(&mut self, event: &WindowEvent);
   fn render(&mut self, gpu: &Gpu, t: f32);
 }
 
