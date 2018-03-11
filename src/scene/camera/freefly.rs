@@ -98,8 +98,8 @@ impl Default for FreeflyState {
 }
 
 impl FreeflyState {
-  pub fn on_key(&self, cam: &mut Camera<Freefly>, key: Key) {
-    match key {
+  pub fn on_key(&self, cam: &mut Camera<Freefly>, key: &Key) {
+    match *key {
       Key::W => cam.mv(V3::new(0., 0., 1.)),
       Key::S => cam.mv(V3::new(0., 0., -1.)),
       Key::A => cam.mv(V3::new(1., 0., 0.)),
@@ -122,8 +122,8 @@ impl FreeflyState {
     self.last_cursor = cursor;
   }
 
-  pub fn on_mouse_button(&mut self, button: MouseButton, action: Action) {
-    match (button, action) {
+  pub fn on_mouse_button(&mut self, button: &MouseButton, action: &Action) {
+    match (*button, *action) {
       (MouseButton::Button1, Action::Press) => {
         self.left_down = true;
       },
