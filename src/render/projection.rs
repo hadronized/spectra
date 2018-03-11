@@ -5,6 +5,12 @@ use linear::M44;
 
 pub struct Projection(M44<f32>);
 
+impl AsRef<M44<f32>> for Projection {
+  fn as_ref(&self) -> &M44<f32> {
+    &self.0
+  }
+}
+
 impl From<[[f32; 4]; 4]> for Projection {
   fn from(mat44: [[f32; 4]; 4]) -> Self {
     Projection(mat44.into())
