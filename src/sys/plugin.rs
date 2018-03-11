@@ -107,6 +107,7 @@ impl Error for PluginError {
 }
 
 pub trait Demo {
+  fn resize(&mut self, size: [u32; 2]);
   fn react(&mut self, event: &WindowEvent);
   fn render(&mut self, gpu: &Gpu, t: f32);
 }
