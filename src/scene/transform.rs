@@ -4,6 +4,12 @@ use linear::M44;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Transform(M44<f32>);
 
+impl AsRef<M44<f32>> for Transform {
+  fn as_ref(&self) -> &M44<f32> {
+    &self.0
+  }
+}
+
 impl From<M44<f32>> for Transform {
   fn from(mat44: M44<f32>) -> Self {
     Transform(mat44)
