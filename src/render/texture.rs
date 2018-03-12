@@ -7,7 +7,8 @@ use std::fmt;
 use std::ops::Deref;
 use std::path::Path;
 
-use sys::resource::{DebugRes, Load, Loaded, PathKey, Storage, load_with};
+use sys::res::{Load, Loaded, PathKey, Storage};
+use sys::res::helpers::{TyDesc, load_with};
 
 // Common texture aliases.
 pub type TextureRGB32F = Texture<Flat, Dim2, RGB32F>;
@@ -60,7 +61,7 @@ impl Deref for TextureImage {
   }
 }
 
-impl DebugRes for TextureImage {
+impl TyDesc for TextureImage {
   const TY_DESC: &'static str = "texture image";
 }
 

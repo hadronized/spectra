@@ -12,7 +12,8 @@ use std::path::PathBuf;
 use linear::{M44, Quat, V3};
 use render::projection::{Projectable, Projection};
 use scene::transform::{Transform, Transformable};
-use sys::resource::{DebugRes, Load, Loaded, PathKey, Storage, load_with};
+use sys::res::{Load, Loaded, PathKey, Storage};
+use sys::res::helpers::{TyDesc, load_with};
 
 #[derive(Clone, Debug)]
 pub struct Camera<P> {
@@ -59,7 +60,7 @@ struct Manifest<P> {
   properties: P
 }
 
-impl<A> DebugRes for Camera<A> {
+impl<A> TyDesc for Camera<A> {
   const TY_DESC: &'static str = "camera";
 }
 

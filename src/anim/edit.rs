@@ -1,11 +1,6 @@
-use serde_json::{Error as JsonError, from_reader};
 use std::collections::HashMap;
-use std::error::Error;
-use std::fmt;
-use std::fs::File;
-use std::path::PathBuf;
 
-use sys::resource::{DebugRes, Load, Loaded, PathKey, Storage, load_with};
+use sys::res::Storage;
 
 /// Time.
 pub type Time = f64;
@@ -165,61 +160,12 @@ pub enum Played<A> {
   Inactive
 }
 
-#[derive( Debug)]
-pub enum TimelineManifestError {
-  FileNotFound(PathBuf),
-  ParseFailed(JsonError)
-}
-
-impl fmt::Display for TimelineManifestError {
-  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-    f.write_str(self.description())
-  }
-}
-
-impl Error for TimelineManifestError {
-  fn description(&self) -> &str {
-    match *self {
-      TimelineManifestError::FileNotFound(_) => "file not found",
-      TimelineManifestError::ParseFailed(_) => "parse failed"
-    }
-  }
-
-  fn cause(&self) -> Option<&Error> {
-    match *self {
-      TimelineManifestError::ParseFailed(ref e) => Some(e),
-      _ => None
-    }
-  }
-}
-
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 pub struct TimelineManifest {
   pub tracks: Vec<TrackManifest>
 }
 
-impl DebugRes for TimelineManifest {
-  const TY_DESC: &'static str = "timeline manifest";
-}
-
-impl Load for TimelineManifest {
-  type Key = PathKey;
-
-  type Error = TimelineManifestError;
-
-  fn load(key: Self::Key, _: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
-    let path = key.as_path();
-
-    load_with::<Self, _, _>(path, move || {
-      let file = File::open(&path).map_err(|_| TimelineManifestError::FileNotFound(path.to_owned()))?;
-      let res: Self = from_reader(file).map_err(TimelineManifestError::ParseFailed)?;
-
-      Ok(res.into())
-    })
-  }
-
-  impl_reload_passthrough!();
-}
+impl_load_json!(TimelineManifest, "timeline manifest");
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 pub struct TrackManifest {

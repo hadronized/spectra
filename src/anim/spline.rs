@@ -9,7 +9,8 @@ use std::ops::{Add, Div, Mul, Sub};
 use std::path::PathBuf;
 
 use linear::{Scale, Quat, V2, V3, V4};
-use sys::resource::{DebugRes, Load, Loaded, PathKey, Storage, load_with};
+use sys::res::{Load, Loaded, PathKey, Storage};
+use sys::res::helpers::{TyDesc, load_with};
 
 /// Time used as sampling type in splines.
 pub type Time = f32;
@@ -71,9 +72,7 @@ impl Default for Interpolation {
 
 /// Spline curve used to provide interpolation between control points (keys).
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Spline<T> {
-  keys: Vec<Key<T>>,
-}
+pub struct Spline<T>(Vec<Key<T>>);
 
 impl<T> Spline<T> {
   /// Create a new spline out of keys. The keys don’t have to be sorted because they’re sorted by
@@ -81,9 +80,7 @@ impl<T> Spline<T> {
   pub fn from_keys(mut keys: Vec<Key<T>>) -> Self {
     keys.sort_by(|k0, k1| k0.t.partial_cmp(&k1.t).unwrap());
 
-    Spline {
-      keys: keys
-    }
+    Spline(keys)
   }
 
   /// Sample a spline at a given time.
@@ -96,7 +93,7 @@ impl<T> Spline<T> {
   /// near the beginning of the spline or its end, ensure you have enough keys around to make the
   /// sampling.
   pub fn sample(&self, t: Time) -> Option<T> where T: Interpolate {
-    let keys = &self.keys;
+    let keys = &self.0;
     let i = search_lower_cp(keys, t);
 
     let i = match i {
@@ -153,8 +150,8 @@ impl<T> Spline<T> {
   ///
   /// This function panics if you have no key.
   pub fn clamped_sample(&self, t: Time) -> T where T: Interpolate {
-    let first = self.keys.first().unwrap();
-    let last = self.keys.last().unwrap();
+    let first = self.0.first().unwrap();
+    let last = self.0.last().unwrap();
 
     if t <= first.t {
       return first.value;
@@ -166,7 +163,7 @@ impl<T> Spline<T> {
   }
 }
 
-impl<T> DebugRes for Spline<T> {
+impl<T> TyDesc for Spline<T> {
   const TY_DESC: &'static str = "spline";
 }
 
@@ -285,7 +282,7 @@ impl<'a, T> Iterator for SplineIterator<'a, T> {
   type Item = &'a Key<T>;
 
   fn next(&mut self) -> Option<Self::Item> {
-    let r = self.anim_param.keys.get(self.i);
+    let r = self.anim_param.0.get(self.i);
 
     if let Some(_) = r {
       self.i += 1;

@@ -4,7 +4,7 @@
 #[macro_use]
 pub mod bootstrap;
 #[macro_use]
-pub mod resource;
+pub mod res;
 
 pub mod event;
 pub mod plugin;

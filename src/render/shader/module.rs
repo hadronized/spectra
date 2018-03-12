@@ -120,9 +120,10 @@ use std::path::PathBuf;
 
 use render::shader::cheddar::parser::{self, ParseError};
 use render::shader::cheddar::syntax;
-use sys::resource::{DebugRes, Key, Load, Loaded, PathKey, Storage, load_with};
+use sys::res::{Key, Load, Loaded, PathKey, Storage};
+use sys::res::helpers::{TyDesc, load_with};
 
-impl DebugRes for Module {
+impl TyDesc for Module {
   const TY_DESC: &'static str = "module";
 }
 

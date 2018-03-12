@@ -8,7 +8,8 @@ use std::path::PathBuf;
 use wavefront_obj::ParseError;
 use wavefront_obj::obj;
 
-use sys::resource::{DebugRes, Load, Loaded, PathKey, Storage, load_with};
+use sys::res::{Load, Loaded, PathKey, Storage};
+use sys::res::helpers::{TyDesc, load_with};
 use scene::aabb::AABB;
 
 /// A model tree representing the structure of a model.
@@ -31,7 +32,7 @@ pub type ObjVertexPos = [f32; 3];
 pub type ObjVertexNor = [f32; 3];
 pub type ObjVertexTexCoord = [f32; 2];
 
-impl DebugRes for ObjModel {
+impl TyDesc for ObjModel {
   const TY_DESC: &'static str = "model";
 }
 

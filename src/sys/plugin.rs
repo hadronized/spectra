@@ -12,7 +12,8 @@ use tempdir::TempDir;
 
 use render::pipeline::Gpu;
 use sys::event::WindowEvent;
-use sys::resource::{DebugRes, Load, Loaded, PathKey, Storage, load_with};
+use sys::res::{Load, Loaded, PathKey, Storage};
+use sys::res::helpers::{TyDesc, load_with};
 
 pub struct Plugin {
   #[allow(dead_code)]
@@ -20,7 +21,7 @@ pub struct Plugin {
   demo: Box<Demo>
 }
 
-impl DebugRes for Plugin {
+impl TyDesc for Plugin {
   const TY_DESC: &'static str = "plugin";
 }
 

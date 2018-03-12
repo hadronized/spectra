@@ -18,7 +18,8 @@ use std::ops::Deref;
 
 use render::shader::cheddar::syntax::GLSLConversionError;
 use render::shader::module::Module;
-use sys::resource::{DebugRes, Key, Load, Loaded, LogicalKey, Storage, StoreErrorOr, load_with};
+use sys::res::{Key, Load, Loaded, LogicalKey, Storage, StoreErrorOr};
+use sys::res::helpers::{TyDesc, load_with};
 
 /// Errors that can be risen by a shader.
 #[derive(Debug)]
@@ -68,7 +69,7 @@ impl<In, Out, Uni> Deref for Program<In, Out, Uni> {
   }
 }
 
-impl<In, Out, Uni> DebugRes for Program<In, Out, Uni> {
+impl<In, Out, Uni> TyDesc for Program<In, Out, Uni> {
   const TY_DESC: &'static str = "program";
 }
 
