@@ -1,25 +1,31 @@
+## 0.9.1
+
+- Added experimental plugins. Those are not production-ready yet as it’d be better to have a `rustc`
+  JIT compiler instead.
+- Some minor and convenient additions.
+
 # 0.9.0
 
-- Migrate to `warmy-0.5.2`.
+- Migrated to `warmy-0.5.2`.
 
 ## 0.8.1
 
-- Fix the fragment shader stage when the previous struct has only one field.
+- Fixed the fragment shader stage when the previous struct has only one field.
 
 # 0.8.0
 
-- Support for luminance-0.25.0.
+- Supported for luminance-0.25.0.
 
 ## 0.7.1
 
-- Fix modules dependencies gathering.
+- Fixed modules dependencies gathering.
 - Various internal patches in Cheddar.
 
 # 0.7.0
 
-- Expose a framerate limit in CLI.
-- Update all the dependencies.
-- Add Gitter badge.
+- Exposed a framerate limit in CLI.
+- Updated all the dependencies.
+- Added Gitter badge.
 - Enhanced a little bit the documentation (yet still very bad).
 - Some internal fixed about `bootstrap::Device::events`.
 - All the hot-reloading resource code now lives in the [warmy](https://crates.io/crates/warmy)
