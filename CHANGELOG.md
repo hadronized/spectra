@@ -1,3 +1,8 @@
+# 0.10.0
+
+- Resource module cleanup.
+- Add some resource helpers for some common encoding (for now, **JSON**).
+
 ## 0.9.1
 
 - Added experimental plugins. Those are not production-ready yet as it’d be better to have a `rustc`
