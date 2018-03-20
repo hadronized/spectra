@@ -1,3 +1,7 @@
+## 0.10.1
+
+- Fix macro that requires `extern crate warmy`.
+
 # 0.10.0
 
 - Resource module cleanup.
