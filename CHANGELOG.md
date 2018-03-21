@@ -1,3 +1,7 @@
+## 0.10.2
+
+- Add `impl_load_json_via!`.
+
 ## 0.10.1
 
 - Fix macro that requires `extern crate warmy`.
