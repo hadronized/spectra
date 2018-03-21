@@ -83,6 +83,11 @@ impl<T> Spline<T> {
     Spline(keys)
   }
 
+  /// Retrieve the keys of a spline.
+  pub fn keys(&self) -> &[Key<T>] {
+    &self.0
+  }
+
   /// Sample a spline at a given time.
   ///
   /// # Return

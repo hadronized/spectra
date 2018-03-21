@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use sys::res::Storage;
-
 /// Time.
 pub type Time = f64;
 

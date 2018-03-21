@@ -69,7 +69,7 @@ fn load_time<'a>(ns: f64) -> (f64, &'a str) {
 #[macro_export]
 macro_rules! impl_reload_passthrough {
   () => {
-    fn reload(&self, key: Self::Key, storage: &mut Storage) -> Result<Self, Self::Error> {
+    fn reload(&self, key: Self::Key, storage: &mut $crate::sys::res::Storage) -> Result<Self, Self::Error> {
       $crate::sys::res::helpers::reload_passthrough(self, key, storage)
     }
   }
