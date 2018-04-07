@@ -117,10 +117,10 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::iter::once;
 use std::path::PathBuf;
+use warmy::{DepKey, Key, Load, Loaded, PathKey, Storage};
 
 use render::shader::cheddar::parser::{self, ParseError};
 use render::shader::cheddar::syntax;
-use sys::res::{Key, Load, Loaded, PathKey, Storage};
 use sys::res::helpers::{TyDesc, load_with};
 
 #[derive(Debug)]
@@ -202,65 +202,6 @@ impl Error for DepsError {
 pub struct Module(syntax::Module);
 
 impl Module {
-  /// Retrieve all the modules this module depends on, without duplicates.
-  pub fn deps(&self, storage: &mut Storage, key: &Key<Module>) -> Result<Vec<Key<Module>>, DepsError> {
-    let mut deps = Vec::new();
-    self.deps_no_cycle(storage, &key, &mut Vec::new(), &mut deps).map(|_| deps)
-  }
-
-  fn deps_no_cycle(&self, storage: &mut Storage, key: &Key<Module>, parents: &mut Vec<Key<Module>>, deps: &mut Vec<Key<Module>>) -> Result<(), DepsError> {
-    let imports = self.0.imports.iter();
-
-    parents.push(key.clone());
-
-    for import_list in imports {
-      let path = import_list.to_path(storage.root());
-      let module_key = Key::path(&path).map_err(|e| DepsError::UnknownPathKey(path, e))?;
-
-      // check whether it’s already in the deps
-      if deps.contains(&module_key) {
-        continue;
-      }
-
-      // check whether the module was already visited
-      if parents.contains(&module_key) {
-        return Err(DepsError::Cycle(module_key.clone(), module_key.clone()));
-      }
-
-      // FIXME
-      // get the dependency module 
-      let module = storage.get(&module_key).map_err(|e| DepsError::LoadError(module_key.clone(), box e))?;
-      module.borrow().deps_no_cycle(storage, &module_key, parents, deps)?;
-
-      deps.push(module_key.clone());
-      parents.pop();
-    }
-
-    Ok(())
-  }
-
-  /// Fold a module and its dependencies into a single module. The list of dependencies is also
-  /// returned.
-  pub fn gather(&self, storage: &mut Storage, key: &Key<Module>) -> Result<(Self, Vec<Key<Module>>), DepsError> {
-    let deps = self.deps(storage, key)?;
-    let glsl =
-      deps.iter()
-          .flat_map(|kd| {
-              let m = storage.get(kd).unwrap();
-              let g = m.borrow().0.glsl.clone();
-              g
-            })
-          .chain(self.0.glsl.clone())
-          .collect();
-
-    let module = Module(syntax::Module {
-      imports: Vec::new(),
-      glsl
-    });
-
-    Ok((module, deps))
-  }
-
   /// Fold a module into its GLSL setup.
   pub(crate) fn to_glsl_setup(&self) -> Result<ModuleFold, syntax::GLSLConversionError> {
     let uniforms = self.uniforms();
@@ -493,12 +434,14 @@ impl Load for Module {
 
       match parser::parse_str(&src[..], parser::module) {
         parser::ParseResult::Ok(module) => {
-          let key = Key::path(path).map_err(|e| ModuleError::DepsError(DepsError::UnknownPathKey(path.to_owned(), e)))?;
-          let (gathered, deps) =
-            Module(module).gather(store, &key).map_err(ModuleError::DepsError)?;
-          let dep_keys = deps.into_iter().map(|k| k.into()).collect();
+          let root = store.root();
+          let dkeys  = module.imports.iter().map(|il| {
+            let pbuf = il.to_path(root);
+            let pkey = PathKey::new(&pbuf).map_err(|e| ModuleError::DepsError(DepsError::UnknownPathKey(pbuf, e)))?;
+            Ok(DepKey::Path(pkey))
+          }).collect::<Result<_, _>>()?;
 
-          Ok(Loaded::with_deps(gathered, dep_keys))
+          Ok(Loaded::with_deps(Module(module), dkeys))
         }
 
         parser::ParseResult::Err(e) => Err(ModuleError::ParseFailed(e)),
