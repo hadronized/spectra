@@ -15,7 +15,9 @@ use std::iter::once;
 /// A module has a list of imports and a list of GLSL extern declaration.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Module {
+  /// List of imports for this module.
   pub imports: Vec<ImportList>,
+  /// The GLSL body of the module.
   pub glsl: Vec<ExternalDeclaration>
 }
 
@@ -25,13 +27,16 @@ pub struct Module {
 /// as in `rick, marty, doggo`.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ImportList {
+  /// The module path to load symbols from.
   pub module: ModulePath,
+  /// List of symbols to import.
   pub list: Vec<ModuleSymbol>
 }
 
 /// A module path is a non-empty list of module(s), representing a hierarchy.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct ModulePath {
+  /// Hierarchical path of modules leading to the module we want to import (included in the path).
   pub path: Vec<ModuleName>
 }
 
