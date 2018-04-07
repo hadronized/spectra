@@ -8,10 +8,8 @@ pub use glsl::syntax::*;
 use glsl::writer;
 use std::error::Error;
 use std::fmt::{self, Write};
-use std::io;
 use std::iter::once;
 use std::path::{Path, PathBuf};
-use warmy::{DepKey, PathKey};
 
 /// A module.
 ///
