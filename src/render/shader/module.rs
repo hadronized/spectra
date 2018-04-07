@@ -123,41 +123,6 @@ use render::shader::cheddar::syntax;
 use sys::res::{Key, Load, Loaded, PathKey, Storage};
 use sys::res::helpers::{TyDesc, load_with};
 
-impl TyDesc for Module {
-  const TY_DESC: &'static str = "module";
-}
-
-impl Load for Module {
-  type Key = PathKey;
-
-  type Error = ModuleError;
-
-  fn load(key: Self::Key, store: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
-    let path = key.as_path();
-
-    load_with::<Self, _, _>(path, move || {
-      let mut fh = File::open(path).map_err(|_| ModuleError::FileNotFound(path.into()))?;
-      let mut src = String::new();
-      let _ = fh.read_to_string(&mut src);
-
-      match parser::parse_str(&src[..], parser::module) {
-        parser::ParseResult::Ok(module) => {
-          let key = Key::path(path).map_err(|e| ModuleError::DepsError(DepsError::UnknownPathKey(path.to_owned(), e)))?;
-          let (gathered, deps) =
-            Module(module).gather(store, &key).map_err(ModuleError::DepsError)?;
-          let dep_keys = deps.into_iter().map(|k| k.into()).collect();
-
-          Ok(Loaded::with_deps(gathered, dep_keys))
-        }
-        parser::ParseResult::Err(e) => Err(ModuleError::ParseFailed(e)),
-        _ => Err(ModuleError::IncompleteInput)
-      }
-    })
-  }
-
-  impl_reload_passthrough!();
-}
-
 #[derive(Debug)]
 pub enum ModuleError {
   FileNotFound(PathBuf),
@@ -507,6 +472,41 @@ impl Module {
 
     consts
   }
+}
+
+impl TyDesc for Module {
+  const TY_DESC: &'static str = "module";
+}
+
+impl Load for Module {
+  type Key = PathKey;
+
+  type Error = ModuleError;
+
+  fn load(key: Self::Key, store: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
+    let path = key.as_path();
+
+    load_with::<Self, _, _>(path, move || {
+      let mut fh = File::open(path).map_err(|_| ModuleError::FileNotFound(path.into()))?;
+      let mut src = String::new();
+      let _ = fh.read_to_string(&mut src);
+
+      match parser::parse_str(&src[..], parser::module) {
+        parser::ParseResult::Ok(module) => {
+          let key = Key::path(path).map_err(|e| ModuleError::DepsError(DepsError::UnknownPathKey(path.to_owned(), e)))?;
+          let (gathered, deps) =
+            Module(module).gather(store, &key).map_err(ModuleError::DepsError)?;
+          let dep_keys = deps.into_iter().map(|k| k.into()).collect();
+
+          Ok(Loaded::with_deps(gathered, dep_keys))
+        }
+        parser::ParseResult::Err(e) => Err(ModuleError::ParseFailed(e)),
+        _ => Err(ModuleError::IncompleteInput)
+      }
+    })
+  }
+
+  impl_reload_passthrough!();
 }
 
 /// Module fold (pipeline).
