@@ -209,12 +209,12 @@ impl Module {
   }
 
   fn deps_no_cycle(&self, storage: &mut Storage, key: &Key<Module>, parents: &mut Vec<Key<Module>>, deps: &mut Vec<Key<Module>>) -> Result<(), DepsError> {
-    let imports = self.0.imports.iter().map(|il| &il.module);
+    let imports = self.0.imports.iter();
 
     parents.push(key.clone());
 
-    for module_path in imports {
-      let path = PathBuf::from(storage.root().join(module_path.path.join("/") + ".chdr"));
+    for import_list in imports {
+      let path = import_list.to_path(storage.root());
       let module_key = Key::path(&path).map_err(|e| DepsError::UnknownPathKey(path, e))?;
 
       // check whether it’s already in the deps

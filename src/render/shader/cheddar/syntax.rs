@@ -37,10 +37,9 @@ pub struct ImportList {
 }
 
 impl ImportList {
-  /// Generate a [DepKey] that represents this import.
-  pub fn to_dep_key(&self, root: &Path) -> Result<DepKey, io::Error> {
-    let path = PathBuf::from(root.join(self.module.path.join("/") + ".chdr"));
-    PathKey::new(&path).map(|k| k.into()).map(DepKey::Path)
+  /// Generate a [PathBuf] that represents this import on disk.
+  pub fn to_path(&self, root: &Path) -> PathBuf {
+    PathBuf::from(root.join(self.module.path.join("/") + ".chdr"))
   }
 }
 
