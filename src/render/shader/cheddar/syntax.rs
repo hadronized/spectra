@@ -8,7 +8,10 @@ pub use glsl::syntax::*;
 use glsl::writer;
 use std::error::Error;
 use std::fmt::{self, Write};
+use std::io;
 use std::iter::once;
+use std::path::{Path, PathBuf};
+use warmy::{DepKey, PathKey};
 
 /// A module.
 ///
@@ -31,6 +34,14 @@ pub struct ImportList {
   pub module: ModulePath,
   /// List of symbols to import.
   pub list: Vec<ModuleSymbol>
+}
+
+impl ImportList {
+  /// Generate a [DepKey] that represents this import.
+  pub fn to_dep_key(&self, root: &Path) -> Result<DepKey, io::Error> {
+    let path = PathBuf::from(root.join(self.module.path.join("/") + ".chdr"));
+    PathKey::new(&path).map(|k| k.into()).map(DepKey::Path)
+  }
 }
 
 /// A module path is a non-empty list of module(s), representing a hierarchy.
