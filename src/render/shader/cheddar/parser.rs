@@ -47,13 +47,13 @@ named!(pub module_path<&[u8], syntax::ModulePath>,
   )
 );
 
-/// Parse a module list.
+/// Parse a symbol list.
 ///
 ///     ( item0, item1, item2, …)
-named!(pub module_list<&[u8], Vec<syntax::ModulePath>>,
+named!(pub symbol_list<&[u8], Vec<syntax::ModuleSymbol>>,
   ws!(
     delimited!(char!('('),
-               separated_list!(char!(','), module_path),
+               separated_list!(char!(','), identifier),
                char!(')')
     )
   )
@@ -65,8 +65,8 @@ named!(pub import_list<&[u8], syntax::ImportList>,
     tag!("from") >>
     from_module: module_path >>
     tag!("import") >>
-    modules: module_list >>
-    (syntax::ImportList { module: from_module, list: modules })
+    symbols: symbol_list >>
+    (syntax::ImportList { module: from_module, list: symbols })
   ))
 );
 
@@ -102,21 +102,21 @@ mod tests {
   }
   
   #[test]
-  fn parse_module_list() {
-    let foo = syntax::ModulePath { path: vec!["foo".into()] };
-    let bar = syntax::ModulePath { path: vec!["bar".into()] };
-    let zoo_woo = syntax::ModulePath { path: vec!["zoo".into(), "woo".into()] };
-    let list = vec![foo, bar, zoo_woo];
+  fn parse_symbol_list() {
+    let foo = "foo".to_owned();
+    let bar = "bar".to_owned();
+    let zoo = "zoo".to_owned();
+    let list = vec![foo, bar, zoo];
   
-    assert_eq!(module_list(&b"(foo,bar,zoo.woo)"[..]), IResult::Done(&b""[..], list.clone()));
-    assert_eq!(module_list(&b" ( foo,bar,zoo.woo  ) "[..]), IResult::Done(&b""[..], list.clone()));
-    assert_eq!(module_list(&b"( foo, bar ,   zoo.woo  )"[..]), IResult::Done(&b""[..], list.clone()));
+    assert_eq!(symbol_list(&b"(foo,bar,zoo)"[..]), IResult::Done(&b""[..], list.clone()));
+    assert_eq!(symbol_list(&b" ( foo,bar,zoo  ) "[..]), IResult::Done(&b""[..], list.clone()));
+    assert_eq!(symbol_list(&b"( foo, bar ,   zoo  )"[..]), IResult::Done(&b""[..], list.clone()));
   }
   
   #[test]
   fn parse_import_list() {
-    let foo = syntax::ModulePath { path: vec!["foo".into()] };
-    let bar = syntax::ModulePath { path: vec!["bar".into()] };
+    let foo = "foo".to_owned();
+    let bar = "bar".to_owned();
     let zoo_woo = syntax::ModulePath { path: vec!["zoo".into(), "woo".into()] };
     let expected = syntax::ImportList { module: zoo_woo, list: vec![foo, bar] };
   

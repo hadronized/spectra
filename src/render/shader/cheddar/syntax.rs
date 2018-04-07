@@ -20,13 +20,16 @@ pub struct Module {
 }
 
 /// A non-empty import list.
+///
+/// It consists of a module path, like `Foo.Bar.Zoo`, and a list of symbols to load from that path,
+/// as in `rick, marty, doggo`.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ImportList {
   pub module: ModulePath,
-  pub list: Vec<ModulePath>
+  pub list: Vec<ModuleSymbol>
 }
 
-/// A module path is a list of module(s), representing a hierarchy.
+/// A module path is a non-empty list of module(s), representing a hierarchy.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct ModulePath {
   pub path: Vec<ModuleName>
@@ -34,6 +37,9 @@ pub struct ModulePath {
 
 /// Name of a module.
 pub type ModuleName = String;
+
+/// A symbol, living in a module.
+pub type ModuleSymbol = String;
 
 pub type ExpectedNumberOfArgs = usize;
 pub type FoundNumberOfArgs = usize;
