@@ -500,7 +500,9 @@ impl Load for Module {
 
           Ok(Loaded::with_deps(gathered, dep_keys))
         }
+
         parser::ParseResult::Err(e) => Err(ModuleError::ParseFailed(e)),
+
         _ => Err(ModuleError::IncompleteInput)
       }
     })
