@@ -111,6 +111,7 @@
 //! ```
 
 use glsl::writer;
+use std::collections::HashSet;
 use std::error::Error;
 use std::fmt::{self, Write};
 use std::fs::File;
@@ -202,6 +203,60 @@ impl Error for DepsError {
 pub struct Module(syntax::Module);
 
 impl Module {
+  /// Shrink a module along with its imports to yield a bigger module with no imports.
+  ///
+  /// This is needed whenever the module must be compiled to strings (i.e. [Module::to_glsl_setup]).
+  pub fn substitute_imports(&self, current_key: &Key<Module>, storage: &mut Storage) -> Result<Self, ModuleError> {
+    let mut visited = HashSet::new(); // already visited modules
+    let mut parents = HashSet::new(); // modules from which we come; used to detect import cycles
+    let mut glsl = Vec::new();
+
+    self.rec_substitute_imports(current_key, storage, &mut visited, &mut parents, &mut glsl)?;
+
+    Ok(Module(syntax::Module { imports: Vec::new(), glsl }))
+  }
+
+  /// Recursively substitute the imports from a module.
+  ///
+  /// This function will accumulate some GLSL code by performing a DFS on the dependency DAG. It is
+  /// dependency-cycle-aware and handles transitive dependency without duplication.
+  fn rec_substitute_imports(
+    &self,
+    current_key: &Key<Module>,
+    storage: &mut Storage,
+    visited: &mut HashSet<Key<Module>>,
+    parents: &mut HashSet<Key<Module>>,
+    glsl: &mut syntax::GLSL 
+  ) -> Result<(), ModuleError> {
+    parents.insert(current_key.clone());
+    visited.insert(current_key.clone());
+
+    for il in &self.0.imports {
+      let path = il.to_path(storage.root());
+      let key = Key::path(&path).map_err(|e| ModuleError::DepsError(DepsError::UnknownPathKey(path, e)))?;
+
+      // ensure this module is not a parent (break dependency cycle)
+      if parents.contains(&key) {
+        return Err(ModuleError::DepsError(DepsError::Cycle(current_key.clone(), key.clone())));
+      }
+
+      // do not treat already visited modules (prevent from GLSL duplication)
+      if visited.contains(&key) {
+        continue;
+      }
+
+      // borrow the module and recursively call this function to get all the GLSL chain
+      let module = storage.get(&key).map_err(|e| ModuleError::DepsError(DepsError::LoadError(key.clone(), box e)))?;
+      module.borrow().rec_substitute_imports(&key, storage, visited, parents, glsl)?;
+    }
+
+    glsl.extend(self.0.glsl.iter().cloned());
+
+    parents.remove(current_key);
+
+    Ok(())
+  }
+
   /// Fold a module into its GLSL setup.
   pub(crate) fn to_glsl_setup(&self) -> Result<ModuleFold, syntax::GLSLConversionError> {
     let uniforms = self.uniforms();
