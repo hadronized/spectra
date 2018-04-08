@@ -118,7 +118,7 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::iter::once;
 use std::path::PathBuf;
-use warmy::{DepKey, Key, Load, Loaded, PathKey, Storage};
+use warmy::{Key, Load, Loaded, PathKey, Storage};
 
 use render::shader::cheddar::parser::{self, ParseError};
 use render::shader::cheddar::syntax;
@@ -203,17 +203,21 @@ impl Error for DepsError {
 pub struct Module(syntax::Module);
 
 impl Module {
-  /// Shrink a module along with its imports to yield a bigger module with no imports.
+  /// Shrink a module along with its imports to yield a bigger module with no imports. Return all
+  /// the visited modules (including the current one).
   ///
   /// This is needed whenever the module must be compiled to strings (i.e. [Module::to_glsl_setup]).
-  pub fn substitute_imports(&self, current_key: &Key<Module>, storage: &mut Storage) -> Result<Self, ModuleError> {
+  pub fn substitute_imports(&self, current_key: &Key<Module>, storage: &mut Storage) -> Result<(Self, Vec<Key<Module>>), ModuleError> {
     let mut visited = HashSet::new(); // already visited modules
     let mut parents = HashSet::new(); // modules from which we come; used to detect import cycles
     let mut glsl = Vec::new();
 
     self.rec_substitute_imports(current_key, storage, &mut visited, &mut parents, &mut glsl)?;
 
-    Ok(Module(syntax::Module { imports: Vec::new(), glsl }))
+    let module = Module(syntax::Module { imports: Vec::new(), glsl });
+    let dep_keys = visited.into_iter().collect();
+
+    Ok((module, dep_keys))
   }
 
   /// Recursively substitute the imports from a module.
@@ -479,7 +483,7 @@ impl Load for Module {
 
   type Error = ModuleError;
 
-  fn load(key: Self::Key, store: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
+  fn load(key: Self::Key, _: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {
@@ -489,14 +493,7 @@ impl Load for Module {
 
       match parser::parse_str(&src[..], parser::module) {
         parser::ParseResult::Ok(module) => {
-          let root = store.root();
-          let dkeys  = module.imports.iter().map(|il| {
-            let pbuf = il.to_path(root);
-            let pkey = PathKey::new(&pbuf).map_err(|e| ModuleError::DepsError(DepsError::UnknownPathKey(pbuf, e)))?;
-            Ok(DepKey::Path(pkey))
-          }).collect::<Result<_, _>>()?;
-
-          Ok(Loaded::with_deps(Module(module), dkeys))
+          Ok(Module(module).into())
         }
 
         parser::ParseResult::Err(e) => Err(ModuleError::ParseFailed(e)),

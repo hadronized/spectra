@@ -81,16 +81,15 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni>
 
   type Error = ShaderError;
 
-  fn load(key: Self::Key, store: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
+  fn load(key: Self::Key, storage: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_str().as_ref();
 
     load_with::<Self, _, _>(path, move || {
       let module_key = Key::<Module>::path(path.to_owned()).map_err(|e| ShaderError::KeyError(e))?;
-      let module = store.get(&module_key).map_err(ShaderError::ModuleError)?;
+      let module = storage.get(&module_key).map_err(ShaderError::ModuleError)?;
+      let (transitive, keys) = module.borrow().substitute_imports(&module_key, storage).map_err(|e| ShaderError::ModuleError(StoreErrorOr::ResError(e)))?;
 
-      let module_ = module.borrow();
-
-      match module_.to_glsl_setup() {
+      match transitive.to_glsl_setup() {
         Err(err) => {
           Err(ShaderError::GLSLConversionError(err))
         }
@@ -117,7 +116,9 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni>
               }
 
               let res = Program(program);
-              Ok(Loaded::with_deps(res, vec![module_key.into()]))
+              let dep_keys = keys.into_iter().map(|key| key.into()).collect();
+
+              Ok(Loaded::with_deps(res, dep_keys))
             }
           }
         }
