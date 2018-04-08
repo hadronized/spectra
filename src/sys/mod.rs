@@ -7,4 +7,3 @@ pub mod bootstrap;
 pub mod res;
 
 pub mod event;
-pub mod plugin;
