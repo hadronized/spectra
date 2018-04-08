@@ -11,6 +11,8 @@ use std::fmt::{self, Write};
 use std::iter::once;
 use std::path::{Path, PathBuf};
 
+pub type GLSL = Vec<ExternalDeclaration>;
+
 /// A module.
 ///
 /// A module has a list of imports and a list of GLSL extern declaration.
@@ -19,7 +21,7 @@ pub struct Module {
   /// List of imports for this module.
   pub imports: Vec<ImportList>,
   /// The GLSL body of the module.
-  pub glsl: Vec<ExternalDeclaration>
+  pub glsl: GLSL
 }
 
 /// A non-empty import list.
