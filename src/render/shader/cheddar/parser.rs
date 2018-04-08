@@ -62,9 +62,8 @@ named!(pub symbol_list<&[u8], Vec<syntax::ModuleSymbol>>,
 /// Parse an import list.
 named!(pub import_list<&[u8], syntax::ImportList>,
   ws!(do_parse!(
-    tag!("from") >>
+    tag!("use") >>
     from_module: module_path >>
-    tag!("import") >>
     symbols: symbol_list >>
     (syntax::ImportList { module: from_module, list: symbols })
   ))
@@ -120,8 +119,8 @@ mod tests {
     let zoo_woo = syntax::ModulePath { path: vec!["zoo".into(), "woo".into()] };
     let expected = syntax::ImportList { module: zoo_woo, list: vec![foo, bar] };
   
-    assert_eq!(import_list(&b"from zoo.woo import (foo, bar)"[..]), IResult::Done(&b""[..], expected.clone()));
-    assert_eq!(import_list(&b" from    zoo.woo   import  (   foo  ,   bar  )"[..]), IResult::Done(&b""[..], expected.clone()));
-    assert_eq!(import_list(&b"from zoo.woo import (foo,\nbar)"[..]), IResult::Done(&b""[..], expected.clone()));
+    assert_eq!(import_list(&b"use zoo.woo (foo, bar)"[..]), IResult::Done(&b""[..], expected.clone()));
+    assert_eq!(import_list(&b" use    zoo.woo    (   foo  ,   bar  )"[..]), IResult::Done(&b""[..], expected.clone()));
+    assert_eq!(import_list(&b"use zoo.woo (foo,\nbar)"[..]), IResult::Done(&b""[..], expected.clone()));
   }
 }
