@@ -262,7 +262,7 @@ impl Module {
   }
 
   /// Fold a module into its GLSL setup.
-  pub(crate) fn to_glsl_setup(&self) -> Result<ModuleFold, syntax::GLSLConversionError> {
+  pub fn to_glsl_setup(&self) -> Result<ModuleFold, syntax::GLSLConversionError> {
     let uniforms = self.uniforms();
     let blocks = self.blocks();
     let structs = self.structs();
@@ -511,7 +511,7 @@ impl Load for Module {
 /// When a module contains all the required functions and structures to define a workable pipeline,
 /// it can be folded down to this type, that will be used by lower layers (GPU).
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct ModuleFold {
+pub struct ModuleFold {
   pub vs: String,
   pub gs: Option<String>,
   pub fs: String
