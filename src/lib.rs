@@ -47,7 +47,6 @@
 
 extern crate alto;
 extern crate any_cache;
-extern crate cargo;
 extern crate cgmath;
 extern crate chrono;
 #[macro_reexport(crate_authors, crate_name, crate_version)]
@@ -56,7 +55,6 @@ extern crate image;
 #[macro_reexport(gtup, uniform_interface, uniform_interface_build_struct, uniform_interface,
                  uniform_interface_impl_trait, uniform_interface_impl_trait_map)]
 pub extern crate luminance;
-extern crate libloading;
 extern crate luminance_glfw;
 extern crate glsl;
 #[macro_use]
@@ -67,7 +65,6 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-extern crate tempdir;
 extern crate vorbis;
 extern crate wavefront_obj;
 extern crate warmy;
