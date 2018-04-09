@@ -1,3 +1,25 @@
+# 0.11.0
+
+> Monday, April, 9th 2018
+
+- Change the way to import modules in cheddar. One doesn’t use `from … import (…, …)` anymore, but
+  the easier syntax `use … (…, …)`.
+- Made `ModuleFold` and `Module::to_glsl_setup` public so that people can use it if they want. This
+  change is an anticipation for the soon-to-be extracted `cheddar` (into its own crate).
+- Remove the plugin system. It was way too much experimental and hacky. We might introduce it back
+  when Rust has a decent JIT support.
+- Since the plugin system was removed, a lot of transitive crates were also removed, making the
+  crate lighter and faster to download / compile.
+- Re-implement the shader system to fix with diamond importing. Also, a _bug_ that prevented a
+  shader from re-compiling when a dependency changed was fixed in the same time.
+- `ImportList` can now be converted to dependency keys.
+- Enhanced a little bit the documentation.
+- Make the `module` parser use a list of ModuleSymbol instead of ModulePath. This shouldn’t change
+  much for you but it makes the parser more correct about what symbols it’ll accept.
+- Remove `rusttype` crate dep. This will be needed in the future when we want to add text support,
+  but as for now, it’s unused and adds unnecessary download / compile times.
+- Various internal changes.
+
 ## 0.10.2
 
 - Add `impl_load_json_via!`.
