@@ -38,14 +38,15 @@ where F: FnOnce() -> A,
 /// This function will log any error that happens.
 ///
 /// Whatever the result of the computation, this function returns it untouched.
-pub fn reload_passthrough<T>(
+pub fn reload_passthrough<C, T>(
   _: &T,
   key: T::Key,
-  storage: &mut Storage
+  storage: &mut Storage<C>,
+  ctx: &mut C
 ) -> Result<T, T::Error>
-where T: Load,
+where T: Load<C>,
       T::Key: Clone + fmt::Debug {
-  let r = T::load(key.clone(), storage);
+  let r = T::load(key.clone(), storage, ctx);
 
   if let Err(ref e) = r {
     err!("cannot reload {:?}: {:#?}", key, e);
@@ -68,9 +69,9 @@ fn load_time<'a>(ns: f64) -> (f64, &'a str) {
 
 #[macro_export]
 macro_rules! impl_reload_passthrough {
-  () => {
-    fn reload(&self, key: Self::Key, storage: &mut $crate::sys::res::Storage) -> Result<Self, Self::Error> {
-      $crate::sys::res::helpers::reload_passthrough(self, key, storage)
+  ($ctx_ty:ty) => {
+    fn reload(&self, key: Self::Key, storage: &mut $crate::sys::res::Storage<$ctx_ty>, ctx: &mut $ctx_ty) -> Result<Self, Self::Error> {
+      $crate::sys::res::helpers::reload_passthrough(self, key, storage, ctx)
     }
   }
 }

@@ -115,10 +115,10 @@ use std::collections::HashSet;
 use std::error::Error;
 use std::fmt::{self, Write};
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::Read;
 use std::iter::once;
 use std::path::PathBuf;
-use warmy::{Key, Load, Loaded, PathKey, Storage};
+use warmy::{Load, Loaded, FSKey, Res, Storage};
 
 use render::shader::cheddar::parser::{self, ParseError};
 use render::shader::cheddar::syntax;
@@ -162,11 +162,9 @@ impl Error for ModuleError {
 pub enum DepsError {
   /// If a module’s dependencies has any cycle, the dependencies are unusable and the cycle is
   /// returned.
-  Cycle(Key<Module>, Key<Module>),
+  Cycle(FSKey, FSKey),
   /// There was a loading error of a module.
-  LoadError(Key<Module>, Box<Error>),
-  /// Unknown path key.
-  UnknownPathKey(PathBuf, io::Error)
+  LoadError(FSKey, Box<Error>),
 }
 
 impl fmt::Display for DepsError {
@@ -180,14 +178,12 @@ impl Error for DepsError {
     match *self {
       DepsError::Cycle(..) => "module cycle",
       DepsError::LoadError(..) => "load error",
-      DepsError::UnknownPathKey(..) => "unknown path key"
     }
   }
 
   fn cause(&self) -> Option<&Error> {
     match *self {
       DepsError::LoadError(_, ref e) => Some(e.as_ref()),
-      DepsError::UnknownPathKey(_, ref e) => Some(e),
       _ => None
     }
   }
@@ -207,12 +203,20 @@ impl Module {
   /// the visited modules (including the current one).
   ///
   /// This is needed whenever the module must be compiled to strings (i.e. [Module::to_glsl_setup]).
-  pub fn substitute_imports(&self, current_key: &Key<Module>, storage: &mut Storage) -> Result<(Self, Vec<Key<Module>>), ModuleError> {
+  pub fn substitute_imports<C>(
+    &self,
+    current_key:
+    &FSKey,
+    storage:
+    &mut Storage<C>,
+    ctx: &mut C
+  ) -> Result<(Self, Vec<FSKey>), ModuleError>
+  where C: 'static {
     let mut visited = HashSet::new(); // already visited modules
     let mut parents = HashSet::new(); // modules from which we come; used to detect import cycles
     let mut glsl = Vec::new();
 
-    self.rec_substitute_imports(current_key, storage, &mut visited, &mut parents, &mut glsl)?;
+    self.rec_substitute_imports(current_key, storage, ctx, &mut visited, &mut parents, &mut glsl)?;
 
     let module = Module(syntax::Module { imports: Vec::new(), glsl });
     let dep_keys = visited.into_iter().collect();
@@ -224,20 +228,22 @@ impl Module {
   ///
   /// This function will accumulate some GLSL code by performing a DFS on the dependency DAG. It is
   /// dependency-cycle-aware and handles transitive dependency without duplication.
-  fn rec_substitute_imports(
+  fn rec_substitute_imports<C>(
     &self,
-    current_key: &Key<Module>,
-    storage: &mut Storage,
-    visited: &mut HashSet<Key<Module>>,
-    parents: &mut HashSet<Key<Module>>,
-    glsl: &mut syntax::GLSL 
-  ) -> Result<(), ModuleError> {
+    current_key: &FSKey,
+    storage: &mut Storage<C>,
+    ctx: &mut C,
+    visited: &mut HashSet<FSKey>,
+    parents: &mut HashSet<FSKey>,
+    glsl: &mut syntax::GLSL
+  ) -> Result<(), ModuleError>
+  where C: 'static {
     parents.insert(current_key.clone());
     visited.insert(current_key.clone());
 
     for il in &self.0.imports {
-      let path = il.to_path(storage.root());
-      let key = Key::path(&path).map_err(|e| ModuleError::DepsError(DepsError::UnknownPathKey(path, e)))?;
+      let path = il.to_path();
+      let key = FSKey::new(&path);
 
       // ensure this module is not a parent (break dependency cycle)
       if parents.contains(&key) {
@@ -250,8 +256,8 @@ impl Module {
       }
 
       // borrow the module and recursively call this function to get all the GLSL chain
-      let module = storage.get(&key).map_err(|e| ModuleError::DepsError(DepsError::LoadError(key.clone(), box e)))?;
-      module.borrow().rec_substitute_imports(&key, storage, visited, parents, glsl)?;
+      let module: Res<Self> = storage.get(&key, ctx).map_err(|e| ModuleError::DepsError(DepsError::LoadError(key.clone(), box e)))?;
+      module.borrow().rec_substitute_imports(&key, storage, ctx, visited, parents, glsl)?;
     }
 
     glsl.extend(self.0.glsl.iter().cloned());
@@ -478,12 +484,12 @@ impl TyDesc for Module {
   const TY_DESC: &'static str = "module";
 }
 
-impl Load for Module {
-  type Key = PathKey;
+impl<C> Load<C> for Module {
+  type Key = FSKey;
 
   type Error = ModuleError;
 
-  fn load(key: Self::Key, _: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
+  fn load(key: Self::Key, _: &mut Storage<C>, _: &mut C) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {
@@ -503,7 +509,7 @@ impl Load for Module {
     })
   }
 
-  impl_reload_passthrough!();
+  impl_reload_passthrough!(C);
 }
 
 /// Module fold (pipeline).

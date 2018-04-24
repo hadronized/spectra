@@ -9,7 +9,7 @@ use glsl::writer;
 use std::error::Error;
 use std::fmt::{self, Write};
 use std::iter::once;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub type GLSL = Vec<ExternalDeclaration>;
 
@@ -38,8 +38,8 @@ pub struct ImportList {
 
 impl ImportList {
   /// Generate a [PathBuf] that represents this import on disk.
-  pub fn to_path(&self, root: &Path) -> PathBuf {
-    PathBuf::from(root.join(self.module.path.join("/") + ".chdr"))
+  pub fn to_path(&self) -> PathBuf {
+    PathBuf::from(self.module.path.join("/") + ".chdr")
   }
 }
 
