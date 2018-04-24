@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use wavefront_obj::ParseError;
 use wavefront_obj::obj;
 
-use sys::res::{Load, Loaded, PathKey, Storage};
+use sys::res::{FSKey, Load, Loaded, Storage};
 use sys::res::helpers::{TyDesc, load_with};
 use scene::aabb::AABB;
 
@@ -36,12 +36,12 @@ impl TyDesc for ObjModel {
   const TY_DESC: &'static str = "model";
 }
 
-impl Load for ObjModel {
-  type Key = PathKey;
+impl<C> Load<C> for ObjModel {
+  type Key = FSKey;
 
   type Error = ModelError;
 
-  fn load(key: Self::Key, _: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
+  fn load(key: Self::Key, _: &mut Storage<C>, _: &mut C) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {
@@ -60,7 +60,7 @@ impl Load for ObjModel {
     })
   }
 
-  impl_reload_passthrough!();
+  impl_reload_passthrough!(C);
 }
 
 // Turn a wavefront obj object into a `Model`

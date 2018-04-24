@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use linear::{M44, Quat, V3};
 use render::projection::{Projectable, Projection};
 use scene::transform::{Transform, Transformable};
-use sys::res::{Load, Loaded, PathKey, Storage};
+use sys::res::{FSKey, Load, Loaded, Storage};
 use sys::res::helpers::{TyDesc, load_with};
 
 #[derive(Clone, Debug)]
@@ -64,11 +64,11 @@ impl<A> TyDesc for Camera<A> {
   const TY_DESC: &'static str = "camera";
 }
 
-impl<A> Load for Camera<A> where A: 'static + Default + DeserializeOwned {
-  type Key = PathKey;
+impl<C, A> Load<C> for Camera<A> where A: 'static + Default + DeserializeOwned {
+  type Key = FSKey;
   type Error = CameraError;
 
-  fn load(key: Self::Key, _: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
+  fn load(key: Self::Key, _: &mut Storage<C>, _: &mut C) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {
@@ -85,7 +85,7 @@ impl<A> Load for Camera<A> where A: 'static + Default + DeserializeOwned {
     })
   }
   
-  impl_reload_passthrough!();
+  impl_reload_passthrough!(C);
 }
 
 #[derive(Debug)]

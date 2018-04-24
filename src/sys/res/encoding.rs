@@ -41,12 +41,12 @@ macro_rules! impl_load_json {
       const TY_DESC: &'static str = $desc;
     }
 
-    impl $crate::sys::res::Load for $ty_ {
-      type Key = $crate::sys::res::PathKey;
+    impl<C> $crate::sys::res::Load<C> for $ty_ {
+      type Key = $crate::sys::res::FSKey;
 
       type Error = $crate::sys::res::encoding::JSONError;
 
-      fn load(key: Self::Key, _: &mut $crate::sys::res::Storage) -> Result<$crate::sys::res::Loaded<Self>, Self::Error> {
+      fn load(key: Self::Key, _: &mut $crate::sys::res::Storage<C>, _: &mut C) -> Result<$crate::sys::res::Loaded<Self>, Self::Error> {
         let path = key.as_path();
 
         $crate::sys::res::helpers::load_with::<Self, _, _>(path, || {
@@ -58,7 +58,7 @@ macro_rules! impl_load_json {
         })
       }
 
-      impl_reload_passthrough!();
+      impl_reload_passthrough!(C);
     }
   }
 }
@@ -74,12 +74,12 @@ macro_rules! impl_load_json_via {
       const TY_DESC: &'static str = $desc;
     }
 
-    impl $crate::sys::res::Load for $ty_ {
-      type Key = $crate::sys::res::PathKey;
+    impl<C> $crate::sys::res::Load<C> for $ty_ {
+      type Key = $crate::sys::res::FSKey;
 
       type Error = $crate::sys::res::encoding::JSONError;
 
-      fn load(key: Self::Key, _: &mut $crate::sys::res::Storage) -> Result<$crate::sys::res::Loaded<Self>, Self::Error> {
+      fn load(key: Self::Key, _: &mut $crate::sys::res::Storage<C>, _: &mut C) -> Result<$crate::sys::res::Loaded<Self>, Self::Error> {
         let path = key.as_path();
 
         $crate::sys::res::helpers::load_with::<Self, _, _>(path, || {
@@ -92,7 +92,7 @@ macro_rules! impl_load_json_via {
         })
       }
 
-      impl_reload_passthrough!();
+      impl_reload_passthrough!(C);
     }
   }
 }

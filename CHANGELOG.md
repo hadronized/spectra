@@ -1,3 +1,9 @@
+# 0.12.0
+
+> Sunday, May, 6th 2018
+
+- Migrated to `warmy-0.7`.
+
 # 0.11.0
 
 > Monday, April, 9th 2018

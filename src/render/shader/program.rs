@@ -13,36 +13,68 @@ pub use luminance::shader::program::{ProgramError, Uniform, Uniformable, Uniform
 use luminance::vertex::Vertex;
 use std::error::Error;
 use std::fmt;
-use std::io;
 use std::ops::Deref;
+use std::path::Path;
 
 use render::shader::cheddar::syntax::GLSLConversionError;
 use render::shader::module::Module;
-use sys::res::{Key, Load, Loaded, LogicalKey, Storage, StoreErrorOr};
+use sys::res::{DepKey, FSKey, Key, Load, Loaded, LogicalKey, Storage, StoreErrorOr};
 use sys::res::helpers::{TyDesc, load_with};
 
-/// Errors that can be risen by a shader.
-#[derive(Debug)]
-pub enum ShaderError {
-  ModuleError(StoreErrorOr<Module>),
-  GLSLConversionError(GLSLConversionError),
-  ProgramError(ProgramError),
-  KeyError(io::Error)
-}
+/// Key used to load shader programs.
+///
+/// It takes a module path as in `"foo.bar.zoo"`, the exact same way you do inside of your shader
+/// source.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct ProgramKey(LogicalKey);
 
-impl fmt::Display for ShaderError {
-  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-    f.write_str(self.description())
+impl ProgramKey {
+  pub fn new(path: &str) -> Self {
+    ProgramKey(LogicalKey::new(path.replace('.', "/") + ".chdr"))
   }
 }
 
-impl Error for ShaderError {
+impl Key for ProgramKey {
+  fn prepare_key(self, root: &Path) -> Self {
+    ProgramKey(self.0.prepare_key(root))
+  }
+}
+
+impl From<ProgramKey> for DepKey {
+  fn from(pkey: ProgramKey) -> Self {
+    pkey.0.into()
+  }
+}
+
+/// Errors that can be risen by a shader.
+pub enum ShaderError<C> {
+  ModuleError(StoreErrorOr<Module, C>),
+  GLSLConversionError(GLSLConversionError),
+  ProgramError(ProgramError),
+}
+
+impl<C> fmt::Debug for ShaderError<C> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    match *self {
+      ShaderError::ModuleError(ref e) => f.debug_tuple("ModuleError").field(e).finish(),
+      ShaderError::GLSLConversionError(ref e) => f.debug_tuple("GLSLConversionError").field(e).finish(),
+      ShaderError::ProgramError(ref e) => f.debug_tuple("ProgramError").field(e).finish(),
+    }
+  }
+}
+
+impl<C> fmt::Display for ShaderError<C> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    <Self as fmt::Debug>::fmt(self, f)
+  }
+}
+
+impl<C> Error for ShaderError<C> {
   fn description(&self) -> &str {
     match *self {
       ShaderError::ModuleError(_) => "module error",
       ShaderError::GLSLConversionError(_) => "GLSL conversion error",
       ShaderError::ProgramError(_) => "program error",
-      ShaderError::KeyError(_) => "key error"
     }
   }
 
@@ -51,7 +83,6 @@ impl Error for ShaderError {
       ShaderError::ModuleError(ref err) => Some(err),
       ShaderError::GLSLConversionError(ref err) => Some(err),
       ShaderError::ProgramError(ref err) => Some(err),
-      ShaderError::KeyError(ref err) => Some(err)
     }
   }
 }
@@ -73,21 +104,23 @@ impl<In, Out, Uni> TyDesc for Program<In, Out, Uni> {
   const TY_DESC: &'static str = "program";
 }
 
-impl<In, Out, Uni> Load for Program<In, Out, Uni>
-    where In: 'static + Vertex,
+impl<C, In, Out, Uni> Load<C> for Program<In, Out, Uni>
+    where C: 'static,
+          In: 'static + Vertex,
           Out: 'static,
           Uni: 'static + UniformInterface {
-  type Key = LogicalKey;
+  type Key = ProgramKey;
 
-  type Error = ShaderError;
+  type Error = ShaderError<C>;
 
-  fn load(key: Self::Key, storage: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
-    let path = key.as_str().as_ref();
+  fn load(key: Self::Key, storage: &mut Storage<C>, ctx: &mut C) -> Result<Loaded<Self>, Self::Error> {
+    let path = key.0.as_str().as_ref();
 
     load_with::<Self, _, _>(path, move || {
-      let module_key = Key::<Module>::path(path.to_owned()).map_err(|e| ShaderError::KeyError(e))?;
-      let module = storage.get(&module_key).map_err(ShaderError::ModuleError)?;
-      let (transitive, keys) = module.borrow().substitute_imports(&module_key, storage).map_err(|e| ShaderError::ModuleError(StoreErrorOr::ResError(e)))?;
+      let module_key = FSKey::new(path);
+      let module = storage.get(&module_key, ctx).map_err(ShaderError::ModuleError)?;
+      let (transitive, keys) = module.borrow().substitute_imports(&module_key, storage, ctx)
+                                     .map_err(|e| ShaderError::ModuleError(StoreErrorOr::ResError(e)))?;
 
       match transitive.to_glsl_setup() {
         Err(err) => {
@@ -126,7 +159,7 @@ impl<In, Out, Uni> Load for Program<In, Out, Uni>
     })
   }
 
-  impl_reload_passthrough!();
+  impl_reload_passthrough!(C);
 }
 
 fn annotate_shader(s: &str) {

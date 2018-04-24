@@ -7,7 +7,7 @@ use std::fmt;
 use std::ops::Deref;
 use std::path::Path;
 
-use sys::res::{Load, Loaded, PathKey, Storage};
+use sys::res::{FSKey, Load, Loaded, Storage};
 use sys::res::helpers::{TyDesc, load_with};
 
 // Common texture aliases.
@@ -65,12 +65,12 @@ impl TyDesc for TextureImage {
   const TY_DESC: &'static str = "texture image";
 }
 
-impl Load for TextureImage {
-  type Key = PathKey;
+impl<C> Load<C> for TextureImage {
+  type Key = FSKey;
 
   type Error = TextureImageError;
 
-  fn load(key: Self::Key, _: &mut Storage) -> Result<Loaded<Self>, Self::Error> {
+  fn load(key: Self::Key, _: &mut Storage<C>, _: &mut C) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {
@@ -78,7 +78,7 @@ impl Load for TextureImage {
     })
   }
 
-  impl_reload_passthrough!();
+  impl_reload_passthrough!(C);
 }
 
 #[derive(Debug)]
