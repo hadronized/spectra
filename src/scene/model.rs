@@ -11,11 +11,11 @@ use wavefront_obj::obj;
 use sys::res::{FSKey, Load, Loaded, Storage};
 use sys::res::helpers::{TyDesc, load_with};
 use scene::aabb::AABB;
+use sys::ignite::Ignite;
 
 /// A model tree representing the structure of a model.
 ///
 /// It carries `Tess` on the leaves and 'AABB` on the nodes and leaves.
-#[derive(Debug, PartialEq)]
 pub enum ModelTree<V> {
   Leaf(AABB, Tess<V>),
   Node(AABB, Vec<ModelTree<V>>)
@@ -36,12 +36,12 @@ impl TyDesc for ObjModel {
   const TY_DESC: &'static str = "model";
 }
 
-impl<C> Load<C> for ObjModel {
+impl Load<Ignite> for ObjModel {
   type Key = FSKey;
 
   type Error = ModelError;
 
-  fn load(key: Self::Key, _: &mut Storage<C>, _: &mut C) -> Result<Loaded<Self>, Self::Error> {
+  fn load(key: Self::Key, _: &mut Storage<Ignite>, ctx: &mut Ignite) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {
@@ -56,15 +56,15 @@ impl<C> Load<C> for ObjModel {
       // parse the obj file and convert it
       let obj_set = obj::parse(input).map_err(ModelError::ParseFailed)?;
 
-      convert_obj(obj_set).map(Into::into)
+      convert_obj(ctx, obj_set).map(Into::into)
     })
   }
 
-  impl_reload_passthrough!(C);
+  impl_reload_passthrough!(Ignite);
 }
 
 // Turn a wavefront obj object into a `Model`
-fn convert_obj(obj_set: obj::ObjSet) -> Result<ObjModel, ModelError> {
+fn convert_obj(ignite: &mut Ignite, obj_set: obj::ObjSet) -> Result<ObjModel, ModelError> {
   let mut parts = Vec::new();
 
   info!("{} objects to convert…", obj_set.objects.len());
@@ -75,7 +75,7 @@ fn convert_obj(obj_set: obj::ObjSet) -> Result<ObjModel, ModelError> {
     for geometry in &obj.geometry {
       info!("    {} vertices, {} normals, {} tex vertices", obj.vertices.len(), obj.normals.len(), obj.tex_vertices.len());
       let (vertices, indices, mode, aabb) = convert_geometry(geometry, &obj.vertices, &obj.normals, &obj.tex_vertices)?;
-      let part = (aabb, Tess::new(mode, TessVertices::Fill(&vertices), &indices[..]));
+      let part = (aabb, Tess::new(ignite.surface(), mode, TessVertices::Fill(&vertices), &indices[..]));
       parts.push(part);
     }
   }

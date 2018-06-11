@@ -23,8 +23,9 @@ any-cache = "0.2"
 cgmath = "0.15"
 chrono = "0.4"
 clap = "2.27"
-luminance = { path = "../../luminance" } #"0.25"
-luminance-glfw = { path = "../../luminance-glfw" } #"0.4"
+luminance = { path = "../../luminance" }
+luminance-glfw = { path = "../../luminance-glfw" }
+luminance-windowing = { path = "../../luminance-windowing" }
 image = "0.17"
 glsl = "0.7.0"
 num-traits = "0.1"

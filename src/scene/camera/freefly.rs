@@ -1,11 +1,11 @@
 //! A freefly camera with support directional sensitivities.
 
 use cgmath::{ElementWise, InnerSpace, Rotation};
+use luminance_glfw::event::{Action, Key, MouseButton};
 
 use linear::{Quat, V3};
 use render::projection::{Perspective, Projectable, Projection};
 use scene::camera::base::Camera;
-use sys::event::{Action, Key, MouseButton};
 
 #[derive(Clone, Copy, Debug, Deserialize)]
 pub struct Freefly {
