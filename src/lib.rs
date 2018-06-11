@@ -42,18 +42,15 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(const_fn)]
-#![feature(macro_reexport)]
 #![feature(slice_patterns)]
+#![feature(use_extern_macros)]
 
 extern crate alto;
 extern crate any_cache;
 extern crate cgmath;
 extern crate chrono;
-#[macro_reexport(crate_authors, crate_name, crate_version)]
 extern crate clap;
 extern crate image;
-#[macro_reexport(gtup, uniform_interface, uniform_interface_build_struct, uniform_interface,
-                 uniform_interface_impl_trait, uniform_interface_impl_trait_map)]
 pub extern crate luminance;
 extern crate luminance_glfw;
 extern crate glsl;
@@ -68,6 +65,11 @@ extern crate serde_json;
 extern crate vorbis;
 extern crate wavefront_obj;
 extern crate warmy;
+
+// re-exported macros
+pub use clap::{crate_authors, crate_name, crate_version};
+pub use luminance::{gtup, uniform_interface, uniform_interface_build_struct,
+                    uniform_interface_impl_trait, uniform_interface_impl_trait_map};
 
 #[macro_use]
 pub mod report;
