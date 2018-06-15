@@ -7,6 +7,7 @@ use std::fmt;
 use std::ops::Deref;
 use std::path::Path;
 
+use sys::ignite::Ignite;
 use sys::res::{FSKey, Load, Loaded, Storage};
 use sys::res::helpers::{TyDesc, load_with};
 
@@ -20,7 +21,11 @@ pub type TextureDepth32F = Texture<Flat, Dim2, Depth32F>;
 ///
 /// The `linearizer` argument is an option that gives the factor to apply to linearize if needed. Pass
 /// `None` if the texture is already linearized.
-pub fn load_rgba_texture<P>(path: P) -> Result<TextureRGBA32F, TextureImageError> where P: AsRef<Path> {
+pub fn load_rgba_texture<P>(
+  ignite: &mut Ignite,
+  path: P
+) -> Result<TextureRGBA32F, TextureImageError>
+where P: AsRef<Path> {
   info!("loading RGBA texture image: {:?}", path.as_ref());
 
   let img = image::open(path).map_err(TextureImageError::ParseFailed)?.flipv().to_rgba();
@@ -29,7 +34,7 @@ pub fn load_rgba_texture<P>(path: P) -> Result<TextureRGBA32F, TextureImageError
     x as f32 / 255.
   }).collect();
 
-  let tex = Texture::new([w, h], 0, &Sampler::default()).map_err(TextureImageError::ConversionFailed)?;
+  let tex = Texture::new(ignite.surface(), [w, h], 0, &Sampler::default()).map_err(TextureImageError::ConversionFailed)?;
   tex.upload_raw(false, &raw);
 
   Ok(tex)
@@ -50,7 +55,6 @@ pub fn save_rgba_texture<P>(texture: &TextureRGBA32F, path: P) where P: AsRef<Pa
   let _ = image::save_buffer(path, &output, w, h, image::ColorType::RGBA(8));
 }
 
-#[derive(Debug)]
 pub struct TextureImage(pub TextureRGBA32F);
 
 impl Deref for TextureImage {
@@ -65,20 +69,20 @@ impl TyDesc for TextureImage {
   const TY_DESC: &'static str = "texture image";
 }
 
-impl<C> Load<C> for TextureImage {
+impl Load<Ignite> for TextureImage {
   type Key = FSKey;
 
   type Error = TextureImageError;
 
-  fn load(key: Self::Key, _: &mut Storage<C>, _: &mut C) -> Result<Loaded<Self>, Self::Error> {
+  fn load(key: Self::Key, _: &mut Storage<Ignite>, ignite: &mut Ignite) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
     load_with::<Self, _, _>(path, move || {
-      load_rgba_texture(path).map(|rgba32f_tex| TextureImage(rgba32f_tex).into())
+      load_rgba_texture(ignite, path).map(|rgba32f_tex| TextureImage(rgba32f_tex).into())
     })
   }
 
-  impl_reload_passthrough!(C);
+  impl_reload_passthrough!(Ignite);
 }
 
 #[derive(Debug)]
