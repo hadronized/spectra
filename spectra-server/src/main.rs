@@ -36,7 +36,7 @@ fn main() {
             match from_str::<msg::Msg>(&line) {
               Ok(msg) => {
                 deb!("received command: {:?}", msg);
-                sx.send(msg);
+                let _ = sx.send(msg);
               }
 
               Err(e) => err!("wrong command: {}", e)
