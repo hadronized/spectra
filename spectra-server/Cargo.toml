@@ -1,0 +1,17 @@
+[package]
+name = "spectra-server"
+version = "0.1.0"
+authors = ["Dimitri Sabadie <dimitri.sabadie@gmail.com>"]
+license = "BSD-3-Clause"
+description = "spectra-powered demoscene server"
+keywords = ["demoscene", "animation", "graphics"]
+categories = ["game-engines", "multimedia", "rendering", "simulation"]
+homepage = "https://github.com/phaazon/spectra"
+repository = "https://github.com/phaazon/spectra"
+documentation = "https://docs.rs/spectra-server"
+
+[dependencies]
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+spectra = { path = "../spectra", version = "0.13" }
