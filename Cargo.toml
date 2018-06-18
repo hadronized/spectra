@@ -10,8 +10,6 @@ homepage = "https://github.com/phaazon/spectra"
 repository = "https://github.com/phaazon/spectra"
 documentation = "https://docs.rs/spectra"
 
-build = "build.rs"
-
 [dependencies]
 alto = "3.0"
 any-cache = "0.2"
