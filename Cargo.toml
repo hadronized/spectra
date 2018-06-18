@@ -12,11 +12,6 @@ documentation = "https://docs.rs/spectra"
 
 build = "build.rs"
 
-[[bin]]
-name = "spectra"
-path = "spectra/src/main.rs"
-doc = false
-
 [dependencies]
 alto = "3.0"
 any-cache = "0.2"
