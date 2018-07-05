@@ -9,11 +9,14 @@ mod mode;
 mod msg;
 
 use serde_json::de::from_str;
+use spectra::luminance::render_state::RenderState;
+use spectra::luminance::tess::TessSliceIndex;
 use spectra::render::framebuffer::Framebuffer2D;
 use spectra::render::shader::program::{Program, ProgramKey};
 use spectra::render::texture::TextureImage;
 use spectra::sys::ignite::{Action, GraphicsContext, Ignite, Key, Surface, WindowEvent, WindowOpt};
 use spectra::sys::res;
+use spectra::render::fullscreen::Quad;
 use std::io::{BufRead, BufReader};
 use std::net::TcpListener;
 use std::sync::mpsc;
@@ -73,7 +76,7 @@ fn main_loop(mut ignite: Ignite, rx_msg: mpsc::Receiver<msg::Msg>) {
   let mut store: res::Store<Ignite> = res::Store::new(res::StoreOpt::default().set_root("data")).expect("resource store creation");
 
   // for shader toying
-  let shadertoy_quad = Tess::attributeless(tess::Mode::TriangleFan, 0, 4);
+  let shadertoy_quad = Quad::new(ignite.surface());
 
   'l: loop {
     // read events
@@ -95,9 +98,19 @@ fn main_loop(mut ignite: Ignite, rx_msg: mpsc::Receiver<msg::Msg>) {
           let _ = store.get::<_, TextureImage>(&res::FSKey::new(&path), &mut ignite);
         }
 
+        msg::Msg::EmptyMode => {
+          mode = Mode::Empty;
+        }
+
         // we’re asked to load and use a shader program in fullscreen mode
         msg::Msg::ShaderToy(name) => {
-          mode = Mode::ShaderToy(ProgramKey::new(&name));
+          let pkey = ProgramKey::new(&name);
+
+          if let Err(e) = store.get::<_, Program<(), (), ()>>(&pkey, &mut ignite) {
+            err!("{:?}", e);
+          } else {
+            mode = Mode::ShaderToy(pkey);
+          }
         }
       }
     }
@@ -105,19 +118,38 @@ fn main_loop(mut ignite: Ignite, rx_msg: mpsc::Receiver<msg::Msg>) {
     // perform the render
     let _t = ignite.time();
 
-    match mode {
+    let new_mode = match mode {
       Mode::Empty => {
         ignite.surface().pipeline_builder().pipeline(&back_buffer, clear_color, |_, _| {});
+        None
       },
 
       Mode::ShaderToy(ref key) => {
         let program = store.get::<_, Program<(), (), ()>>(key, &mut ignite);
 
         if let Ok(ref program) = program {
+          ignite.surface().pipeline_builder().pipeline(&back_buffer, clear_color, |_, shd_gate| {
+            shd_gate.shade(&program.borrow(), |rdr_gate, _| {
+              rdr_gate.render(RenderState::default(), |tess_gate| {
+                tess_gate.render(ignite.surface(), shadertoy_quad.slice(..));
+              });
+            });
+          });
+
+          None
+        } else {
+          // fail to use shader toy, go back to empty mode
+          Some(Mode::Empty)
         }
       }
+    };
+
+    if let Some(new_mode) = new_mode {
+      mode = new_mode;
     }
 
     ignite.surface().swap_buffers();
+
+    store.sync(&mut ignite);
   }
 }
