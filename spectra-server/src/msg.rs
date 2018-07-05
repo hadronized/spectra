@@ -4,5 +4,6 @@ use std::path::PathBuf;
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Msg {
   Close,
-  LoadTexture(PathBuf)
+  LoadTexture(PathBuf),
+  ShaderToy(String),
 }

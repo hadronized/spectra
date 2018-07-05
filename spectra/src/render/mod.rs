@@ -4,6 +4,7 @@
 //! views.
 
 pub mod color;
+pub mod fullscreen;
 pub mod framebuffer;
 pub mod pipeline;
 pub mod projection;

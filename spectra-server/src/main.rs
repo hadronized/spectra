@@ -5,8 +5,12 @@ extern crate serde_json;
 #[macro_use]
 extern crate spectra;
 
+mod mode;
+mod msg;
+
 use serde_json::de::from_str;
 use spectra::render::framebuffer::Framebuffer2D;
+use spectra::render::shader::program::{Program, ProgramKey};
 use spectra::render::texture::TextureImage;
 use spectra::sys::ignite::{Action, GraphicsContext, Ignite, Key, Surface, WindowEvent, WindowOpt};
 use spectra::sys::res;
@@ -15,7 +19,7 @@ use std::net::TcpListener;
 use std::sync::mpsc;
 use std::thread;
 
-mod msg;
+use mode::Mode;
 
 fn main() {
   match ignite!(960, 540, WindowOpt::default()) {
@@ -65,7 +69,11 @@ fn main_loop(mut ignite: Ignite, rx_msg: mpsc::Receiver<msg::Msg>) {
   let back_buffer = Framebuffer2D::back_buffer(ignite.surface().size());
   let clear_color = [0.8, 0.5, 0.5, 1.];
 
+  let mut mode = Mode::default();
   let mut store: res::Store<Ignite> = res::Store::new(res::StoreOpt::default().set_root("data")).expect("resource store creation");
+
+  // for shader toying
+  let shadertoy_quad = Tess::attributeless(tess::Mode::TriangleFan, 0, 4);
 
   'l: loop {
     // read events
@@ -86,14 +94,30 @@ fn main_loop(mut ignite: Ignite, rx_msg: mpsc::Receiver<msg::Msg>) {
         msg::Msg::LoadTexture(path) => {
           let _ = store.get::<_, TextureImage>(&res::FSKey::new(&path), &mut ignite);
         }
+
+        // we’re asked to load and use a shader program in fullscreen mode
+        msg::Msg::ShaderToy(name) => {
+          mode = Mode::ShaderToy(ProgramKey::new(&name));
+        }
       }
     }
 
     // perform the render
     let _t = ignite.time();
 
-    let surface = ignite.surface();
-    surface.pipeline_builder().pipeline(&back_buffer, clear_color, |_, _| {});
-    surface.swap_buffers();
+    match mode {
+      Mode::Empty => {
+        ignite.surface().pipeline_builder().pipeline(&back_buffer, clear_color, |_, _| {});
+      },
+
+      Mode::ShaderToy(ref key) => {
+        let program = store.get::<_, Program<(), (), ()>>(key, &mut ignite);
+
+        if let Ok(ref program) = program {
+        }
+      }
+    }
+
+    ignite.surface().swap_buffers();
   }
 }
