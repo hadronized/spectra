@@ -1,0 +1,25 @@
+struct V {
+  vec4 chdr_Position;
+  vec2 p;
+};
+
+struct F {
+  vec4 color;
+};
+
+V map_vertex() {
+  vec2[4] P = vec2[](
+    vec2(-1., -1.),
+    vec2( 1., -1.),
+    vec2( 1.,  1.),
+    vec2(-1.,  1.)
+  );
+
+  vec2 p = P[gl_VertexID];
+
+  return V(vec4(p, 0., 1.), p * .5 + .5);
+}
+
+F map_frag_data(V v) {
+  return F(vec4(v.p, .0, 1.));
+}

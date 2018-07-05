@@ -69,7 +69,7 @@ fn main() {
 }
 
 fn main_loop(mut ignite: Ignite, rx_msg: mpsc::Receiver<msg::Msg>) {
-  let back_buffer = Framebuffer2D::back_buffer(ignite.surface().size());
+  let mut back_buffer = Framebuffer2D::back_buffer(ignite.surface().size());
   let clear_color = [0.8, 0.5, 0.5, 1.];
 
   let mut mode = Mode::default();
@@ -84,6 +84,9 @@ fn main_loop(mut ignite: Ignite, rx_msg: mpsc::Receiver<msg::Msg>) {
       match event {
         WindowEvent::Close | WindowEvent::Key(Key::Escape, _, Action::Release, _) => break 'l,
 
+        WindowEvent::FramebufferSize(w, h) => {
+          back_buffer = Framebuffer2D::back_buffer([w as u32, h as u32]);
+        }
         _ => ()
       }
     }
