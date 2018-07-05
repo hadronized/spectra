@@ -49,7 +49,7 @@ macro_rules! impl_load_json {
       fn load(key: Self::Key, _: &mut $crate::sys::res::Storage<C>, _: &mut C) -> Result<$crate::sys::res::Loaded<Self>, Self::Error> {
         let path = key.as_path();
 
-        $crate::sys::res::helpers::load_with::<Self, _, _>(path, || {
+        $crate::sys::res::helpers::load_with::<Self, _, _, _>(path, || {
           let fh = ::std::fs::File::open(path).map_err(|_| $crate::sys::res::encoding::JSONError::FileNotFound(path.to_owned()))?;
 
           let decoded: $ty_ = ::serde_json::from_reader(fh).map_err($crate::sys::res::encoding::JSONError::JSON)?;

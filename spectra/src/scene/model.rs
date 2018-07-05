@@ -44,7 +44,7 @@ impl Load<Ignite> for ObjModel {
   fn load(key: Self::Key, _: &mut Storage<Ignite>, ctx: &mut Ignite) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
-    load_with::<Self, _, _>(path, move || {
+    load_with::<Self, _, _, _>(path, move || {
       let mut input = String::new();
 
       // load the data directly into memory; no buffering nor streaming

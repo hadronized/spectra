@@ -180,7 +180,7 @@ impl<C, T> Load<C> for Spline<T> where T: 'static + SplineDeserializerAdapter {
   fn load(key: Self::Key, _: &mut Storage<C>, _: &mut C) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
-    load_with::<Self, _, _>(path, move || {
+    load_with::<Self, _, _, _>(path, move || {
       let file = File::open(path).map_err(|_| SplineError::FileNotFound(path.to_owned()))?;
       let keys: Vec<Key<T::Deserialized>> = from_reader(file).map_err(SplineError::ParseFailed)?;
 

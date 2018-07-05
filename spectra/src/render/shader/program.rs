@@ -116,7 +116,7 @@ impl<C, In, Out, Uni> Load<C> for Program<In, Out, Uni>
   fn load(key: Self::Key, storage: &mut Storage<C>, ctx: &mut C) -> Result<Loaded<Self>, Self::Error> {
     let path = key.0.as_str().as_ref();
 
-    load_with::<Self, _, _>(path, move || {
+    load_with::<Self, _, _, _>(path, move || {
       let module_key = FSKey::new(path);
       let module = storage.get(&module_key, ctx).map_err(ShaderError::ModuleError)?;
       let (transitive, keys) = module.borrow().substitute_imports(&module_key, storage, ctx)

@@ -71,7 +71,7 @@ impl<C, A> Load<C> for Camera<A> where A: 'static + Default + DeserializeOwned {
   fn load(key: Self::Key, _: &mut Storage<C>, _: &mut C) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
-    load_with::<Self, _, _>(path, move || {
+    load_with::<Self, _, _, _>(path, move || {
       let manifest: Manifest<A> = {
         let file = File::open(path).map_err(|_| CameraError::FileNotFound(path.to_owned()))?;
         from_reader(file).map_err(CameraError::ParseFailed)?

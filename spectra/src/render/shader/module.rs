@@ -492,7 +492,7 @@ impl<C> Load<C> for Module {
   fn load(key: Self::Key, _: &mut Storage<C>, _: &mut C) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
-    load_with::<Self, _, _>(path, move || {
+    load_with::<Self, _, _, _>(path, move || {
       let mut fh = File::open(path).map_err(|_| ModuleError::FileNotFound(path.into()))?;
       let mut src = String::new();
       let _ = fh.read_to_string(&mut src);

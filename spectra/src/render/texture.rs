@@ -77,7 +77,7 @@ impl Load<Ignite> for TextureImage {
   fn load(key: Self::Key, _: &mut Storage<Ignite>, ignite: &mut Ignite) -> Result<Loaded<Self>, Self::Error> {
     let path = key.as_path();
 
-    load_with::<Self, _, _>(path, move || {
+    load_with::<Self, _, _, _>(path, move || {
       load_rgba_texture(ignite, path).map(|rgba32f_tex| TextureImage(rgba32f_tex).into())
     })
   }
