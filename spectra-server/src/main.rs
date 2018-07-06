@@ -7,8 +7,8 @@ extern crate spectra;
 
 mod mode;
 mod msg;
+mod server;
 
-use serde_json::de::from_str;
 use spectra::luminance::render_state::RenderState;
 use spectra::luminance::tess::TessSliceIndex;
 use spectra::render::framebuffer::Framebuffer2D;
@@ -17,46 +17,19 @@ use spectra::render::texture::TextureImage;
 use spectra::sys::ignite::{Action, GraphicsContext, Ignite, Key, Surface, WindowEvent, WindowOpt};
 use spectra::sys::res;
 use spectra::render::fullscreen::Quad;
-use std::io::{BufRead, BufReader};
-use std::net::TcpListener;
-use std::sync::mpsc;
-use std::thread;
+use std::sync::mpsc::Receiver;
 
+use msg::Msg;
 use mode::Mode;
+use server::core::start_server;
+use server::tcp::TcpServer;
 
 fn main() {
   match ignite!(960, 540, WindowOpt::default()) {
     Ok(ignite) => {
       deb!("created ignite");
 
-      let (sx, rx) = mpsc::channel();
-
-      thread::spawn(move || {
-        let listener = TcpListener::bind("127.0.0.1:6666").unwrap(); 
-
-        for stream in listener.incoming() {
-          let stream = stream.unwrap();
-
-          deb!("stream connected: {:?}", stream);
-
-          for line in  BufReader::new(stream).lines() {
-            let line = line.unwrap();
-
-            match from_str::<msg::Msg>(&line) {
-              Ok(msg) => {
-                deb!("received command: {:?}", msg);
-                let _ = sx.send(msg);
-              }
-
-              Err(e) => err!("wrong command: {}", e)
-            }
-
-          }
-
-          deb!("stream disconnected");
-        }
-
-      });
+      let rx = start_server(TcpServer);
 
       main_loop(ignite, rx);
       deb!("bye");
@@ -68,7 +41,7 @@ fn main() {
   }
 }
 
-fn main_loop(mut ignite: Ignite, rx_msg: mpsc::Receiver<msg::Msg>) {
+fn main_loop(mut ignite: Ignite, rx_msg: Receiver<Msg>) {
   let mut back_buffer = Framebuffer2D::back_buffer(ignite.surface().size());
   let clear_color = [0.8, 0.5, 0.5, 1.];
 
