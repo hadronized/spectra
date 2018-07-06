@@ -30,12 +30,10 @@ impl Server for TcpServer {
 
             Err(e) => err!("wrong command: {}", e)
           }
-
         }
 
         deb!("stream disconnected");
       }
-
     });
   }
 }

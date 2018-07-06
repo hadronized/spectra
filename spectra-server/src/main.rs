@@ -4,6 +4,7 @@ extern crate serde_derive;
 extern crate serde_json;
 #[macro_use]
 extern crate spectra;
+extern crate ws;
 
 mod mode;
 mod msg;
@@ -23,13 +24,14 @@ use msg::Msg;
 use mode::Mode;
 use server::core::start_server;
 use server::tcp::TcpServer;
+use server::ws::WSServer;
 
 fn main() {
   match ignite!(960, 540, WindowOpt::default()) {
     Ok(ignite) => {
       deb!("created ignite");
 
-      let rx = start_server(TcpServer);
+      let rx = start_server(WSServer);
 
       main_loop(ignite, rx);
       deb!("bye");
