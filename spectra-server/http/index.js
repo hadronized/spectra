@@ -1,6 +1,7 @@
 let s = new WebSocket("ws://localhost:1234");
 
 const EMPTY_MODE = JSON.stringify("empty_mode");
+const CLOSE = JSON.stringify("close");
 
 function send_empty_mode() {
   s.send(EMPTY_MODE);
@@ -22,4 +23,8 @@ function on_input_shadertoy_mode() {
   if (name.value.length !== 0) {
     send_shadertoy_mode(name.value);
   }
+}
+
+function on_input_close() {
+  s.send(CLOSE);
 }

@@ -12,6 +12,7 @@
     <section class="section">
       <fieldset id="mode">
         <legend>Mode to use spectra in</legend>
+
         <div>
           <input type="radio" id="empty" name="mode" value="empty" checked oninput="on_input_empty_mode()"/>
           <label for="empty">Empty</label>
@@ -21,6 +22,14 @@
           <input type="radio" id="shadertoy" name="mode" value="shadertoy" oninput="on_input_shadertoy_mode()"/>
           <label for="shadertoy">Shader Toy</label>
           <input type="text" id="shadertoy_name" name="mode" placeholder="shader to use"/ onfocusout="on_input_shadertoy_mode()">
+        </div>
+      </fieldset>
+
+      <fieldset id="misc">
+        <legend>Miscellaneous</legend>
+
+        <div>
+          <input type="button" id="close" name="misc" value="Quit" onclick="on_input_close()"/>
         </div>
       </fieldset>
     </section>
