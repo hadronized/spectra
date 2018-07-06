@@ -14,5 +14,12 @@ function send_shadertoy_mode(shader_key) {
 on_input_empty_mode = send_empty_mode;
 
 function on_input_shadertoy_mode() {
-  send_shadertoy_mode('shaders.test');
+  let shadertoy_radio = document.getElementById('shadertoy');
+  shadertoy_radio.checked = true;
+
+  let name = document.getElementById('shadertoy_name');
+
+  if (name.value.length !== 0) {
+    send_shadertoy_mode(name.value);
+  }
 }

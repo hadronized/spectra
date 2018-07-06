@@ -2,22 +2,27 @@
   <head>
     <title>Spectra Server</title>
     <meta charset="utf-8"/>
+    <link rel="stylesheet" type ="text/css" href="bulma.css"/>
+    <link rel="stylesheet" type ="text/css" href="font-awesome.min.css"/>
     <link rel="stylesheet" type ="text/css" href="index.css"/>
   </head>
 
   <body>
     <script src="index.js"></script>
-    <fieldset id="mode">
-      <legend>Mode to use spectra in</legend>
-      <div>
-        <input type="radio" id="empty" name="mode" value="empty" checked oninput="on_input_empty_mode()"/>
-        <label for="empty">Empty</label>
-      </div>
+    <section class="section">
+      <fieldset id="mode">
+        <legend>Mode to use spectra in</legend>
+        <div>
+          <input type="radio" id="empty" name="mode" value="empty" checked oninput="on_input_empty_mode()"/>
+          <label for="empty">Empty</label>
+        </div>
 
-      <div>
-        <input type="radio" id="shadertoy" name="mode" value="shadertoy" oninput="on_input_shadertoy_mode()"/>
-        <label for="shadertoy">Shader Toy</label>
-      </div>
-    </form>
+        <div>
+          <input type="radio" id="shadertoy" name="mode" value="shadertoy" oninput="on_input_shadertoy_mode()"/>
+          <label for="shadertoy">Shader Toy</label>
+          <input type="text" id="shadertoy_name" name="mode" placeholder="shader to use"/ onfocusout="on_input_shadertoy_mode()">
+        </div>
+      </fieldset>
+    </section>
   </body>
 </html>
