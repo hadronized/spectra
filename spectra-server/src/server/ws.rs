@@ -12,7 +12,7 @@ impl Server for WSServer {
   fn spawn(self, sx: Sender<Msg>) {
     thread::spawn(move || {
       loop {
-        let _ = listen("127.0.0.1:6666", |_| {
+        let _ = listen("127.0.0.1:1234", |_| {
           deb!("stream connected");
 
           |input| {
