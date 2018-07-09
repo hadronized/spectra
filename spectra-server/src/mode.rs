@@ -1,6 +1,6 @@
 //! Current mode the server is in.
 
-use spectra::render::shader::program::ProgramKey;
+use spectra::render::shader::ProgramKey;
 
 pub enum Mode {
   /// Nothing interesting.

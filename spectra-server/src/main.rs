@@ -13,7 +13,7 @@ mod server;
 use spectra::luminance::render_state::RenderState;
 use spectra::luminance::tess::TessSliceIndex;
 use spectra::render::framebuffer::Framebuffer2D;
-use spectra::render::shader::program::{Program, ProgramKey};
+use spectra::render::shader::{Program, ProgramKey};
 use spectra::render::texture::TextureImage;
 use spectra::sys::ignite::{Action, GraphicsContext, Ignite, Key, Surface, WindowEvent, WindowOpt};
 use spectra::sys::res;

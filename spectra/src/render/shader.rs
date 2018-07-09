@@ -7,6 +7,8 @@
 //! details. You are not supposed to write *shader programs* directly, but instead, you write one or
 //! several *shader modules* and are automatically handed a *shader program* based on the analysis
 //! of the *shader modules* you wrote and how you combined them.
+
+use cheddar::{GLSLConversionError, Module};
 use luminance::shader::program::Program as LProgram;
 pub use luminance::shader::program::{ProgramError, Uniform, Uniformable, UniformBuilder,
                                      UniformInterface, UniformWarning};
@@ -16,8 +18,6 @@ use std::fmt;
 use std::ops::Deref;
 use std::path::Path;
 
-use render::shader::cheddar::syntax::GLSLConversionError;
-use render::shader::module::Module;
 use sys::res::{DepKey, FSKey, Key, Load, Loaded, LogicalKey, Storage, StoreErrorOr};
 use sys::res::helpers::{TyDesc, load_with};
 

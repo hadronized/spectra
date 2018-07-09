@@ -7,6 +7,7 @@
 extern crate alto;
 extern crate any_cache;
 extern crate cgmath;
+extern crate cheddar;
 extern crate chrono;
 extern crate clap;
 extern crate image;
@@ -14,8 +15,6 @@ pub extern crate luminance;
 extern crate luminance_glfw;
 extern crate luminance_windowing;
 extern crate glsl;
-#[macro_use]
-extern crate nom;
 extern crate num_traits;
 //extern crate rusttype; // FIXME: uncomment when we support text render back
 extern crate serde;
