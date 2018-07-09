@@ -27,14 +27,16 @@ use server::core::{Server, start_server};
 #[cfg(not(feature = "websocket_server"))] use server::tcp::TcpServer;
 #[cfg(feature = "websocket_server")] use server::ws::WSServer;
 
-#[cfg(feature = "websocket_server")]
 fn get_server() -> impl Server {
-  WSServer
-}
+  #[cfg(feature = "websocket_server")]
+  {
+    WSServer
+  }
 
-#[cfg(not(feature = "websocket_server"))]
-fn get_server() -> impl Server {
-  TcpServer
+  #[cfg(not(feature = "websocket_server"))]
+  {
+    TcpServer
+  }
 }
 
 fn main() {
