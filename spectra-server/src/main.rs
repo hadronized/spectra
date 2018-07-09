@@ -22,16 +22,27 @@ use std::sync::mpsc::Receiver;
 
 use msg::Msg;
 use mode::Mode;
-use server::core::start_server;
-use server::tcp::TcpServer;
-use server::ws::WSServer;
+use server::core::{Server, start_server};
+
+#[cfg(not(websocket_server))] use server::tcp::TcpServer;
+#[cfg(websocket_server)] use server::ws::WSServer;
+
+#[cfg(websocket_server)]
+fn get_server() -> impl Server {
+  WSServer
+}
+
+#[cfg(not(websocket_server))]
+fn get_server() -> impl Server {
+  TcpServer
+}
 
 fn main() {
   match ignite!(960, 540, WindowOpt::default()) {
     Ok(ignite) => {
       deb!("created ignite");
 
-      let rx = start_server(WSServer);
+      let rx = start_server(get_server());
 
       main_loop(ignite, rx);
       deb!("bye");
