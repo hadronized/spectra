@@ -11,10 +11,14 @@ repository = "https://github.com/phaazon/spectra"
 documentation = "https://docs.rs/spectra-server"
 
 [features]
+websocket_server = ["ws"]
 
 [dependencies]
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 spectra = { path = "../spectra", version = "0.13" }
-ws = "0.7"
+
+[dependencies.ws]
+version = "0.7"
+optional = true

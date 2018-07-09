@@ -1,3 +1,3 @@
 pub mod core;
-#[cfg(not(websocket_server))] pub mod tcp;
-#[cfg(websocket_server)] pub mod ws;
+#[cfg(not(feature = "websocket_server"))] pub mod tcp;
+#[cfg(feature = "websocket_server")] pub mod ws;

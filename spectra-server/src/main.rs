@@ -4,7 +4,7 @@ extern crate serde_derive;
 extern crate serde_json;
 #[macro_use]
 extern crate spectra;
-extern crate ws;
+#[cfg(feature = "websocket_server")] extern crate ws;
 
 mod mode;
 mod msg;
@@ -24,15 +24,15 @@ use msg::Msg;
 use mode::Mode;
 use server::core::{Server, start_server};
 
-#[cfg(not(websocket_server))] use server::tcp::TcpServer;
-#[cfg(websocket_server)] use server::ws::WSServer;
+#[cfg(not(feature = "websocket_server"))] use server::tcp::TcpServer;
+#[cfg(feature = "websocket_server")] use server::ws::WSServer;
 
-#[cfg(websocket_server)]
+#[cfg(feature = "websocket_server")]
 fn get_server() -> impl Server {
   WSServer
 }
 
-#[cfg(not(websocket_server))]
+#[cfg(not(feature = "websocket_server"))]
 fn get_server() -> impl Server {
   TcpServer
 }
