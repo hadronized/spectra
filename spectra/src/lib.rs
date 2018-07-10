@@ -14,9 +14,7 @@ extern crate image;
 pub extern crate luminance;
 extern crate luminance_glfw;
 extern crate luminance_windowing;
-extern crate glsl;
 extern crate num_traits;
-//extern crate rusttype; // FIXME: uncomment when we support text render back
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
