@@ -1,6 +1,5 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(const_fn)]
 #![feature(slice_patterns)]
 #![feature(use_extern_macros)]
 
