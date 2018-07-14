@@ -4,7 +4,6 @@
 #![feature(use_extern_macros)]
 
 extern crate alto;
-extern crate any_cache;
 extern crate cgmath;
 extern crate cheddar;
 extern crate chrono;
