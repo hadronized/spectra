@@ -1,5 +1,5 @@
 use spectra::render::framebuffer::Framebuffer2D;
-use spectra::sys::ignite::{Action, GraphicsContext, Ignite, Key, Surface, WindowEvent, WindowOpt};
+use spectra::sys::ignite::{Action, GraphicsContext, Key, Surface, WindowEvent, WindowOpt};
 use spectra::sys::time::Time;
 
 /// Start a demo application.
