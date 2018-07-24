@@ -14,8 +14,7 @@ extern crate luminance_glfw;
 extern crate luminance_windowing;
 extern crate num_traits;
 extern crate serde;
-#[macro_use]
-extern crate serde_derive;
+#[macro_use] extern crate serde_derive;
 extern crate serde_json;
 extern crate vorbis;
 extern crate wavefront_obj;
@@ -26,17 +25,10 @@ pub use clap::{crate_authors, crate_name, crate_version};
 pub use luminance::{gtup, uniform_interface, uniform_interface_build_struct,
                     uniform_interface_impl_trait, uniform_interface_impl_trait_map};
 
-#[macro_use]
-pub mod report;
-#[macro_use]
-pub mod sys;
-
-pub mod audio;
-//pub mod gui;
-pub mod linear;
-//pub mod overlay;
-//pub mod text;
-
+#[macro_use] pub mod report;
+#[macro_use] pub mod sys;
 pub mod anim;
+pub mod audio;
+pub mod linear;
 pub mod render;
 pub mod scene;

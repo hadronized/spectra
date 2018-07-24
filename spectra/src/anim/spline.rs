@@ -12,17 +12,14 @@ use linear::{Scale, Quat, V2, V3, V4};
 use sys::res::{FSKey, Load, Loaded, Storage};
 use sys::res::helpers::{TyDesc, load_with};
 
-/// Time used as sampling type in splines.
-pub type Time = f32;
-
 /// A spline control point.
 ///
 /// This type associates a value at a given time. It also contains an interpolation object used to
 /// determine how to interpolate values on the segment defined by this key and the next one.
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]
 pub struct Key<T> {
-  /// Time at which the `Key` should be reached.
-  pub t: Time,
+  /// f32 at which the `Key` should be reached.
+  pub t: f32,
   /// Actual value.
   pub value: T,
   /// Interpolation mode.
@@ -32,7 +29,7 @@ pub struct Key<T> {
 
 impl<T> Key<T> {
   /// Create a new key.
-  pub fn new(t: Time, value: T, interpolation: Interpolation) -> Self {
+  pub fn new(t: f32, value: T, interpolation: Interpolation) -> Self {
     Key {
       t: t,
       value: value,
@@ -97,7 +94,7 @@ impl<T> Spline<T> {
   /// sampling impossible. For instance, `Interpolate::CatmullRom` requires *four* keys. If you’re
   /// near the beginning of the spline or its end, ensure you have enough keys around to make the
   /// sampling.
-  pub fn sample(&self, t: Time) -> Option<T> where T: Interpolate {
+  pub fn sample(&self, t: f32) -> Option<T> where T: Interpolate {
     let keys = &self.0;
     let i = search_lower_cp(keys, t);
 
@@ -154,7 +151,7 @@ impl<T> Spline<T> {
   /// # Panic
   ///
   /// This function panics if you have no key.
-  pub fn clamped_sample(&self, t: Time) -> T where T: Interpolate {
+  pub fn clamped_sample(&self, t: f32) -> T where T: Interpolate {
     let first = self.0.first().unwrap();
     let last = self.0.last().unwrap();
 
@@ -313,63 +310,63 @@ impl<'a, T> IntoIterator for &'a Spline<T> {
 /// sampling on splines.
 pub trait Interpolate: Copy {
   /// Linear interpolation.
-  fn lerp(a: Self, b: Self, t: Time) -> Self;
+  fn lerp(a: Self, b: Self, t: f32) -> Self;
   /// Cubic hermite interpolation.
   ///
   /// Default to `Self::lerp`.
-  fn cubic_hermite(_: (Self, Time), a: (Self, Time), b: (Self, Time), _: (Self, Time), t: Time) -> Self {
+  fn cubic_hermite(_: (Self, f32), a: (Self, f32), b: (Self, f32), _: (Self, f32), t: f32) -> Self {
     Self::lerp(a.0, b.0, t)
   }
 }
 
 impl Interpolate for f32 {
-  fn lerp(a: Self, b: Self, t: Time) -> Self {
+  fn lerp(a: Self, b: Self, t: f32) -> Self {
     a * (1. - t) + b * t
   }
 
-  fn cubic_hermite(x: (Self, Time), a: (Self, Time), b: (Self, Time), y: (Self, Time), t: Time) -> Self {
+  fn cubic_hermite(x: (Self, f32), a: (Self, f32), b: (Self, f32), y: (Self, f32), t: f32) -> Self {
     cubic_hermite(x, a, b, y, t)
   }
 }
 
 impl Interpolate for V2<f32> {
-  fn lerp(a: Self, b: Self, t: Time) -> Self {
+  fn lerp(a: Self, b: Self, t: f32) -> Self {
     a.lerp(b, t)
   }
 
-  fn cubic_hermite(x: (Self, Time), a: (Self, Time), b: (Self, Time), y: (Self, Time), t: Time) -> Self {
+  fn cubic_hermite(x: (Self, f32), a: (Self, f32), b: (Self, f32), y: (Self, f32), t: f32) -> Self {
     cubic_hermite(x, a, b, y, t)
   }
 }
 
 impl Interpolate for V3<f32> {
-  fn lerp(a: Self, b: Self, t: Time) -> Self {
+  fn lerp(a: Self, b: Self, t: f32) -> Self {
     a.lerp(b, t)
   }
 
-  fn cubic_hermite(x: (Self, Time), a: (Self, Time), b: (Self, Time), y: (Self, Time), t: Time) -> Self {
+  fn cubic_hermite(x: (Self, f32), a: (Self, f32), b: (Self, f32), y: (Self, f32), t: f32) -> Self {
     cubic_hermite(x, a, b, y, t)
   }
 }
 
 impl Interpolate for V4<f32> {
-  fn lerp(a: Self, b: Self, t: Time) -> Self {
+  fn lerp(a: Self, b: Self, t: f32) -> Self {
     a.lerp(b, t)
   }
 
-  fn cubic_hermite(x: (Self, Time), a: (Self, Time), b: (Self, Time), y: (Self, Time), t: Time) -> Self {
+  fn cubic_hermite(x: (Self, f32), a: (Self, f32), b: (Self, f32), y: (Self, f32), t: f32) -> Self {
     cubic_hermite(x, a, b, y, t)
   }
 }
 
 impl Interpolate for Quat<f32> {
-  fn lerp(a: Self, b: Self, t: Time) -> Self {
+  fn lerp(a: Self, b: Self, t: f32) -> Self {
     a.nlerp(b, t)
   }
 }
 
 impl Interpolate for Scale {
-  fn lerp(a: Self, b: Self, t: Time) -> Self {
+  fn lerp(a: Self, b: Self, t: f32) -> Self {
     let av = V3::new(a.x, a.y, a.z);
     let bv = V3::new(b.x, b.y, b.z);
     let r = av.lerp(bv, t);
@@ -379,8 +376,8 @@ impl Interpolate for Scale {
 }
 
 // Default implementation of Interpolate::cubic_hermit.
-pub fn cubic_hermite<T>(x: (T, Time), a: (T, Time), b: (T, Time), y: (T, Time), t: Time) -> T
-    where T: Copy + Add<Output = T> + Sub<Output = T> + Mul<Time, Output = T> + Div<Time, Output = T> {
+pub fn cubic_hermite<T>(x: (T, f32), a: (T, f32), b: (T, f32), y: (T, f32), t: f32) -> T
+    where T: Copy + Add<Output = T> + Sub<Output = T> + Mul<f32, Output = T> + Div<f32, Output = T> {
   // time stuff
   let t2 = t * t;
   let t3 = t2 * t;
@@ -395,12 +392,12 @@ pub fn cubic_hermite<T>(x: (T, Time), a: (T, Time), b: (T, Time), y: (T, Time), 
 }
 
 // Normalize a time ([0;1]) given two control points.
-pub fn normalize_time<T>(t: Time, cp: &Key<T>, cp1: &Key<T>) -> Time {
+pub fn normalize_time<T>(t: f32, cp: &Key<T>, cp1: &Key<T>) -> f32 {
   (t - cp.t) / (cp1.t - cp.t)
 }
 
 // Find the lower control point corresponding to a given time.
-fn search_lower_cp<T>(cps: &[Key<T>], t: Time) -> Option<usize> {
+fn search_lower_cp<T>(cps: &[Key<T>], t: f32) -> Option<usize> {
   let mut i = 0;
   let len = cps.len();
 
