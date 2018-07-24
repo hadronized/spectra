@@ -13,7 +13,11 @@ pub struct AnimatedParam<'a> {
 }
 
 impl<'a> AnimatedParam<'a> {
-  pub fn new<T, Q>(uniform: Uniform<Q>, spline: Res<Spline<T>>) -> Self where T: 'a + Interpolate, Q: 'a + From<T> + Uniformable {
+  pub fn new<T, Q>(
+    uniform: Uniform<Q>,
+    spline: Res<Spline<T>>
+  ) -> Self
+  where T: 'a + Interpolate, Q: 'a + From<T> + Uniformable {
     Self {
       update_: Box::new(move |t| {
         if let Some(value) = spline.borrow().sample(t.as_f32()) {
@@ -21,9 +25,5 @@ impl<'a> AnimatedParam<'a> {
         }
       })
     }
-  }
-
-  pub fn update(&mut self, t: Time) {
-    (self.update_)(t);
   }
 }
