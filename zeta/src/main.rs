@@ -9,22 +9,23 @@ use spectra::sys::time::Time;
 
 use shadertoy::AnimatedParam;
 
-struct D<'a> {
-  animated_param: AnimatedParam<'a>
+struct D {
 }
 
-impl<'a> D<'a> {
+impl D {
   fn new(store: &mut Store<Context>) -> Self {
-    D
+    D {}
   }
 }
 
-impl<'a> app_demo::Demo for D<'a> {
+impl app_demo::Demo for D {
   fn render_frame(&mut self, t: Time)  {
   }
 }
 
-struct Context;
+struct Context {
+
+}
 
 fn main() {
   let mut store: Store<Context> = Store::new(StoreOpt::default().set_root("data")).expect("store creation");

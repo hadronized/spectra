@@ -1,9 +1,10 @@
 //! Shader Toy.
 
 use spectra::anim::spline::{Interpolate, Spline};
-use spectra::render::shader::{Uniform, Uniformable};
+use spectra::render::shader::{ProgramError, Uniform, UniformBuilder, UniformInterface, UniformWarning, Uniformable};
 use spectra::sys::res::Res;
 use spectra::sys::time::Time;
+use std::collections::HashMap;
 
 /// Animated parameter.
 ///
@@ -27,3 +28,16 @@ impl<'a> AnimatedParam<'a> {
     }
   }
 }
+
+/// Set of animated params.
+///
+/// This is a shader uniform interface that will automatically update its parameters whenever they
+/// change. In order 
+pub struct AnimatedParams<'a> {
+  params: HashMap<String, AnimatedParam<'a>>
+}
+
+//impl<'a> UniformInterface for AnimatedParams<'a> {
+//  fn uniform_interface(builder: UniformBuilder, env: ) -> Result<(Self, UniformWarning), ProgramError> {
+//  }
+//}
