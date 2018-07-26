@@ -56,7 +56,7 @@ struct AnimatedParamsContext<'a, C> where C: 'a {
 
 // FIXME: for now, we just load 1D floating spline parameters
 impl<'a, 'b, C> UniformInterface<AnimatedParamsContext<'b, C>> for AnimatedParams<'a> where C: 'b {
-  fn uniform_interface(builder: UniformBuilder, env: AnimatedParamsContext<C>) -> Result<(Self, Vec<UniformWarning>), ProgramError> {
+  fn uniform_interface(builder: &mut UniformBuilder, env: AnimatedParamsContext<C>) -> Result<Self, ProgramError> {
     let AnimatedParamsContext { keys, mut store, ctx } = env;
 
     // build the key-value iterator
@@ -70,6 +70,6 @@ impl<'a, 'b, C> UniformInterface<AnimatedParamsContext<'b, C>> for AnimatedParam
       params: kv.collect()
     };
 
-    Ok((params, Vec::new()))
+    Ok(params)
   }
 }
