@@ -24,7 +24,7 @@ pub trait Demo: Sized {
   fn init(store: &mut Store<Self::Context>, ctx: &mut Self::Context) -> Result<Self, Self::Error>;
 
   /// Render the demo at a given time. 
-  fn render_at(&mut self, t: Time, back_buffer: &Framebuffer2D<(), ()>, builder: Builder);
+  fn render_at(&mut self, t: Time, back_buffer: &BackBuffer, builder: Builder);
 
   /// Resize the demo when the framebuffer gets resized.
   fn resize(&mut self, width: u32, height: u32);
@@ -32,8 +32,10 @@ pub trait Demo: Sized {
 
 #[derive(Debug)]
 pub enum DemoError {
-  CannotCreateStore(StoreError)
+  CannotCreateStore(StoreError),
 }
+
+pub type BackBuffer = Framebuffer2D<(), ()>;
 
 // Run a demo.
 pub fn run_demo<T>(mut ignite: Ignite, ctx: &mut T::Context) -> Result<(), T::Error> where T: Demo {

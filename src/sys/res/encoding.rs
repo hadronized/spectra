@@ -41,7 +41,7 @@ macro_rules! impl_load_json {
       const TY_DESC: &'static str = $desc;
     }
 
-    impl<C> $crate::sys::res::Load<C> for $ty_ {
+    impl<C> $crate::sys::res::Load<C, $crate::sys::res::methods::JSON> for $ty_ {
       type Key = $crate::sys::res::FSKey;
 
       type Error = $crate::sys::res::encoding::JSONError;
@@ -58,7 +58,7 @@ macro_rules! impl_load_json {
         })
       }
 
-      impl_reload_passthrough!(C);
+      impl_reload_passthrough!(C, $crate::sys::res::methods::JSON);
     }
   }
 }
@@ -74,7 +74,7 @@ macro_rules! impl_load_json_via {
       const TY_DESC: &'static str = $desc;
     }
 
-    impl<C> $crate::sys::res::Load<C> for $ty_ {
+    impl<C> $crate::sys::res::Load<C, $crate::sys::res::methods::JSON> for $ty_ {
       type Key = $crate::sys::res::FSKey;
 
       type Error = $crate::sys::res::encoding::JSONError;
