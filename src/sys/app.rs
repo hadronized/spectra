@@ -5,6 +5,7 @@ pub use sys::res::Store;
 pub use sys::time::Time;
 pub use sys::ignite::WindowOpt;
 
+use render::framebuffer::Framebuffer2D;
 use sys::res::{StoreError, StoreOpt};
 use sys::ignite::{Action, Ignite, GraphicsContext, Key, Surface, WindowEvent};
 use sys::time::Monotonic;
@@ -23,7 +24,10 @@ pub trait Demo: Sized {
   fn init(store: &mut Store<Self::Context>, ctx: &mut Self::Context) -> Result<Self, Self::Error>;
 
   /// Render the demo at a given time. 
-  fn render_at(&mut self, t: Time, builder: Builder);
+  fn render_at(&mut self, t: Time, back_buffer: &Framebuffer2D<(), ()>, builder: Builder);
+
+  /// Resize the demo when the framebuffer gets resized.
+  fn resize(&mut self, width: u32, height: u32);
 }
 
 #[derive(Debug)]
@@ -39,14 +43,26 @@ pub fn run_demo<T>(mut ignite: Ignite, ctx: &mut T::Context) -> Result<(), T::Er
   // initialize the demo
   let mut demo = T::init(&mut store, ctx)?;
 
+  // create a bunch of objects needed for rendering
+  let mut back_buffer = Framebuffer2D::back_buffer(ignite.surface().size());
+
   // loop over time and run the demo
   let t_start = Monotonic::now();
   'run: loop {
     // treat events first
     for event in ignite.surface().poll_events() {
       match event {
+        // quit event
         WindowEvent::Close | WindowEvent::Key(Key::Escape, _, Action::Release, _) => {
           break 'run Ok(());
+        }
+
+        // resize event
+        WindowEvent::FramebufferSize(w, h) => {
+          let size = [w as u32, h as u32];
+
+          back_buffer = Framebuffer2D::back_buffer(size);
+          demo.resize(size[0], size[1]);
         }
 
         _ => ()
@@ -59,7 +75,7 @@ pub fn run_demo<T>(mut ignite: Ignite, ctx: &mut T::Context) -> Result<(), T::Er
       let surface = ignite.surface();
       let builder = surface.pipeline_builder();
 
-      demo.render_at(t, builder);
+      demo.render_at(t, &back_buffer, builder);
       surface.swap_buffers();
     });
   }
