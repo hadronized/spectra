@@ -1,7 +1,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(slice_patterns)]
-#![feature(use_extern_macros)]
 
 extern crate alto;
 extern crate cgmath;
@@ -16,6 +15,7 @@ extern crate num_traits;
 extern crate serde;
 #[macro_use] extern crate serde_derive;
 extern crate serde_json;
+extern crate splines;
 extern crate vorbis;
 extern crate wavefront_obj;
 extern crate warmy;
