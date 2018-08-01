@@ -29,5 +29,9 @@ vorbis = "0.1"
 wavefront_obj = "5.1"
 warmy = "0.7"
 
+[dependencies.splines]
+version = "0.2"
+features = ["serialization"]
+
 [dev-dependencies]
 rand = "0.5"
