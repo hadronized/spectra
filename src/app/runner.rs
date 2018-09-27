@@ -15,9 +15,9 @@ use crate::time::Monotonic;
 ///
 /// This runner shall be used whenever wanted to release a demo with the minimal features enabled,
 /// that is, a running demo that one can close by hitting escape or closing the window.
-pub struct ReleaseRunner;
+pub struct DebugRunner;
 
-impl ReleaseRunner {
+impl DebugRunner {
   fn create_clap_app<'a, 'b>(title: &str) -> App<'a, 'b> {
     App::new(title)
       .arg(Arg::with_name("width")
@@ -62,7 +62,7 @@ impl ReleaseRunner {
       WindowDim::Windowed(width, height)
     };
 
-    let win_opt = WindowOpt::default().hide_cursor(true);
+    let win_opt = WindowOpt::default();
 
     // create the rendering surface
     let mut surface = GlfwSurface::new(win_dim, title, win_opt).expect("GLFW surface");
