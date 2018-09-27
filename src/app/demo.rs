@@ -1,5 +1,8 @@
 //! Quickly create demoscene applications.
 
+use luminance::framebuffer::Framebuffer;
+use luminance::pipeline::Builder;
+use luminance::texture::{Dim2, Flat};
 use warmy::Store;
 use std::fmt::Debug;
 
@@ -20,7 +23,7 @@ pub trait Demo: Sized {
   fn init(store: &mut Store<Self::Context>) -> Result<Self, Self::Error>;
 
   /// Render the demo at a given time. 
-  fn render(&mut self, t: Time);
+  fn render(&mut self, t: Time, back_buffer: &Framebuffer<Flat, Dim2, (), ()>, builder: Builder);
 
   /// Resize the demo when the framebuffer gets resized.
   fn resize(&mut self, width: u32, height: u32);

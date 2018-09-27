@@ -6,7 +6,6 @@ use luminance::framebuffer::Framebuffer;
 use luminance_glfw::surface::{
   Action, GlfwSurface, Key, Surface, WindowDim, WindowEvent, WindowOpt
 };
-use std::time::Instant;
 use warmy::{Store, StoreOpt};
 
 use crate::app::demo::Demo;
@@ -16,11 +15,7 @@ use crate::time::Monotonic;
 ///
 /// This runner shall be used whenever wanted to release a demo with the minimal features enabled,
 /// that is, a running demo that one can close by hitting escape or closing the window.
-pub struct ReleaseRunner {
-  surface: GlfwSurface,
-  /// Some kind of epoch start the application started at.
-  start_time: Instant,
-}
+pub struct ReleaseRunner;
 
 impl ReleaseRunner {
   fn create_clap_app<'a, 'b>(title: &str) -> App<'a, 'b> {
@@ -43,12 +38,6 @@ impl ReleaseRunner {
            .value_name("FULLSCREEN")
            .help("Set the viewport to be displayed in fullscreen mode")
            .takes_value(false))
-      .arg(Arg::with_name("framerate-limit")
-           .short("r")
-           .long("limit-framerate-to")
-           .value_name("FRAMERATE_LIMIT")
-           .help("Set the framerate limit")
-           .takes_value(true))
   }
 
   pub fn run<D>(
@@ -61,8 +50,6 @@ impl ReleaseRunner {
     let width = cli_options.value_of("width").map(|s| s.parse().unwrap_or(def_width)).unwrap_or(def_width);
     let height = cli_options.value_of("height").map(|s| s.parse().unwrap_or(def_height)).unwrap_or(def_height);
     let fullscreen = cli_options.is_present("fullscreen");
-    let framerate_limit_hz: Option<u16> = cli_options.value_of("framerate-limit").and_then(|l| l.parse().ok());
-    let framerate_limit_ms = framerate_limit_hz.map(|hz| 1. / (hz as f64));
 
     // build the WindowDim
     let win_dim = if fullscreen {
@@ -78,7 +65,7 @@ impl ReleaseRunner {
     let win_opt = WindowOpt::default().hide_cursor(true);
 
     // create the rendering surface
-    let surface = GlfwSurface::new(win_dim, title, win_opt).expect("GLFW surface");
+    let mut surface = GlfwSurface::new(win_dim, title, win_opt).expect("GLFW surface");
 
     // create the store
     let store_opt = StoreOpt::default().set_root("data");
