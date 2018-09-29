@@ -18,3 +18,4 @@
 
 pub mod app;
 pub mod time;
+pub mod render;
