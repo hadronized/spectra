@@ -173,5 +173,3 @@ pub struct RGBAZ;
 impl Output for RGBAZ {
   const OUTPUT: Type = Type::Float(TypeChan::Four);
 }
-
-type MyOutputType = (RGBF, RF);
