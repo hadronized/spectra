@@ -18,11 +18,6 @@ pub enum TypeChan {
   Four
 }
 
-pub enum OutputList {
-  Single(Type),
-  Multi(Type, Box<OutputList>)
-}
-
 /// Associate an output type to a given type.
 pub trait Output {
   const OUTPUT: Type;
