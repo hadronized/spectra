@@ -15,9 +15,11 @@ edition = "2018"
 [dependencies]
 #alto = "3.0"
 #cgmath = "0.16"
-#cheddar = "0.1"
+cheddar = "0.1"
 #chrono = "0.4"
 clap = "2.27"
+glsl = "0.9"
+glsl-quasiquote = "0.1"
 luminance = "0.30"
 luminance-glfw = "0.5"
 #luminance-windowing = "0.2"
@@ -28,7 +30,7 @@ luminance-glfw = "0.5"
 #serde_json = "1.0"
 #vorbis = "0.1"
 #wavefront_obj = "5.1"
-warmy = "0.7"
+warmy = "0.10"
 
 [dependencies.splines]
 version = "0.2"
@@ -36,3 +38,7 @@ features = ["serialization"]
 
 [dev-dependencies]
 rand = "0.5"
+
+[patch-crates.io]
+glsl = { path = "/home/phaazon/dev/glsl" }
+glsl-quasiquote = { path = "/home/phaazon/dev/glsl-quasiquote" }

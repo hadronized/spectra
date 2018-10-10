@@ -1,20 +1,4 @@
-//extern crate alto;
-//extern crate cgmath;
-//extern crate cheddar;
-//extern crate chrono;
-//extern crate clap;
-//extern crate image;
-//pub extern crate luminance;
-//extern crate luminance_glfw;
-//extern crate luminance_windowing;
-//extern crate num_traits;
-//extern crate serde;
-//#[macro_use] extern crate serde_derive;
-//extern crate serde_json;
-//extern crate splines;
-//extern crate vorbis;
-//extern crate wavefront_obj;
-//extern crate warmy;
+#![feature(proc_macro_non_items)]
 
 pub mod app;
 pub mod time;
