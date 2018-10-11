@@ -39,6 +39,6 @@ features = ["serialization"]
 [dev-dependencies]
 rand = "0.5"
 
-[patch-crates.io]
+[patch.crates-io]
 glsl = { path = "/home/phaazon/dev/glsl" }
 glsl-quasiquote = { path = "/home/phaazon/dev/glsl-quasiquote" }

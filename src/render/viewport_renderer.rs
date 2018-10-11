@@ -1,0 +1,4 @@
+//! Viewport renderer.
+
+struct ViewportRenderer {
+}
