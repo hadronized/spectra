@@ -1,4 +1,4 @@
-#![feature(proc_macro_non_items)]
+#![feature(proc_macro_hygiene)]
 
 pub mod app;
 pub mod time;
