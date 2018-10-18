@@ -1,9 +1,8 @@
 //! Render output types and related functions.
 
-use std::fmt;
-use serde::de::{self, Deserialize, Deserializer, Visitor, Unexpected};
-use serde::ser::{Serialize, Serializer};
 use serde_derive::{Deserialize, Serialize};
+
+use crate::render::type_channel::TypeChan;
 
 /// Output types.
 #[derive(Clone, Copy, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
@@ -16,73 +15,26 @@ pub enum Type {
   Bool(TypeChan)
 }
 
-/// Output type channels. Can be 1, 2, 3 or 4 channels.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub enum TypeChan {
-  One,
-  Two,
-  Three,
-  Four
-}
-
-impl Serialize for TypeChan {
-  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
-    match *self {
-      TypeChan::One => serializer.serialize_u8(1),
-      TypeChan::Two => serializer.serialize_u8(2),
-      TypeChan::Three => serializer.serialize_u8(3),
-      TypeChan::Four => serializer.serialize_u8(4),
-    }
-  }
-}
-
-impl<'de> Deserialize<'de> for TypeChan {
-  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-  where D: Deserializer<'de> {
-    struct V;
-
-    impl<'de> Visitor<'de> for V {
-      type Value = TypeChan;
-        
-      fn expecting(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        f.write_str("a valid type channel")
-      }
-
-      fn visit_u64<E>(self, x: u64) -> Result<Self::Value, E> where E: de::Error {
-        match x {
-          1 => Ok(TypeChan::One),
-          2 => Ok(TypeChan::Two),
-          3 => Ok(TypeChan::Three),
-          4 => Ok(TypeChan::Four),
-          x => Err(E::invalid_value(Unexpected::Unsigned(x as u64), &"1, 2, 3 or 4"))
-        }
-      }
-    }
-
-    deserializer.deserialize_u64(V)
-  }
-}
-
 /// Associate an output type to a given type.
-pub trait Output {
+pub trait OutputType {
   const OUTPUT: Type;
 }
 
 /// Render outputs.
-pub trait Outputs {
+pub trait OutputTypes {
   /// Get the types of the output.
   fn ty() -> &'static [Type];
 }
 
-impl<A> Outputs for A where A: Output {
+impl<A> OutputTypes for A where A: OutputType {
   fn ty() -> &'static [Type] {
     &[A::OUTPUT]
   }
 }
 
-macro_rules! multi_output_impl {
+macro_rules! multi_output_type_impl {
   ($($t:tt),*) => {
-    impl<$($t),*> Outputs for ($($t),*) where $($t: Output),* {
+    impl<$($t),*> OutputTypes for ($($t),*) where $($t: OutputType),* {
       fn ty() -> &'static [Type] {
         &[$($t::OUTPUT),*]
       }
@@ -90,148 +42,153 @@ macro_rules! multi_output_impl {
   }
 }
 
-multi_output_impl!(A, B);
-multi_output_impl!(A, B, C);
-multi_output_impl!(A, B, C, D);
-multi_output_impl!(A, B, C, D, E);
-multi_output_impl!(A, B, C, D, E, F);
-multi_output_impl!(A, B, C, D, E, F, G);
-multi_output_impl!(A, B, C, D, E, F, G, H);
-multi_output_impl!(A, B, C, D, E, F, G, H, I);
-multi_output_impl!(A, B, C, D, E, F, G, H, I, J);
-multi_output_impl!(A, B, C, D, E, F, G, H, I, J, K);
-multi_output_impl!(A, B, C, D, E, F, G, H, I, J, K, L);
+multi_output_type_impl!(A, B);
+multi_output_type_impl!(A, B, C);
+multi_output_type_impl!(A, B, C, D);
+multi_output_type_impl!(A, B, C, D, E);
+multi_output_type_impl!(A, B, C, D, E, F);
+multi_output_type_impl!(A, B, C, D, E, F, G);
+multi_output_type_impl!(A, B, C, D, E, F, G, H);
+multi_output_type_impl!(A, B, C, D, E, F, G, H, I);
+multi_output_type_impl!(A, B, C, D, E, F, G, H, I, J);
+multi_output_type_impl!(A, B, C, D, E, F, G, H, I, J, K);
+multi_output_type_impl!(A, B, C, D, E, F, G, H, I, J, K, L);
 
 /// One-dimensional integral output a.k.a. red channel.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct RI;
 
-impl Output for RI {
+impl OutputType for RI {
   const OUTPUT: Type = Type::Int(TypeChan::One);
 }
 
 /// Two dimensional integral output a.k.a. red-green channels.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct RGI;
 
-impl Output for RGI {
+impl OutputType for RGI {
   const OUTPUT: Type = Type::Int(TypeChan::Two);
 }
 
 /// Three dimensional integral output a.k.a. red-green-blue channels.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct RGBI;
 
-impl Output for RGBI {
+impl OutputType for RGBI {
   const OUTPUT: Type = Type::Int(TypeChan::Three);
 }
 
 /// Four dimensional integral output a.k.a. red-green-blue-alpha channels.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct RGBAI;
 
-impl Output for RGBAI {
+impl OutputType for RGBAI {
   const OUTPUT: Type = Type::Int(TypeChan::Four);
 }
 
 /// One-dimensional unigned integral output a.k.a. red channel.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct RU;
 
-impl Output for RU {
+impl OutputType for RU {
   const OUTPUT: Type = Type::UInt(TypeChan::One);
 }
 
 /// Two dimensional unsigned integral output a.k.a. red-green channels.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct RGU;
 
-impl Output for RGU {
+impl OutputType for RGU {
   const OUTPUT: Type = Type::UInt(TypeChan::Two);
 }
 
 /// Three dimensional unsigned integral output a.k.a. red-green-blue channels.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct RGBU;
 
-impl Output for RGBU {
+impl OutputType for RGBU {
   const OUTPUT: Type = Type::UInt(TypeChan::Three);
 }
 
 /// Four dimensional unsigned integral output a.k.a. red-green-blue-alpha channels.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct RGBAU;
 
-impl Output for RGBAU {
+impl OutputType for RGBAU {
   const OUTPUT: Type = Type::UInt(TypeChan::Four);
 }
 
 /// One-dimensional floating output a.k.a. red channel.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct RF;
 
-impl Output for RF {
+impl OutputType for RF {
   const OUTPUT: Type = Type::Float(TypeChan::One);
 }
 
 /// Two dimensional floating output a.k.a. red-green channels.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct RGF;
 
-impl Output for RGF {
+impl OutputType for RGF {
   const OUTPUT: Type = Type::Float(TypeChan::Two);
 }
 
 /// Three dimensional floating output a.k.a. red-green-blue channels.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct RGBF;
 
-impl Output for RGBF {
+impl OutputType for RGBF {
   const OUTPUT: Type = Type::Float(TypeChan::Three);
 }
 
 /// Four dimensional floating output a.k.a. red-green-blue-alpha channels.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct RGBAF;
 
-impl Output for RGBAF {
+impl OutputType for RGBAF {
   const OUTPUT: Type = Type::Float(TypeChan::Four);
 }
 
 /// One-dimensional boolean output a.k.a. red channel.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct RZ;
 
-impl Output for RZ {
+impl OutputType for RZ {
   const OUTPUT: Type = Type::Bool(TypeChan::One);
 }
 
 /// Two dimensional boolean output a.k.a. red-green channels.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct RGZ;
 
-impl Output for RGZ {
+impl OutputType for RGZ {
   const OUTPUT: Type = Type::Bool(TypeChan::Two);
 }
 
 /// Three dimensional boolean output a.k.a. red-green-blue channels.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct RGBZ;
 
-impl Output for RGBZ {
+impl OutputType for RGBZ {
   const OUTPUT: Type = Type::Bool(TypeChan::Three);
 }
 
 /// Four dimensional boolean output a.k.a. red-green-blue-alpha channels.
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub struct RGBAZ;
 
-impl Output for RGBAZ {
+impl OutputType for RGBAZ {
   const OUTPUT: Type = Type::Bool(TypeChan::Four);
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
-
-  #[test]
-  fn serialize_type_chan() {
-    use serde_json::to_string;
-
-    assert_eq!(to_string(&TypeChan::One).unwrap(), "1");
-    assert_eq!(to_string(&TypeChan::Two).unwrap(), "2");
-    assert_eq!(to_string(&TypeChan::Three).unwrap(),"3");
-    assert_eq!(to_string(&TypeChan::Four).unwrap(), "4");
-  }
+  use serde_json::{from_str, to_string};
 
   #[test]
   fn serialize_type() {
-    use serde_json::to_string;
-
     assert_eq!(to_string(&RF::OUTPUT).unwrap(), "{\"float\":1}");
     assert_eq!(to_string(&RGF::OUTPUT).unwrap(), "{\"float\":2}");
     assert_eq!(to_string(&RGBF::OUTPUT).unwrap(), "{\"float\":3}");
@@ -251,20 +208,7 @@ mod tests {
   }
 
   #[test]
-  fn deserialize_type_chan() {
-    use serde_json::from_str;
-
-    assert_eq!(from_str::<TypeChan>("1").unwrap(), TypeChan::One);
-    assert_eq!(from_str::<TypeChan>("2").unwrap(), TypeChan::Two);
-    assert_eq!(from_str::<TypeChan>("3").unwrap(), TypeChan::Three);
-    assert_eq!(from_str::<TypeChan>("4").unwrap(), TypeChan::Four);
-    assert!(from_str::<TypeChan>("5").is_err());
-  }
-
-  #[test]
   fn deserialize_type() {
-    use serde_json::from_str;
-
     assert_eq!(from_str::<Type>("{\"float\":1}").unwrap(), RF::OUTPUT);
     assert_eq!(from_str::<Type>("{\"float\":2}").unwrap(), RGF::OUTPUT);
     assert_eq!(from_str::<Type>("{\"float\":3}").unwrap(), RGBF::OUTPUT);
