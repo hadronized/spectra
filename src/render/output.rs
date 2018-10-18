@@ -1,9 +1,16 @@
 //! Render output types and related functions.
 
+use std::fmt;
+use serde::de::{self, Deserialize, Deserializer, Visitor, Unexpected};
+use serde::ser::{Serialize, Serializer};
+use serde_derive::Serialize;
+
 /// Output types.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Type {
   Int(TypeChan),
+  #[serde(rename = "uint")]
   UInt(TypeChan),
   Float(TypeChan),
   Bool(TypeChan)
@@ -16,6 +23,44 @@ pub enum TypeChan {
   Two,
   Three,
   Four
+}
+
+impl Serialize for TypeChan {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+    match *self {
+      TypeChan::One => serializer.serialize_u8(1),
+      TypeChan::Two => serializer.serialize_u8(2),
+      TypeChan::Three => serializer.serialize_u8(3),
+      TypeChan::Four => serializer.serialize_u8(4),
+    }
+  }
+}
+
+impl<'de> Deserialize<'de> for TypeChan {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where D: Deserializer<'de> {
+    struct V;
+
+    impl<'de> Visitor<'de> for V {
+      type Value = TypeChan;
+        
+      fn expecting(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        f.write_str("a valid type channel")
+      }
+
+      fn visit_u64<E>(self, x: u64) -> Result<Self::Value, E> where E: de::Error {
+        match x {
+          1 => Ok(TypeChan::One),
+          2 => Ok(TypeChan::Two),
+          3 => Ok(TypeChan::Three),
+          4 => Ok(TypeChan::Four),
+          x => Err(E::invalid_value(Unexpected::Unsigned(x as u64), &"1, 2, 3 or 4"))
+        }
+      }
+    }
+
+    deserializer.deserialize_u64(V)
+  }
 }
 
 /// Associate an output type to a given type.
@@ -89,28 +134,28 @@ impl Output for RGBAI {
 pub struct RU;
 
 impl Output for RU {
-  const OUTPUT: Type = Type::Int(TypeChan::One);
+  const OUTPUT: Type = Type::UInt(TypeChan::One);
 }
 
 /// Two dimensional unsigned integral output a.k.a. red-green channels.
 pub struct RGU;
 
 impl Output for RGU {
-  const OUTPUT: Type = Type::Int(TypeChan::Two);
+  const OUTPUT: Type = Type::UInt(TypeChan::Two);
 }
 
 /// Three dimensional unsigned integral output a.k.a. red-green-blue channels.
 pub struct RGBU;
 
 impl Output for RGBU {
-  const OUTPUT: Type = Type::Int(TypeChan::Three);
+  const OUTPUT: Type = Type::UInt(TypeChan::Three);
 }
 
 /// Four dimensional unsigned integral output a.k.a. red-green-blue-alpha channels.
 pub struct RGBAU;
 
 impl Output for RGBAU {
-  const OUTPUT: Type = Type::Int(TypeChan::Four);
+  const OUTPUT: Type = Type::UInt(TypeChan::Four);
 }
 
 /// One-dimensional floating output a.k.a. red channel.
@@ -145,26 +190,84 @@ impl Output for RGBAF {
 pub struct RZ;
 
 impl Output for RZ {
-  const OUTPUT: Type = Type::Float(TypeChan::One);
+  const OUTPUT: Type = Type::Bool(TypeChan::One);
 }
 
 /// Two dimensional boolean output a.k.a. red-green channels.
 pub struct RGZ;
 
 impl Output for RGZ {
-  const OUTPUT: Type = Type::Float(TypeChan::Two);
+  const OUTPUT: Type = Type::Bool(TypeChan::Two);
 }
 
 /// Three dimensional boolean output a.k.a. red-green-blue channels.
 pub struct RGBZ;
 
 impl Output for RGBZ {
-  const OUTPUT: Type = Type::Float(TypeChan::Three);
+  const OUTPUT: Type = Type::Bool(TypeChan::Three);
 }
 
 /// Four dimensional boolean output a.k.a. red-green-blue-alpha channels.
 pub struct RGBAZ;
 
 impl Output for RGBAZ {
-  const OUTPUT: Type = Type::Float(TypeChan::Four);
+  const OUTPUT: Type = Type::Bool(TypeChan::Four);
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn serialize_type_chan() {
+    use serde_json::to_string;
+
+    assert_eq!(to_string(&TypeChan::One).unwrap(), "1");
+    assert_eq!(to_string(&TypeChan::Two).unwrap(), "2");
+    assert_eq!(to_string(&TypeChan::Three).unwrap(),"3");
+    assert_eq!(to_string(&TypeChan::Four).unwrap(), "4");
+  }
+
+  #[test]
+  fn serialize_type() {
+    use serde_json::to_string;
+
+    assert_eq!(to_string(&RF::OUTPUT).unwrap(), "{\"float\":1}");
+    assert_eq!(to_string(&RGF::OUTPUT).unwrap(), "{\"float\":2}");
+    assert_eq!(to_string(&RGBF::OUTPUT).unwrap(), "{\"float\":3}");
+    assert_eq!(to_string(&RGBAF::OUTPUT).unwrap(), "{\"float\":4}");
+    assert_eq!(to_string(&RI::OUTPUT).unwrap(), "{\"int\":1}");
+    assert_eq!(to_string(&RGI::OUTPUT).unwrap(), "{\"int\":2}");
+    assert_eq!(to_string(&RGBI::OUTPUT).unwrap(), "{\"int\":3}");
+    assert_eq!(to_string(&RGBAI::OUTPUT).unwrap(), "{\"int\":4}");
+    assert_eq!(to_string(&RU::OUTPUT).unwrap(), "{\"uint\":1}");
+    assert_eq!(to_string(&RGU::OUTPUT).unwrap(), "{\"uint\":2}");
+    assert_eq!(to_string(&RGBU::OUTPUT).unwrap(), "{\"uint\":3}");
+    assert_eq!(to_string(&RGBAU::OUTPUT).unwrap(), "{\"uint\":4}");
+    assert_eq!(to_string(&RZ::OUTPUT).unwrap(), "{\"bool\":1}");
+    assert_eq!(to_string(&RGZ::OUTPUT).unwrap(), "{\"bool\":2}");
+    assert_eq!(to_string(&RGBZ::OUTPUT).unwrap(), "{\"bool\":3}");
+    assert_eq!(to_string(&RGBAZ::OUTPUT).unwrap(), "{\"bool\":4}");
+  }
+
+  #[test]
+  fn deserialize_type_chan() {
+    use serde_json::from_str;
+
+    assert_eq!(from_str::<TypeChan>("1").unwrap(), TypeChan::One);
+    assert_eq!(from_str::<TypeChan>("2").unwrap(), TypeChan::Two);
+    assert_eq!(from_str::<TypeChan>("3").unwrap(), TypeChan::Three);
+    assert_eq!(from_str::<TypeChan>("4").unwrap(), TypeChan::Four);
+    assert!(from_str::<TypeChan>("5").is_err());
+  }
+
+  #[test]
+  fn deserialize_type() {
+    use serde_json::from_str;
+
+    assert_eq!(from_str::<TypeChan>("1").unwrap(), TypeChan::One);
+    assert_eq!(from_str::<TypeChan>("2").unwrap(), TypeChan::Two);
+    assert_eq!(from_str::<TypeChan>("3").unwrap(), TypeChan::Three);
+    assert_eq!(from_str::<TypeChan>("4").unwrap(), TypeChan::Four);
+  }
 }
