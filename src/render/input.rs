@@ -214,6 +214,7 @@ pub struct Input {
   /// Name of the input.
   name: String,
   /// Type of the input.
+  #[serde(rename = "type")]
   ty: Type
 }
 
@@ -236,69 +237,78 @@ mod tests {
 
   #[test]
   fn serialize_type() {
-    assert_eq!(to_string(&RF::INPUT).unwrap(), "{\"float\":1}");
-    assert_eq!(to_string(&RF::INPUT).unwrap(), "{\"float\":1}");
-    assert_eq!(to_string(&RGF::INPUT).unwrap(), "{\"float\":2}");
-    assert_eq!(to_string(&RGBF::INPUT).unwrap(), "{\"float\":3}");
-    assert_eq!(to_string(&RGBAF::INPUT).unwrap(), "{\"float\":4}");
-    assert_eq!(to_string(&RI::INPUT).unwrap(), "{\"int\":1}");
-    assert_eq!(to_string(&RGI::INPUT).unwrap(), "{\"int\":2}");
-    assert_eq!(to_string(&RGBI::INPUT).unwrap(), "{\"int\":3}");
-    assert_eq!(to_string(&RGBAI::INPUT).unwrap(), "{\"int\":4}");
-    assert_eq!(to_string(&RU::INPUT).unwrap(), "{\"uint\":1}");
-    assert_eq!(to_string(&RGU::INPUT).unwrap(), "{\"uint\":2}");
-    assert_eq!(to_string(&RGBU::INPUT).unwrap(), "{\"uint\":3}");
-    assert_eq!(to_string(&RGBAU::INPUT).unwrap(), "{\"uint\":4}");
-    assert_eq!(to_string(&RZ::INPUT).unwrap(), "{\"bool\":1}");
-    assert_eq!(to_string(&RGZ::INPUT).unwrap(), "{\"bool\":2}");
-    assert_eq!(to_string(&RGBZ::INPUT).unwrap(), "{\"bool\":3}");
-    assert_eq!(to_string(&RGBAZ::INPUT).unwrap(), "{\"bool\":4}");
-    assert_eq!(to_string(&Type::BuiltIn(BuiltIn::Time)).unwrap(), "{\"built_in\":\"time\"}");
-    assert_eq!(to_string(&Type::BuiltIn(BuiltIn::FramebufferResolution)).unwrap(), "{\"built_in\":\"framebuffer_resolution\"}");
+    assert_eq!(to_string(&RF::INPUT).unwrap(), r#"{"float":1}"#);
+    assert_eq!(to_string(&RF::INPUT).unwrap(), r#"{"float":1}"#);
+    assert_eq!(to_string(&RGF::INPUT).unwrap(), r#"{"float":2}"#);
+    assert_eq!(to_string(&RGBF::INPUT).unwrap(), r#"{"float":3}"#);
+    assert_eq!(to_string(&RGBAF::INPUT).unwrap(), r#"{"float":4}"#);
+    assert_eq!(to_string(&RI::INPUT).unwrap(), r#"{"int":1}"#);
+    assert_eq!(to_string(&RGI::INPUT).unwrap(), r#"{"int":2}"#);
+    assert_eq!(to_string(&RGBI::INPUT).unwrap(), r#"{"int":3}"#);
+    assert_eq!(to_string(&RGBAI::INPUT).unwrap(), r#"{"int":4}"#);
+    assert_eq!(to_string(&RU::INPUT).unwrap(), r#"{"uint":1}"#);
+    assert_eq!(to_string(&RGU::INPUT).unwrap(), r#"{"uint":2}"#);
+    assert_eq!(to_string(&RGBU::INPUT).unwrap(), r#"{"uint":3}"#);
+    assert_eq!(to_string(&RGBAU::INPUT).unwrap(), r#"{"uint":4}"#);
+    assert_eq!(to_string(&RZ::INPUT).unwrap(), r#"{"bool":1}"#);
+    assert_eq!(to_string(&RGZ::INPUT).unwrap(), r#"{"bool":2}"#);
+    assert_eq!(to_string(&RGBZ::INPUT).unwrap(), r#"{"bool":3}"#);
+    assert_eq!(to_string(&RGBAZ::INPUT).unwrap(), r#"{"bool":4}"#);
+    assert_eq!(to_string(&Type::BuiltIn(BuiltIn::Time)).unwrap(), r#"{"built_in":"time"}"#);
+    assert_eq!(to_string(&Type::BuiltIn(BuiltIn::FramebufferResolution)).unwrap(), r#"{"built_in":"framebuffer_resolution"}"#);
   }
 
   #[test]
   fn deserialize_type() {
-    assert_eq!(from_str::<Type>("{\"float\":1}").unwrap(), RF::INPUT);
-    assert_eq!(from_str::<Type>("{\"float\":2}").unwrap(), RGF::INPUT);
-    assert_eq!(from_str::<Type>("{\"float\":3}").unwrap(), RGBF::INPUT);
-    assert_eq!(from_str::<Type>("{\"float\":4}").unwrap(), RGBAF::INPUT);
-    assert_eq!(from_str::<Type>("{\"int\":1}").unwrap(), RI::INPUT);
-    assert_eq!(from_str::<Type>("{\"int\":2}").unwrap(), RGI::INPUT);
-    assert_eq!(from_str::<Type>("{\"int\":3}").unwrap(), RGBI::INPUT);
-    assert_eq!(from_str::<Type>("{\"int\":4}").unwrap(), RGBAI::INPUT);
-    assert_eq!(from_str::<Type>("{\"uint\":1}").unwrap(), RU::INPUT);
-    assert_eq!(from_str::<Type>("{\"uint\":2}").unwrap(), RGU::INPUT);
-    assert_eq!(from_str::<Type>("{\"uint\":3}").unwrap(), RGBU::INPUT);
-    assert_eq!(from_str::<Type>("{\"uint\":4}").unwrap(), RGBAU::INPUT);
-    assert_eq!(from_str::<Type>("{\"bool\":1}").unwrap(), RZ::INPUT);
-    assert_eq!(from_str::<Type>("{\"bool\":2}").unwrap(), RGZ::INPUT);
-    assert_eq!(from_str::<Type>("{\"bool\":3}").unwrap(), RGBZ::INPUT);
-    assert_eq!(from_str::<Type>("{\"bool\":4}").unwrap(), RGBAZ::INPUT);
-    assert_eq!(from_str::<Type>("{\"built_in\":\"time\"}").unwrap(), Type::BuiltIn(BuiltIn::Time));
-    assert_eq!(from_str::<Type>("{\"built_in\":\"framebuffer_resolution\"}").unwrap(), Type::BuiltIn(BuiltIn::FramebufferResolution));
+    assert_eq!(from_str::<Type>(r#"{"float":1}"#).unwrap(), RF::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"float":2}"#).unwrap(), RGF::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"float":3}"#).unwrap(), RGBF::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"float":4}"#).unwrap(), RGBAF::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"int":1}"#).unwrap(), RI::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"int":2}"#).unwrap(), RGI::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"int":3}"#).unwrap(), RGBI::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"int":4}"#).unwrap(), RGBAI::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"uint":1}"#).unwrap(), RU::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"uint":2}"#).unwrap(), RGU::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"uint":3}"#).unwrap(), RGBU::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"uint":4}"#).unwrap(), RGBAU::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"bool":1}"#).unwrap(), RZ::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"bool":2}"#).unwrap(), RGZ::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"bool":3}"#).unwrap(), RGBZ::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"bool":4}"#).unwrap(), RGBAZ::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"built_in":"time"}"#).unwrap(), Type::BuiltIn(BuiltIn::Time));
+    assert_eq!(from_str::<Type>(r#"{"built_in":"framebuffer_resolution"}"#).unwrap(), Type::BuiltIn(BuiltIn::FramebufferResolution));
   }
 
   #[test]
   fn serialize_builtin() {
-    assert_eq!(&to_string(&BuiltIn::Time).unwrap(), "\"time\"");
-    assert_eq!(&to_string(&BuiltIn::FramebufferResolution).unwrap(), "\"framebuffer_resolution\"");
+    assert_eq!(&to_string(&BuiltIn::Time).unwrap(), r#""time""#);
+    assert_eq!(&to_string(&BuiltIn::FramebufferResolution).unwrap(), r#""framebuffer_resolution""#);
   }
 
   #[test]
   fn deserialize_builtin() {
-    assert_eq!(from_str::<BuiltIn>("\"time\"").unwrap(), BuiltIn::Time);
-    assert_eq!(from_str::<BuiltIn>("\"framebuffer_resolution\"").unwrap(), BuiltIn::FramebufferResolution);
+    assert_eq!(from_str::<BuiltIn>(r#""time""#).unwrap(), BuiltIn::Time);
+    assert_eq!(from_str::<BuiltIn>(r#""framebuffer_resolution""#).unwrap(), BuiltIn::FramebufferResolution);
+  }
+
+  #[test]
+  fn input_construction() {
+    let time = Input::new::<Time, _>("t");
+    let jitter = Input::new::<RGBF, _>("jitter");
+
+    assert_eq!(&time.name, "t");
+    assert_eq!(time.ty, Time::INPUT);
+    assert_eq!(&jitter.name, "jitter");
+    assert_eq!(jitter.ty, RGBF::INPUT);
   }
 
   #[test]
   fn serialize_input() {
     let time = Input::new::<Time, _>("t");
-    assert_eq!(&time.name, "t");
-    assert_eq!(time.ty, Time::INPUT);
-
     let jitter = Input::new::<RGBF, _>("jitter");
-    assert_eq!(&jitter.name, "jitter");
-    assert_eq!(jitter.ty, RGBF::INPUT);
+
+    assert_eq!(&to_string(&time).unwrap(), r#"{"name":"t","type":{"built_in":"time"}}"#);
+    assert_eq!(&to_string(&jitter).unwrap(), r#"{"name":"jitter","type":{"float":3}}"#);
   }
 }

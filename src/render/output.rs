@@ -189,41 +189,41 @@ mod tests {
 
   #[test]
   fn serialize_type() {
-    assert_eq!(to_string(&RF::OUTPUT).unwrap(), "{\"float\":1}");
-    assert_eq!(to_string(&RGF::OUTPUT).unwrap(), "{\"float\":2}");
-    assert_eq!(to_string(&RGBF::OUTPUT).unwrap(), "{\"float\":3}");
-    assert_eq!(to_string(&RGBAF::OUTPUT).unwrap(), "{\"float\":4}");
-    assert_eq!(to_string(&RI::OUTPUT).unwrap(), "{\"int\":1}");
-    assert_eq!(to_string(&RGI::OUTPUT).unwrap(), "{\"int\":2}");
-    assert_eq!(to_string(&RGBI::OUTPUT).unwrap(), "{\"int\":3}");
-    assert_eq!(to_string(&RGBAI::OUTPUT).unwrap(), "{\"int\":4}");
-    assert_eq!(to_string(&RU::OUTPUT).unwrap(), "{\"uint\":1}");
-    assert_eq!(to_string(&RGU::OUTPUT).unwrap(), "{\"uint\":2}");
-    assert_eq!(to_string(&RGBU::OUTPUT).unwrap(), "{\"uint\":3}");
-    assert_eq!(to_string(&RGBAU::OUTPUT).unwrap(), "{\"uint\":4}");
-    assert_eq!(to_string(&RZ::OUTPUT).unwrap(), "{\"bool\":1}");
-    assert_eq!(to_string(&RGZ::OUTPUT).unwrap(), "{\"bool\":2}");
-    assert_eq!(to_string(&RGBZ::OUTPUT).unwrap(), "{\"bool\":3}");
-    assert_eq!(to_string(&RGBAZ::OUTPUT).unwrap(), "{\"bool\":4}");
+    assert_eq!(to_string(&RF::OUTPUT).unwrap(), r#"{"float":1}"#);
+    assert_eq!(to_string(&RGF::OUTPUT).unwrap(), r#"{"float":2}"#);
+    assert_eq!(to_string(&RGBF::OUTPUT).unwrap(), r#"{"float":3}"#);
+    assert_eq!(to_string(&RGBAF::OUTPUT).unwrap(), r#"{"float":4}"#);
+    assert_eq!(to_string(&RI::OUTPUT).unwrap(), r#"{"int":1}"#);
+    assert_eq!(to_string(&RGI::OUTPUT).unwrap(), r#"{"int":2}"#);
+    assert_eq!(to_string(&RGBI::OUTPUT).unwrap(), r#"{"int":3}"#);
+    assert_eq!(to_string(&RGBAI::OUTPUT).unwrap(), r#"{"int":4}"#);
+    assert_eq!(to_string(&RU::OUTPUT).unwrap(), r#"{"uint":1}"#);
+    assert_eq!(to_string(&RGU::OUTPUT).unwrap(), r#"{"uint":2}"#);
+    assert_eq!(to_string(&RGBU::OUTPUT).unwrap(), r#"{"uint":3}"#);
+    assert_eq!(to_string(&RGBAU::OUTPUT).unwrap(), r#"{"uint":4}"#);
+    assert_eq!(to_string(&RZ::OUTPUT).unwrap(), r#"{"bool":1}"#);
+    assert_eq!(to_string(&RGZ::OUTPUT).unwrap(), r#"{"bool":2}"#);
+    assert_eq!(to_string(&RGBZ::OUTPUT).unwrap(), r#"{"bool":3}"#);
+    assert_eq!(to_string(&RGBAZ::OUTPUT).unwrap(), r#"{"bool":4}"#);
   }
 
   #[test]
   fn deserialize_type() {
-    assert_eq!(from_str::<Type>("{\"float\":1}").unwrap(), RF::OUTPUT);
-    assert_eq!(from_str::<Type>("{\"float\":2}").unwrap(), RGF::OUTPUT);
-    assert_eq!(from_str::<Type>("{\"float\":3}").unwrap(), RGBF::OUTPUT);
-    assert_eq!(from_str::<Type>("{\"float\":4}").unwrap(), RGBAF::OUTPUT);
-    assert_eq!(from_str::<Type>("{\"int\":1}").unwrap(), RI::OUTPUT);
-    assert_eq!(from_str::<Type>("{\"int\":2}").unwrap(), RGI::OUTPUT);
-    assert_eq!(from_str::<Type>("{\"int\":3}").unwrap(), RGBI::OUTPUT);
-    assert_eq!(from_str::<Type>("{\"int\":4}").unwrap(), RGBAI::OUTPUT);
-    assert_eq!(from_str::<Type>("{\"uint\":1}").unwrap(), RU::OUTPUT);
-    assert_eq!(from_str::<Type>("{\"uint\":2}").unwrap(), RGU::OUTPUT);
-    assert_eq!(from_str::<Type>("{\"uint\":3}").unwrap(), RGBU::OUTPUT);
-    assert_eq!(from_str::<Type>("{\"uint\":4}").unwrap(), RGBAU::OUTPUT);
-    assert_eq!(from_str::<Type>("{\"bool\":1}").unwrap(), RZ::OUTPUT);
-    assert_eq!(from_str::<Type>("{\"bool\":2}").unwrap(), RGZ::OUTPUT);
-    assert_eq!(from_str::<Type>("{\"bool\":3}").unwrap(), RGBZ::OUTPUT);
-    assert_eq!(from_str::<Type>("{\"bool\":4}").unwrap(), RGBAZ::OUTPUT);
+    assert_eq!(from_str::<Type>(r#"{"float":1}"#).unwrap(), RF::OUTPUT);
+    assert_eq!(from_str::<Type>(r#"{"float":2}"#).unwrap(), RGF::OUTPUT);
+    assert_eq!(from_str::<Type>(r#"{"float":3}"#).unwrap(), RGBF::OUTPUT);
+    assert_eq!(from_str::<Type>(r#"{"float":4}"#).unwrap(), RGBAF::OUTPUT);
+    assert_eq!(from_str::<Type>(r#"{"int":1}"#).unwrap(), RI::OUTPUT);
+    assert_eq!(from_str::<Type>(r#"{"int":2}"#).unwrap(), RGI::OUTPUT);
+    assert_eq!(from_str::<Type>(r#"{"int":3}"#).unwrap(), RGBI::OUTPUT);
+    assert_eq!(from_str::<Type>(r#"{"int":4}"#).unwrap(), RGBAI::OUTPUT);
+    assert_eq!(from_str::<Type>(r#"{"uint":1}"#).unwrap(), RU::OUTPUT);
+    assert_eq!(from_str::<Type>(r#"{"uint":2}"#).unwrap(), RGU::OUTPUT);
+    assert_eq!(from_str::<Type>(r#"{"uint":3}"#).unwrap(), RGBU::OUTPUT);
+    assert_eq!(from_str::<Type>(r#"{"uint":4}"#).unwrap(), RGBAU::OUTPUT);
+    assert_eq!(from_str::<Type>(r#"{"bool":1}"#).unwrap(), RZ::OUTPUT);
+    assert_eq!(from_str::<Type>(r#"{"bool":2}"#).unwrap(), RGZ::OUTPUT);
+    assert_eq!(from_str::<Type>(r#"{"bool":3}"#).unwrap(), RGBZ::OUTPUT);
+    assert_eq!(from_str::<Type>(r#"{"bool":4}"#).unwrap(), RGBAZ::OUTPUT);
   }
 }
