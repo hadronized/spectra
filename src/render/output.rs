@@ -3,10 +3,10 @@
 use std::fmt;
 use serde::de::{self, Deserialize, Deserializer, Visitor, Unexpected};
 use serde::ser::{Serialize, Serializer};
-use serde_derive::Serialize;
+use serde_derive::{Deserialize, Serialize};
 
 /// Output types.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Type {
   Int(TypeChan),
@@ -265,9 +265,21 @@ mod tests {
   fn deserialize_type() {
     use serde_json::from_str;
 
-    assert_eq!(from_str::<TypeChan>("1").unwrap(), TypeChan::One);
-    assert_eq!(from_str::<TypeChan>("2").unwrap(), TypeChan::Two);
-    assert_eq!(from_str::<TypeChan>("3").unwrap(), TypeChan::Three);
-    assert_eq!(from_str::<TypeChan>("4").unwrap(), TypeChan::Four);
+    assert_eq!(from_str::<Type>("{\"float\":1}").unwrap(), RF::OUTPUT);
+    assert_eq!(from_str::<Type>("{\"float\":2}").unwrap(), RGF::OUTPUT);
+    assert_eq!(from_str::<Type>("{\"float\":3}").unwrap(), RGBF::OUTPUT);
+    assert_eq!(from_str::<Type>("{\"float\":4}").unwrap(), RGBAF::OUTPUT);
+    assert_eq!(from_str::<Type>("{\"int\":1}").unwrap(), RI::OUTPUT);
+    assert_eq!(from_str::<Type>("{\"int\":2}").unwrap(), RGI::OUTPUT);
+    assert_eq!(from_str::<Type>("{\"int\":3}").unwrap(), RGBI::OUTPUT);
+    assert_eq!(from_str::<Type>("{\"int\":4}").unwrap(), RGBAI::OUTPUT);
+    assert_eq!(from_str::<Type>("{\"uint\":1}").unwrap(), RU::OUTPUT);
+    assert_eq!(from_str::<Type>("{\"uint\":2}").unwrap(), RGU::OUTPUT);
+    assert_eq!(from_str::<Type>("{\"uint\":3}").unwrap(), RGBU::OUTPUT);
+    assert_eq!(from_str::<Type>("{\"uint\":4}").unwrap(), RGBAU::OUTPUT);
+    assert_eq!(from_str::<Type>("{\"bool\":1}").unwrap(), RZ::OUTPUT);
+    assert_eq!(from_str::<Type>("{\"bool\":2}").unwrap(), RGZ::OUTPUT);
+    assert_eq!(from_str::<Type>("{\"bool\":3}").unwrap(), RGBZ::OUTPUT);
+    assert_eq!(from_str::<Type>("{\"bool\":4}").unwrap(), RGBAZ::OUTPUT);
   }
 }
