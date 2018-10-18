@@ -13,6 +13,7 @@ pub enum Type {
   UInt(TypeChan),
   Float(TypeChan),
   Bool(TypeChan),
+  #[serde(rename = "built-in")]
   BuiltIn(BuiltIn)
 }
 
@@ -254,8 +255,8 @@ mod tests {
     assert_eq!(to_string(&RGZ::INPUT).unwrap(), r#"{"bool":2}"#);
     assert_eq!(to_string(&RGBZ::INPUT).unwrap(), r#"{"bool":3}"#);
     assert_eq!(to_string(&RGBAZ::INPUT).unwrap(), r#"{"bool":4}"#);
-    assert_eq!(to_string(&Type::BuiltIn(BuiltIn::Time)).unwrap(), r#"{"built_in":"time"}"#);
-    assert_eq!(to_string(&Type::BuiltIn(BuiltIn::FramebufferResolution)).unwrap(), r#"{"built_in":"framebuffer_resolution"}"#);
+    assert_eq!(to_string(&Type::BuiltIn(BuiltIn::Time)).unwrap(), r#"{"built-in":"time"}"#);
+    assert_eq!(to_string(&Type::BuiltIn(BuiltIn::FramebufferResolution)).unwrap(), r#"{"built-in":"framebuffer_resolution"}"#);
   }
 
   #[test]
@@ -276,8 +277,8 @@ mod tests {
     assert_eq!(from_str::<Type>(r#"{"bool":2}"#).unwrap(), RGZ::INPUT);
     assert_eq!(from_str::<Type>(r#"{"bool":3}"#).unwrap(), RGBZ::INPUT);
     assert_eq!(from_str::<Type>(r#"{"bool":4}"#).unwrap(), RGBAZ::INPUT);
-    assert_eq!(from_str::<Type>(r#"{"built_in":"time"}"#).unwrap(), Type::BuiltIn(BuiltIn::Time));
-    assert_eq!(from_str::<Type>(r#"{"built_in":"framebuffer_resolution"}"#).unwrap(), Type::BuiltIn(BuiltIn::FramebufferResolution));
+    assert_eq!(from_str::<Type>(r#"{"built-in":"time"}"#).unwrap(), Type::BuiltIn(BuiltIn::Time));
+    assert_eq!(from_str::<Type>(r#"{"built-in":"framebuffer_resolution"}"#).unwrap(), Type::BuiltIn(BuiltIn::FramebufferResolution));
   }
 
   #[test]
@@ -308,7 +309,16 @@ mod tests {
     let time = Input::new::<Time, _>("t");
     let jitter = Input::new::<RGBF, _>("jitter");
 
-    assert_eq!(&to_string(&time).unwrap(), r#"{"name":"t","type":{"built_in":"time"}}"#);
+    assert_eq!(&to_string(&time).unwrap(), r#"{"name":"t","type":{"built-in":"time"}}"#);
     assert_eq!(&to_string(&jitter).unwrap(), r#"{"name":"jitter","type":{"float":3}}"#);
+  }
+
+  #[test]
+  fn deserialize_input() {
+    let time = Input::new::<Time, _>("t");
+    let jitter = Input::new::<RGBF, _>("jitter");
+
+    assert_eq!(from_str::<Input>(r#"{"name":"t","type":{"built-in":"time"}}"#).unwrap(), time);
+    assert_eq!(from_str::<Input>(r#"{"name":"jitter","type":{"float":3}}"#).unwrap(), jitter);
   }
 }
