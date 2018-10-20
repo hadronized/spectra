@@ -182,6 +182,30 @@ impl OutputType for RGBAZ {
   const OUTPUT: Type = Type::Bool(TypeChan::Four);
 }
 
+/// An output.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct Output {
+  /// Name of the output.
+  name: String,
+  /// Type of the output.
+  #[serde(rename = "type")]
+  ty: Type
+}
+
+impl Output {
+  /// Create a new output.
+  pub fn new<T, N>(name: N) -> Self
+  where T: OutputType,
+        N: Into<String> {
+    Output {
+      name: name.into(),
+      ty: T::OUTPUT
+    }
+  }
+}
+
+
 #[cfg(test)]
 mod tests {
   use super::*;

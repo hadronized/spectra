@@ -209,7 +209,7 @@ pub enum BuiltIn {
 }
 
 /// An input.
-#[derive(Clone, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct Input {
   /// Name of the input.
@@ -221,7 +221,7 @@ pub struct Input {
 
 impl Input {
   /// Create a new input.
-  fn new<T, N>(name: N) -> Self
+  pub fn new<T, N>(name: N) -> Self
   where T: InputType,
         N: Into<String> {
     Input {
