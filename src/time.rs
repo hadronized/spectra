@@ -99,7 +99,7 @@ mod tests {
   use super::*;
 
   #[test]
-  fn parse_duraction_spec() {
+  fn parse_duration_spec() {
     assert_eq!("1s".parse::<DurationSpec>().unwrap(), DurationSpec { mins: 0, secs: 1 });
     assert_eq!("2m".parse::<DurationSpec>().unwrap(), DurationSpec { mins: 2, secs: 0 });
     assert_eq!("3m12s".parse::<DurationSpec>().unwrap(), DurationSpec { mins: 3, secs: 12 });
