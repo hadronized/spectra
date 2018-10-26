@@ -22,3 +22,21 @@ planned features.
       smaller, more grained and general parts. The idea is that combining render blocks will yield
       something similar to a shader. A render block has information about its inputs, outputs and
       contains GLSL code that links them altogether.
+
+## Modules hierarchy
+
+  - `app`
+    - `demo`
+    - `runner`
+      - `blender`
+      - `debug`
+      - `release`
+  - `render`
+    - `block`
+    - `input`
+    - `output`
+    - `type_channel`
+    - `renderer`
+      - `deferred`
+      - `forward`
+      - `viewport`

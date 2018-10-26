@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::time::Instant;
 use std::fmt;
 
@@ -32,5 +33,76 @@ impl Monotonic {
     let nanos = dur.subsec_nanos() as f64;
 
     Time(secs + nanos * 1e-9)
+  }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DurationSpecError {
+  MissingSecondsSuffix,
+  CannotParseMinutes,
+  CannotParseSeconds
+}
+
+impl fmt::Display for DurationSpecError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    match *self {
+      DurationSpecError::MissingSecondsSuffix => f.write_str("missing the seconds suffix"),
+      DurationSpecError::CannotParseMinutes => f.write_str("cannot parse minutes"),
+      DurationSpecError::CannotParseSeconds => f.write_str("cannot parse seconds"),
+    }
+  }
+}
+
+/// A way to specify a duration with minutes and seconds.
+///
+/// The string format is the following:
+///
+///   - `MmSs`, if you want minutes (e.g. `3m43s`).
+///   - `Ss`, if you only have seconds (e.g. `23s`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DurationSpec {
+  mins: u8,
+  secs: u8
+}
+
+impl FromStr for DurationSpec {
+  type Err = DurationSpecError;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    if !s.ends_with('s') {
+      if s.ends_with('m') {
+        // only minutes
+        let mins = s.trim_end_matches('m').parse().map_err(|_| DurationSpecError::CannotParseMinutes)?;
+
+        Ok(DurationSpec { mins, secs: 0 })
+      } else {
+        Err(DurationSpecError::MissingSecondsSuffix)
+      }
+    } else if s.contains('m') {
+      // the first argument represents minutes, so let’s take them out first
+      let mut iter = s.split('m');
+      let mins = iter.next().and_then(|x| x.parse().ok()).ok_or(DurationSpecError::CannotParseMinutes)?;
+      let secs = iter.next().and_then(|x| x.trim_end_matches('s').parse().ok()).ok_or(DurationSpecError::CannotParseSeconds)?;
+
+      Ok(DurationSpec { mins, secs })
+    } else {
+      // only seconds
+      let secs = s.trim_end_matches('s').parse().map_err(|_| DurationSpecError::CannotParseSeconds)?;
+
+      Ok(DurationSpec { mins: 0, secs })
+    }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn parse_duraction_spec() {
+    assert_eq!("1s".parse::<DurationSpec>().unwrap(), DurationSpec { mins: 0, secs: 1 });
+    assert_eq!("2m".parse::<DurationSpec>().unwrap(), DurationSpec { mins: 2, secs: 0 });
+    assert_eq!("3m12s".parse::<DurationSpec>().unwrap(), DurationSpec { mins: 3, secs: 12 });
+    assert_eq!("3m12".parse::<DurationSpec>(), Err(DurationSpecError::MissingSecondsSuffix));
   }
 }

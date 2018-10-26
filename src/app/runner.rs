@@ -1,11 +1,11 @@
 //! Demo runner.
 
-use clap::{App, Arg};
 use luminance::context::GraphicsContext;
 use luminance::framebuffer::Framebuffer;
 use luminance_glfw::surface::{
   Action, GlfwSurface, Key, Surface, WindowDim, WindowEvent, WindowOpt
 };
+use structopt::StructOpt;
 use warmy::{Store, StoreOpt};
 
 use crate::app::demo::Demo;
@@ -17,43 +17,49 @@ use crate::time::Monotonic;
 /// that is, a running demo that one can close by hitting escape or closing the window.
 pub struct DebugRunner;
 
-impl DebugRunner {
-  fn create_clap_app<'a, 'b>(title: &str) -> App<'a, 'b> {
-    App::new(title)
-      .arg(Arg::with_name("width")
-           .short("w")
-           .long("width")
-           .value_name("WIDTH")
-           .help("Set the width of the viewport used for render")
-           .takes_value(true))
-      .arg(Arg::with_name("height")
-           .short("h")
-           .long("height")
-           .value_name("HEIGHT")
-           .help("Set the height of the viewport used for render")
-           .takes_value(true))
-      .arg(Arg::with_name("fullscreen")
-           .short("f")
-           .long("fullscreen")
-           .value_name("FULLSCREEN")
-           .help("Set the viewport to be displayed in fullscreen mode")
-           .takes_value(false))
-  }
+#[derive(StructOpt, Debug)]
+struct Opt {
+  /// Width of the viewport.
+  #[structopt(short = "w", long = "width")]
+  width: Option<u32>,
 
+  /// Height of the viewport.
+  #[structopt(short = "h", long = "height")]
+  height: Option<u32>,
+
+  /// Shall the viewport be in fullscreen mode?
+  #[structopt(short = "f", long = "fullscreen")]
+  fullscreen: bool,
+
+  // /// Set a maximum runtime duration. Whenever the time arrives at this duration limit, it will
+  // /// wrap around to 0. If unset, the demo will run with a forever increasing time.
+  // ///
+  // /// The syntax is:
+  // ///
+  // ///     MmSs
+  // ///
+  // /// Where M is optional. M must be a natural specifiying the number of minutes and S a natural
+  // /// specifying the number of seconds. 30s will then be 30 seconds and 1m42 will be 1 minute and
+  // /// 42 seconds. The number of seconds must not exceed 59.
+  // #[structopt(short = "z", long = "wrap-at")]
+  // wrap_at: Option<TimeSpecOpt>
+}
+
+impl DebugRunner {
   pub fn run<D>(
     title: &str,
     def_width: u32,
     def_height: u32
   ) where D: Demo {
     // get CLI options
-    let cli_options = Self::create_clap_app(title).get_matches();
-    let width = cli_options.value_of("width").map(|s| s.parse().unwrap_or(def_width)).unwrap_or(def_width);
-    let height = cli_options.value_of("height").map(|s| s.parse().unwrap_or(def_height)).unwrap_or(def_height);
-    let fullscreen = cli_options.is_present("fullscreen");
+    let opt = Opt::from_args();
+    let width = opt.width.unwrap_or(def_width);
+    let height = opt.height.unwrap_or(def_width);
+    let fullscreen = opt.fullscreen;
 
     // build the WindowDim
     let win_dim = if fullscreen {
-      if cli_options.is_present("width") && cli_options.is_present("height") {
+      if opt.width.is_some() && opt.height.is_some() {
         WindowDim::FullscreenRestricted(width, height)
       } else {
         WindowDim::Fullscreen
