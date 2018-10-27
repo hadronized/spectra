@@ -6,8 +6,8 @@ use luminance::texture::{Dim2, Flat};
 pub use warmy::Store;
 use std::fmt::Debug;
 
+use crate::resource::key::Key;
 use crate::time::Time;
-use crate::key::Key;
 
 /// Class of demo applications.
 ///

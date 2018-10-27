@@ -9,8 +9,8 @@ use structopt::StructOpt;
 use warmy::{Store, StoreOpt};
 
 use crate::app::demo::Demo;
-use crate::key::Key;
 use crate::time::{DurationSpec, Monotonic};
+use crate::resource::key::Key;
 
 /// Main runner. Release-oriented.
 ///

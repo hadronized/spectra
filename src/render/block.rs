@@ -6,10 +6,13 @@
 use cheddar::Module;
 use glsl::syntax::TranslationUnit;
 use std::path::PathBuf;
-use warmy::{Load, Loaded, Res};
+use warmy::{Load, Loaded, Res, Storage};
+use warmy::methods::JSON;
 
 use crate::render::input::Input;
 use crate::render::output::Output;
+use crate::resource::key::Key;
+use crate::resource::error::Error;
 
 /// A render block, allowing for combining blocks in order to create more complex rendering
 /// computations.
@@ -33,4 +36,14 @@ impl Block {
   }
 }
 
-//impl
+//impl<C> Load<C, Key, JSON> for Block {
+//  type Error = Error;
+//
+//  fn load(
+//    key: SimpleKey,
+//    _: &mut Storage<C, SimpleKey>,
+//    _: &mut C
+//  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+//    // 
+//  }
+//}
