@@ -9,7 +9,7 @@ use structopt::StructOpt;
 use warmy::{Store, StoreOpt};
 
 use crate::app::demo::Demo;
-use crate::time::Monotonic;
+use crate::time::{DurationSpec, Monotonic};
 
 /// Main runner. Release-oriented.
 ///
@@ -31,18 +31,14 @@ struct Opt {
   #[structopt(short = "f", long = "fullscreen")]
   fullscreen: bool,
 
-  // /// Set a maximum runtime duration. Whenever the time arrives at this duration limit, it will
-  // /// wrap around to 0. If unset, the demo will run with a forever increasing time.
-  // ///
-  // /// The syntax is:
-  // ///
-  // ///     MmSs
-  // ///
-  // /// Where M is optional. M must be a natural specifiying the number of minutes and S a natural
-  // /// specifying the number of seconds. 30s will then be 30 seconds and 1m42 will be 1 minute and
-  // /// 42 seconds. The number of seconds must not exceed 59.
-  // #[structopt(short = "z", long = "wrap-at")]
-  // wrap_at: Option<TimeSpecOpt>
+  /// Set a maximum runtime duration. Whenever the time arrives at this duration limit, it will
+  /// wrap around to 0. If unset, the demo will run with a forever increasing time.
+  ///
+  /// The syntax is “MmSs”, where M is optional. M must be a natural specifiying the number of
+  /// minutes and S a natural specifying the number of seconds. 30s will then be 30 seconds and 1m42
+  /// will be 1 minute and 42 seconds. The number of seconds must not exceed 59.
+  #[structopt(short = "z", long = "wrap-at")]
+  wrap_at: Option<DurationSpec>
 }
 
 impl DebugRunner {
@@ -85,6 +81,8 @@ impl DebugRunner {
 
     // loop over time and run the demo
     let start_time = Monotonic::now();
+    let wrap_at = opt.wrap_at;
+
     'run: loop {
       // treat events first
       for event in surface.poll_events() {
@@ -108,9 +106,10 @@ impl DebugRunner {
 
       // render a frame
       let t = start_time.elapsed_secs();
+      let t = if let Some(wrap_t) = wrap_at { t.wrap_around(wrap_t.into()) } else { t };
       let builder = surface.pipeline_builder();
-      demo.render(t, &back_buffer, builder);
 
+      demo.render(t, &back_buffer, builder);
       surface.swap_buffers();
     }
   }

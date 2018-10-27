@@ -7,14 +7,26 @@ use std::fmt;
 pub struct Time(f64);
 
 impl Time {
-  pub fn as_f64(self) -> f64 {
+  /// Convert into seconds.
+  pub fn as_secs(self) -> f64 {
     self.0
+  }
+
+  /// Wrap time with a given duration.
+  pub fn wrap_around(self, t: Time) -> Self {
+    Time(self.0 % t.0)
   }
 }
 
 impl fmt::Display for Time {
   fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
     self.0.fmt(f)
+  }
+}
+
+impl From<DurationSpec> for Time {
+  fn from(spec: DurationSpec) -> Self {
+    Time(spec.mins as f64 * 60. + spec.secs as f64)
   }
 }
 
@@ -33,23 +45,6 @@ impl Monotonic {
     let nanos = dur.subsec_nanos() as f64;
 
     Time(secs + nanos * 1e-9)
-  }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DurationSpecError {
-  MissingSecondsSuffix,
-  CannotParseMinutes,
-  CannotParseSeconds
-}
-
-impl fmt::Display for DurationSpecError {
-  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-    match *self {
-      DurationSpecError::MissingSecondsSuffix => f.write_str("missing the seconds suffix"),
-      DurationSpecError::CannotParseMinutes => f.write_str("cannot parse minutes"),
-      DurationSpecError::CannotParseSeconds => f.write_str("cannot parse seconds"),
-    }
   }
 }
 
@@ -90,6 +85,24 @@ impl FromStr for DurationSpec {
       let secs = s.trim_end_matches('s').parse().map_err(|_| DurationSpecError::CannotParseSeconds)?;
 
       Ok(DurationSpec { mins: 0, secs })
+    }
+  }
+}
+
+/// Possible error than can occurr while parsing a `DurationSpec` from a string.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DurationSpecError {
+  MissingSecondsSuffix,
+  CannotParseMinutes,
+  CannotParseSeconds
+}
+
+impl fmt::Display for DurationSpecError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    match *self {
+      DurationSpecError::MissingSecondsSuffix => f.write_str("missing the seconds suffix"),
+      DurationSpecError::CannotParseMinutes => f.write_str("cannot parse minutes"),
+      DurationSpecError::CannotParseSeconds => f.write_str("cannot parse seconds"),
     }
   }
 }
