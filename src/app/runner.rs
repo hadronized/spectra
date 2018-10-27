@@ -3,12 +3,13 @@
 use luminance::context::GraphicsContext;
 use luminance::framebuffer::Framebuffer;
 use luminance_glfw::surface::{
-  Action, GlfwSurface, Key, Surface, WindowDim, WindowEvent, WindowOpt
+  Action, GlfwSurface, Key as GlfwKey, Surface, WindowDim, WindowEvent, WindowOpt
 };
 use structopt::StructOpt;
 use warmy::{Store, StoreOpt};
 
 use crate::app::demo::Demo;
+use crate::key::Key;
 use crate::time::{DurationSpec, Monotonic};
 
 /// Main runner. Release-oriented.
@@ -75,7 +76,7 @@ impl DebugRunner {
 
     // create the store
     let store_opt = StoreOpt::default().set_root("data");
-    let mut store: Store<D::Context> = Store::new(store_opt).expect("store creation");
+    let mut store: Store<D::Context, Key> = Store::new(store_opt).expect("store creation");
 
     // initialize the demo
     let mut demo = D::init(&mut store).expect("demo initialization");
@@ -93,7 +94,7 @@ impl DebugRunner {
       for event in surface.poll_events() {
         match event {
           // quit event
-          WindowEvent::Close | WindowEvent::Key(Key::Escape, _, Action::Release, _) => {
+          WindowEvent::Close | WindowEvent::Key(GlfwKey::Escape, _, Action::Release, _) => {
             break 'run;
           }
 

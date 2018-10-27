@@ -5,7 +5,8 @@
 
 use cheddar::Module;
 use glsl::syntax::TranslationUnit;
-use warmy::Res;
+use std::path::PathBuf;
+use warmy::{Load, Loaded, Res};
 
 use crate::render::input::Input;
 use crate::render::output::Output;
@@ -16,18 +17,20 @@ use crate::render::output::Output;
 struct Block {
   inputs: Vec<Input>,
   outputs: Vec<Output>,
-  code: Res<Module>
+  code_path: PathBuf
 }
 
 impl Block {
   /// Create a new block out of inputs, outputs and a GLSL module.
-  pub fn new<I, O>(inputs: I, outputs: O, code: Res<Module>) -> Self
+  pub fn new<I, O>(inputs: I, outputs: O, code_path: PathBuf) -> Self
   where I: Iterator<Item = Input>,
         O: Iterator<Item = Output> {
     Block {
       inputs: inputs.collect(),
       outputs: outputs.collect(),
-      code
+      code_path
     }
   }
 }
+
+//impl

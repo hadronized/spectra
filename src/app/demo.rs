@@ -7,6 +7,7 @@ pub use warmy::Store;
 use std::fmt::Debug;
 
 use crate::time::Time;
+use crate::key::Key;
 
 /// Class of demo applications.
 ///
@@ -20,7 +21,7 @@ pub trait Demo: Sized {
   type Error: Sized + Debug;
 
   /// Initialize the demo with a given store.
-  fn init(store: &mut Store<Self::Context>) -> Result<Self, Self::Error>;
+  fn init(store: &mut Store<Self::Context, Key>) -> Result<Self, Self::Error>;
 
   /// Resize the demo when the framebuffer gets resized.
   fn resize(&mut self, width: u32, height: u32);
