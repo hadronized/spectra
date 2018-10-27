@@ -38,7 +38,11 @@ struct Opt {
   /// minutes and S a natural specifying the number of seconds. 30s will then be 30 seconds and 1m42
   /// will be 1 minute and 42 seconds. The number of seconds must not exceed 59.
   #[structopt(short = "z", long = "wrap-at")]
-  wrap_at: Option<DurationSpec>
+  wrap_at: Option<DurationSpec>,
+
+  /// Start the demo at a given time.
+  #[structopt(short = "s", long = "start-at", default_value = "0s")]
+  start_at: DurationSpec
 }
 
 impl DebugRunner {
@@ -50,7 +54,7 @@ impl DebugRunner {
     // get CLI options
     let opt = Opt::from_args();
     let width = opt.width.unwrap_or(def_width);
-    let height = opt.height.unwrap_or(def_width);
+    let height = opt.height.unwrap_or(def_height);
     let fullscreen = opt.fullscreen;
 
     // build the WindowDim
@@ -81,6 +85,7 @@ impl DebugRunner {
 
     // loop over time and run the demo
     let start_time = Monotonic::now();
+    let start_at = opt.start_at;
     let wrap_at = opt.wrap_at;
 
     'run: loop {
@@ -107,6 +112,7 @@ impl DebugRunner {
       // render a frame
       let t = start_time.elapsed_secs();
       let t = if let Some(wrap_t) = wrap_at { t.wrap_around(wrap_t.into()) } else { t };
+      let t = t.offset(start_at.into());
       let builder = surface.pipeline_builder();
 
       demo.render(t, &back_buffer, builder);

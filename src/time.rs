@@ -16,6 +16,11 @@ impl Time {
   pub fn wrap_around(self, t: Time) -> Self {
     Time(self.0 % t.0)
   }
+
+  /// Offset a time by a given amount of time.
+  pub fn offset(self, t: Time) -> Self {
+    Time(self.0 + t.0)
+  }
 }
 
 impl fmt::Display for Time {
@@ -58,6 +63,15 @@ impl Monotonic {
 pub struct DurationSpec {
   mins: u8,
   secs: u8
+}
+
+impl Default for DurationSpec {
+  fn default() -> Self {
+    DurationSpec {
+      mins: 0,
+      secs: 0
+    }
+  }
 }
 
 impl FromStr for DurationSpec {
