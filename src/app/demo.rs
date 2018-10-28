@@ -6,6 +6,7 @@ use luminance::texture::{Dim2, Flat};
 pub use warmy::Store;
 use std::fmt::Debug;
 
+use crate::resource::context::Context;
 use crate::resource::key::Key;
 use crate::time::Time;
 
@@ -15,19 +16,19 @@ use crate::time::Time;
 /// you hit escape or close the window, the application must quit.
 pub trait Demo: Sized {
   /// Context used to initialize the demo.
-  type Context;
+  type Context: Context;
 
   /// Initialization error that might occur.
   type Error: Sized + Debug;
 
   /// Initialize the demo with a given store.
-  fn init(store: &mut Store<Self::Context, Key>) -> Result<Self, Self::Error>;
+  fn init(store: &mut Store<Self::Context, Key>, context: &mut Self::Context) -> Result<Self, Self::Error>;
 
   /// Resize the demo when the framebuffer gets resized.
-  fn resize(&mut self, width: u32, height: u32);
+  fn resize(&mut self, context: &mut Self::Context, width: u32, height: u32);
 
   /// Render the demo at a given time. 
-  fn render(&mut self, t: Time, back_buffer: &Backbuffer, builder: Builder);
+  fn render(&mut self, context: &mut Self::Context, t: Time, back_buffer: &Backbuffer, builder: Builder);
 
 }
 

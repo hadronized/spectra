@@ -9,8 +9,9 @@ use structopt::StructOpt;
 use warmy::{Store, StoreOpt};
 
 use crate::app::demo::Demo;
-use crate::time::{DurationSpec, Monotonic};
+use crate::resource::context::Context;
 use crate::resource::key::Key;
+use crate::time::{DurationSpec, Monotonic};
 
 /// Main runner. Release-oriented.
 ///
@@ -50,8 +51,11 @@ impl DebugRunner {
   pub fn run<D>(
     title: &str,
     def_width: u32,
-    def_height: u32
+    def_height: u32,
+    mut context: D::Context
   ) where D: Demo {
+    info!(context.logger(), "starting {}", title);
+
     // get CLI options
     let opt = Opt::from_args();
     let width = opt.width.unwrap_or(def_width);
@@ -61,8 +65,10 @@ impl DebugRunner {
     // build the WindowDim
     let win_dim = if fullscreen {
       if opt.width.is_some() && opt.height.is_some() {
+        info!(context.logger(), "fullscreen: restricted ({}×{})", width, height);
         WindowDim::FullscreenRestricted(width, height)
       } else {
+        info!(context.logger(), "fullscreen: yes");
         WindowDim::Fullscreen
       }
     } else {
@@ -79,7 +85,7 @@ impl DebugRunner {
     let mut store: Store<D::Context, Key> = Store::new(store_opt).expect("store creation");
 
     // initialize the demo
-    let mut demo = D::init(&mut store).expect("demo initialization");
+    let mut demo = D::init(&mut store, &mut context).expect("demo initialization");
 
     // create a bunch of objects needed for rendering
     let mut back_buffer = Framebuffer::back_buffer(surface.size());
@@ -103,7 +109,7 @@ impl DebugRunner {
             let size = [w as u32, h as u32];
 
             back_buffer = Framebuffer::back_buffer(size);
-            demo.resize(size[0], size[1]);
+            demo.resize(&mut context, size[0], size[1]);
           }
 
           _ => ()
@@ -116,7 +122,7 @@ impl DebugRunner {
       let t = t.offset(start_at.into());
       let builder = surface.pipeline_builder();
 
-      demo.render(t, &back_buffer, builder);
+      demo.render(&mut context, t, &back_buffer, builder);
       surface.swap_buffers();
     }
   }
