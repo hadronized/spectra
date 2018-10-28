@@ -11,7 +11,7 @@ pub trait Context {
 }
 
 #[derive(Debug)]
-struct DefaultContext {
+pub struct DefaultContext {
   logger: StdoutLogger
 }
 

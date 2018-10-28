@@ -51,10 +51,10 @@ pub fn now() -> String {
 
 #[macro_export]
 macro_rules! info {
-  ($logger:expr, $s:expr $(, $r:tt)*) => {
+  ($logger:expr, $s:expr $(, $r:tt)*) => {{
     use $crate::logger::Logger;
     $logger.info(format_args!($s $(, $r)*));
-  }
+  }}
 }
 
 #[macro_export]

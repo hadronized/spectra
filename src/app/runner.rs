@@ -54,7 +54,7 @@ impl DebugRunner {
     def_height: u32,
     mut context: D::Context
   ) where D: Demo {
-    info!(context.logger(), "starting {}", title);
+    info!(context.logger(), "starting « {} »", title);
 
     // get CLI options
     let opt = Opt::from_args();
@@ -65,13 +65,14 @@ impl DebugRunner {
     // build the WindowDim
     let win_dim = if fullscreen {
       if opt.width.is_some() && opt.height.is_some() {
-        info!(context.logger(), "fullscreen: restricted ({}×{})", width, height);
+        info!(context.logger(), "window mode: fullscreen restricted ({}×{})", width, height);
         WindowDim::FullscreenRestricted(width, height)
       } else {
-        info!(context.logger(), "fullscreen: yes");
+        info!(context.logger(), "window mode: fullscreen");
         WindowDim::Fullscreen
       }
     } else {
+      info!(context.logger(), "window mode: windowed ({}×{})", width, height);
       WindowDim::Windowed(width, height)
     };
 
@@ -94,6 +95,8 @@ impl DebugRunner {
     let start_time = Monotonic::now();
     let start_at = opt.start_at;
     let wrap_at = opt.wrap_at;
+
+    info!(context.logger(), "initialized; running…");
 
     'run: loop {
       // treat events first
