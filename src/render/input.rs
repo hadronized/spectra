@@ -5,6 +5,9 @@ use serde_derive::{Deserialize, Serialize};
 use crate::render::type_channel::TypeChan;
 
 /// Input type.
+///
+/// The `BuiltIn` variant doesn’t have a [`TypeChan`] because its type is completely implicit
+/// (semantics typing). Instead, it has a [`BuiltIn`] object that drives the semantic.
 #[derive(Clone, Copy, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Type {
@@ -15,6 +18,18 @@ pub enum Type {
   Bool(TypeChan),
   #[serde(rename = "built-in")]
   BuiltIn(BuiltIn)
+}
+
+/// Role of an input. It can either be a functional input, like a vertex’s attribute, or a constant
+/// parameter.
+///
+/// This is not really important when writing a shader code but becomes important when writing the
+/// render pipeline.
+#[derive(Clone, Copy, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Role {
+  Pipeline,
+  Parameter
 }
 
 /// Associate an input type to a given type.
@@ -216,17 +231,23 @@ pub struct Input {
   name: String,
   /// Type of the input.
   #[serde(rename = "type")]
-  ty: Type
+  ty: Type,
+  /// Role of the input.
+  ///
+  /// The role gives information about how the input should be used (part of a pipeline object or
+  /// a constant parameter).
+  role: Role
 }
 
 impl Input {
   /// Create a new input.
-  pub fn new<T, N>(name: N) -> Self
+  pub fn new<T, N>(name: N, role: Role) -> Self
   where T: InputType,
         N: Into<String> {
     Input {
       name: name.into(),
-      ty: T::INPUT
+      ty: T::INPUT,
+      role
     }
   }
 }
@@ -255,8 +276,8 @@ mod tests {
     assert_eq!(to_string(&RGZ::INPUT).unwrap(), r#"{"bool":2}"#);
     assert_eq!(to_string(&RGBZ::INPUT).unwrap(), r#"{"bool":3}"#);
     assert_eq!(to_string(&RGBAZ::INPUT).unwrap(), r#"{"bool":4}"#);
-    assert_eq!(to_string(&Type::BuiltIn(BuiltIn::Time)).unwrap(), r#"{"built-in":"time"}"#);
-    assert_eq!(to_string(&Type::BuiltIn(BuiltIn::FramebufferResolution)).unwrap(), r#"{"built-in":"framebuffer_resolution"}"#);
+    assert_eq!(to_string(&Time::INPUT).unwrap(), r#"{"built-in":"time"}"#);
+    assert_eq!(to_string(&FramebufferResolution::INPUT).unwrap(), r#"{"built-in":"framebuffer_resolution"}"#);
   }
 
   #[test]
@@ -277,8 +298,20 @@ mod tests {
     assert_eq!(from_str::<Type>(r#"{"bool":2}"#).unwrap(), RGZ::INPUT);
     assert_eq!(from_str::<Type>(r#"{"bool":3}"#).unwrap(), RGBZ::INPUT);
     assert_eq!(from_str::<Type>(r#"{"bool":4}"#).unwrap(), RGBAZ::INPUT);
-    assert_eq!(from_str::<Type>(r#"{"built-in":"time"}"#).unwrap(), Type::BuiltIn(BuiltIn::Time));
-    assert_eq!(from_str::<Type>(r#"{"built-in":"framebuffer_resolution"}"#).unwrap(), Type::BuiltIn(BuiltIn::FramebufferResolution));
+    assert_eq!(from_str::<Type>(r#"{"built-in":"time"}"#).unwrap(), Time::INPUT);
+    assert_eq!(from_str::<Type>(r#"{"built-in":"framebuffer_resolution"}"#).unwrap(), FramebufferResolution::INPUT);
+  }
+
+  #[test]
+  fn serialize_role() {
+    assert_eq!(&to_string(&Role::Pipeline).unwrap(), r#""pipeline""#);
+    assert_eq!(&to_string(&Role::Parameter).unwrap(), r#""parameter""#);
+  }
+
+  #[test]
+  fn deserialize_role() {
+    assert_eq!(from_str::<Role>(r#""pipeline""#).unwrap(), Role::Pipeline);
+    assert_eq!(from_str::<Role>(r#""parameter""#).unwrap(), Role::Parameter);
   }
 
   #[test]
@@ -295,30 +328,32 @@ mod tests {
 
   #[test]
   fn input_construction() {
-    let time = Input::new::<Time, _>("t");
-    let jitter = Input::new::<RGBF, _>("jitter");
+    let time = Input::new::<Time, _>("t", Role::Parameter);
+    let jitter = Input::new::<RGBF, _>("jitter", Role::Parameter);
 
     assert_eq!(&time.name, "t");
     assert_eq!(time.ty, Time::INPUT);
+    assert_eq!(time.role, Role::Parameter);
     assert_eq!(&jitter.name, "jitter");
     assert_eq!(jitter.ty, RGBF::INPUT);
+    assert_eq!(jitter.role, Role::Parameter);
   }
 
   #[test]
   fn serialize_input() {
-    let time = Input::new::<Time, _>("t");
-    let jitter = Input::new::<RGBF, _>("jitter");
+    let time = Input::new::<Time, _>("t", Role::Parameter);
+    let jitter = Input::new::<RGBF, _>("jitter", Role::Parameter);
 
-    assert_eq!(&to_string(&time).unwrap(), r#"{"name":"t","type":{"built-in":"time"}}"#);
-    assert_eq!(&to_string(&jitter).unwrap(), r#"{"name":"jitter","type":{"float":3}}"#);
+    assert_eq!(&to_string(&time).unwrap(), r#"{"name":"t","type":{"built-in":"time"},"role":"parameter"}"#);
+    assert_eq!(&to_string(&jitter).unwrap(), r#"{"name":"jitter","type":{"float":3},"role":"parameter"}"#);
   }
 
   #[test]
   fn deserialize_input() {
-    let time = Input::new::<Time, _>("t");
-    let jitter = Input::new::<RGBF, _>("jitter");
+    let time = Input::new::<Time, _>("t", Role::Parameter);
+    let jitter = Input::new::<RGBF, _>("jitter", Role::Parameter);
 
-    assert_eq!(from_str::<Input>(r#"{"name":"t","type":{"built-in":"time"}}"#).unwrap(), time);
-    assert_eq!(from_str::<Input>(r#"{"name":"jitter","type":{"float":3}}"#).unwrap(), jitter);
+    assert_eq!(from_str::<Input>(r#"{"name":"t","type":{"built-in":"time"},"role":"parameter"}"#).unwrap(), time);
+    assert_eq!(from_str::<Input>(r#"{"name":"jitter","type":{"float":3},"role":"parameter"}"#).unwrap(), jitter);
   }
 }

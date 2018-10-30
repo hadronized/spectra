@@ -36,14 +36,8 @@ impl Block {
   }
 }
 
-//impl<C> Load<C, Key, JSON> for Block {
-//  type Error = Error;
-//
-//  fn load(
-//    key: SimpleKey,
-//    _: &mut Storage<C, SimpleKey>,
-//    _: &mut C
-//  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
-//    // 
-//  }
-//}
+// /// Turn a set of inputs into GLSL declarations. Basically, inputs are either:
+// ///
+// ///   - Functional inputs – i.e. arguments to functions. This is typically the case for vertex
+// ///     shaders.
+// ///   - Constant parameters – i.e. values that won’t change for a render command.
