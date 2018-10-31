@@ -5,9 +5,6 @@ use serde_derive::{Deserialize, Serialize};
 use crate::render::type_channel::TypeChan;
 
 /// Input type.
-///
-/// The `BuiltIn` variant doesn’t have a [`TypeChan`] because its type is completely implicit
-/// (semantics typing). Instead, it has a [`BuiltIn`] object that drives the semantic.
 #[derive(Clone, Copy, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Type {
@@ -16,8 +13,6 @@ pub enum Type {
   UInt(TypeChan),
   Float(TypeChan),
   Bool(TypeChan),
-  #[serde(rename = "built-in")]
-  BuiltIn(BuiltIn)
 }
 
 /// Role of an input. It can either be a functional input, like a vertex’s attribute, or a constant
@@ -29,7 +24,9 @@ pub enum Type {
 #[serde(rename_all = "snake_case")]
 pub enum Role {
   Pipeline,
-  Parameter
+  Parameter,
+  #[serde(rename = "built-in")]
+  BuiltIn(BuiltIn)
 }
 
 /// Associate an input type to a given type.
@@ -70,22 +67,6 @@ multi_input_type_impl!(A, B, C, D, E, F, G, H, I);
 multi_input_type_impl!(A, B, C, D, E, F, G, H, I, J);
 multi_input_type_impl!(A, B, C, D, E, F, G, H, I, J, K);
 multi_input_type_impl!(A, B, C, D, E, F, G, H, I, J, K, L);
-
-/// The time built-in.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct Time;
-
-impl InputType for Time {
-  const INPUT: Type = Type::BuiltIn(BuiltIn::Time);
-}
-
-/// The framebuffer resolution built-in.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct FramebufferResolution;
-
-impl InputType for FramebufferResolution {
-  const INPUT: Type = Type::BuiltIn(BuiltIn::FramebufferResolution);
-}
 
 /// One-dimensional integral output a.k.a. red channel.
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
@@ -232,22 +213,16 @@ pub struct Input {
   /// Type of the input.
   #[serde(rename = "type")]
   ty: Type,
-  /// Role of the input.
-  ///
-  /// The role gives information about how the input should be used (part of a pipeline object or
-  /// a constant parameter).
-  role: Role
 }
 
 impl Input {
   /// Create a new input.
-  pub fn new<T, N>(name: N, role: Role) -> Self
+  pub fn new<T, N>(name: N) -> Self
   where T: InputType,
         N: Into<String> {
     Input {
       name: name.into(),
       ty: T::INPUT,
-      role
     }
   }
 }
@@ -276,8 +251,6 @@ mod tests {
     assert_eq!(to_string(&RGZ::INPUT).unwrap(), r#"{"bool":2}"#);
     assert_eq!(to_string(&RGBZ::INPUT).unwrap(), r#"{"bool":3}"#);
     assert_eq!(to_string(&RGBAZ::INPUT).unwrap(), r#"{"bool":4}"#);
-    assert_eq!(to_string(&Time::INPUT).unwrap(), r#"{"built-in":"time"}"#);
-    assert_eq!(to_string(&FramebufferResolution::INPUT).unwrap(), r#"{"built-in":"framebuffer_resolution"}"#);
   }
 
   #[test]
@@ -298,8 +271,6 @@ mod tests {
     assert_eq!(from_str::<Type>(r#"{"bool":2}"#).unwrap(), RGZ::INPUT);
     assert_eq!(from_str::<Type>(r#"{"bool":3}"#).unwrap(), RGBZ::INPUT);
     assert_eq!(from_str::<Type>(r#"{"bool":4}"#).unwrap(), RGBAZ::INPUT);
-    assert_eq!(from_str::<Type>(r#"{"built-in":"time"}"#).unwrap(), Time::INPUT);
-    assert_eq!(from_str::<Type>(r#"{"built-in":"framebuffer_resolution"}"#).unwrap(), FramebufferResolution::INPUT);
   }
 
   #[test]
@@ -328,32 +299,30 @@ mod tests {
 
   #[test]
   fn input_construction() {
-    let time = Input::new::<Time, _>("t", Role::Parameter);
-    let jitter = Input::new::<RGBF, _>("jitter", Role::Parameter);
+    let time = Input::new::<RF, _>("t");
+    let jitter = Input::new::<RGBF, _>("jitter");
 
     assert_eq!(&time.name, "t");
-    assert_eq!(time.ty, Time::INPUT);
-    assert_eq!(time.role, Role::Parameter);
+    assert_eq!(time.ty, RF::INPUT);
     assert_eq!(&jitter.name, "jitter");
     assert_eq!(jitter.ty, RGBF::INPUT);
-    assert_eq!(jitter.role, Role::Parameter);
   }
 
   #[test]
   fn serialize_input() {
-    let time = Input::new::<Time, _>("t", Role::Parameter);
-    let jitter = Input::new::<RGBF, _>("jitter", Role::Parameter);
+    let time = Input::new::<RF, _>("t");
+    let jitter = Input::new::<RGBF, _>("jitter");
 
-    assert_eq!(&to_string(&time).unwrap(), r#"{"name":"t","type":{"built-in":"time"},"role":"parameter"}"#);
-    assert_eq!(&to_string(&jitter).unwrap(), r#"{"name":"jitter","type":{"float":3},"role":"parameter"}"#);
+    assert_eq!(&to_string(&time).unwrap(), r#"{"name":"t","type":{"float":1}}"#);
+    assert_eq!(&to_string(&jitter).unwrap(), r#"{"name":"jitter","type":{"float":3}}"#);
   }
 
   #[test]
   fn deserialize_input() {
-    let time = Input::new::<Time, _>("t", Role::Parameter);
-    let jitter = Input::new::<RGBF, _>("jitter", Role::Parameter);
+    let time = Input::new::<RF, _>("t");
+    let jitter = Input::new::<RGBF, _>("jitter");
 
-    assert_eq!(from_str::<Input>(r#"{"name":"t","type":{"built-in":"time"},"role":"parameter"}"#).unwrap(), time);
-    assert_eq!(from_str::<Input>(r#"{"name":"jitter","type":{"float":3},"role":"parameter"}"#).unwrap(), jitter);
+    assert_eq!(from_str::<Input>(r#"{"name":"t","type":{"float":1}}"#).unwrap(), time);
+    assert_eq!(from_str::<Input>(r#"{"name":"jitter","type":{"float":3}}"#).unwrap(), jitter);
   }
 }

@@ -21,7 +21,9 @@ planned features.
       logical computation (it has inputs and outputs) that abstracts the concept of a shader into
       smaller, more grained and general parts. The idea is that combining render blocks will yield
       something similar to a shader. A render block has information about its inputs, outputs and
-      contains GLSL code that links them altogether.
+      contains GLSL code that links them altogether. It’s possible to write render blocks in Rust
+      directly and benefit from the typesystem to deduce all the typing information for both the
+      inputs and outputs or via runtime (JSON + warmy).
 
 ## Modules hierarchy
 
