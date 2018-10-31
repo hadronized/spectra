@@ -4,12 +4,11 @@
 //! vertex attributes, user-specified values, built-ins or previous blocks’ outputs.
 
 use cheddar::Module;
-use glsl::syntax::TranslationUnit;
+use glsl::syntax::ExternalDeclaration;
 use std::path::PathBuf;
 use warmy::{Load, Loaded, Res, Storage};
-use warmy::methods::JSON;
 
-use crate::render::input::Input;
+use crate::render::input::{Input, Role};
 use crate::render::output::Output;
 use crate::resource::key::Key;
 use crate::resource::error::Error;
@@ -35,9 +34,3 @@ impl Block {
     }
   }
 }
-
-// /// Turn a set of inputs into GLSL declarations. Basically, inputs are either:
-// ///
-// ///   - Functional inputs – i.e. arguments to functions. This is typically the case for vertex
-// ///     shaders.
-// ///   - Constant parameters – i.e. values that won’t change for a render command.
