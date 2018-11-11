@@ -3,7 +3,6 @@
 //! Render blocks are logical rendering units that have inputs and outputs. Inputs can represent
 //! vertex attributes, user-specified values, built-ins or previous blocks’ outputs.
 
-use cheddar::Module;
 use glsl::syntax::ExternalDeclaration;
 use std::path::PathBuf;
 use warmy::{Load, Loaded, Res, Storage};

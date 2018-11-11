@@ -1,5 +1,6 @@
 //! Render input types and related functions.
 
+use glsl::syntax::{ExternalDeclaration, StructFieldSpecifier, TypeSpecifier, TypeSpecifierNonArray};
 use serde_derive::{Deserialize, Serialize};
 
 use crate::render::type_channel::TypeChan;
@@ -225,6 +226,40 @@ impl Input {
       ty: T::INPUT,
     }
   }
+}
+
+/// Generate a GLSL structure given a list of inputs.
+fn inputs_to_struct_decl<'a, I>(name: &str, inputs: I) -> ExternalDeclaration where I: Iterator<Item = &'a Input> {
+  ExternalDeclaration::new_struct(name, inputs.map(input_to_struct_field))
+}
+
+/// Generate a struct field from an input.
+fn input_to_struct_field(input: &Input) -> StructFieldSpecifier {
+  StructFieldSpecifier::new(input.name.as_str(), glsl_type_from_input_type(&input.ty))
+}
+
+/// Generate a GLSL type from a given a input type.
+fn glsl_type_from_input_type(ty: &Type) -> TypeSpecifier {
+  let ty_nonarray = match *ty {
+    Type::Int(TypeChan::One) => TypeSpecifierNonArray::Int,
+    Type::Int(TypeChan::Two) => TypeSpecifierNonArray::IVec2,
+    Type::Int(TypeChan::Three) => TypeSpecifierNonArray::IVec3,
+    Type::Int(TypeChan::Four) => TypeSpecifierNonArray::IVec4,
+    Type::UInt(TypeChan::One) => TypeSpecifierNonArray::UInt,
+    Type::UInt(TypeChan::Two) => TypeSpecifierNonArray::UVec2,
+    Type::UInt(TypeChan::Three) => TypeSpecifierNonArray::UVec3,
+    Type::UInt(TypeChan::Four) => TypeSpecifierNonArray::UVec4,
+    Type::Float(TypeChan::One) => TypeSpecifierNonArray::Float,
+    Type::Float(TypeChan::Two) => TypeSpecifierNonArray::Vec2,
+    Type::Float(TypeChan::Three) => TypeSpecifierNonArray::Vec3,
+    Type::Float(TypeChan::Four) => TypeSpecifierNonArray::Vec4,
+    Type::Bool(TypeChan::One) => TypeSpecifierNonArray::Bool,
+    Type::Bool(TypeChan::Two) => TypeSpecifierNonArray::BVec2,
+    Type::Bool(TypeChan::Three) => TypeSpecifierNonArray::BVec3,
+    Type::Bool(TypeChan::Four) => TypeSpecifierNonArray::BVec4,
+  };
+
+  TypeSpecifier::new(ty_nonarray)
 }
 
 #[cfg(test)]

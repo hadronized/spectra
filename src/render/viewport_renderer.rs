@@ -1,6 +1,5 @@
 //! Viewport renderer.
 
-use cheddar::Module;
 use luminance::context::GraphicsContext;
 use luminance::tess::{Mode, Tess};
 use luminance::shader::program::Program;
