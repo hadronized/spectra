@@ -229,8 +229,8 @@ impl Input {
 }
 
 /// Generate a GLSL structure given a list of inputs.
-fn inputs_to_struct_decl<'a, I>(name: &str, inputs: I) -> ExternalDeclaration where I: Iterator<Item = &'a Input> {
-  ExternalDeclaration::new_struct(name, inputs.map(input_to_struct_field))
+pub(crate) fn inputs_to_struct_decl<'a, I>(name: &str, inputs: I) -> ExternalDeclaration where I: IntoIterator<Item = &'a Input> {
+  ExternalDeclaration::new_struct(name, inputs.into_iter().map(input_to_struct_field))
 }
 
 /// Generate a struct field from an input.
@@ -238,7 +238,7 @@ fn input_to_struct_field(input: &Input) -> StructFieldSpecifier {
   StructFieldSpecifier::new(input.name.as_str(), glsl_type_from_input_type(&input.ty))
 }
 
-/// Generate a GLSL type from a given a input type.
+/// Generate a GLSL type from a given input type.
 fn glsl_type_from_input_type(ty: &Type) -> TypeSpecifier {
   let ty_nonarray = match *ty {
     Type::Int(TypeChan::One) => TypeSpecifierNonArray::Int,
