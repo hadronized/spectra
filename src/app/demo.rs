@@ -12,8 +12,7 @@ use crate::time::Time;
 
 /// Class of demo applications.
 ///
-/// A demo is basically just a single function that takes the current time and display something. If
-/// you hit escape or close the window, the application must quit.
+/// A demo is basically just a single function that takes the current time and display something.
 pub trait Demo: Sized {
   /// Context carried around with the demo.
   type Context: Context;
