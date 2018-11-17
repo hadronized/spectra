@@ -15,7 +15,7 @@ use crate::time::Time;
 /// A demo is basically just a single function that takes the current time and display something. If
 /// you hit escape or close the window, the application must quit.
 pub trait Demo: Sized {
-  /// Context used to initialize the demo.
+  /// Context carried around with the demo.
   type Context: Context;
 
   /// Initialization error that might occur.
