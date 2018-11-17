@@ -36,7 +36,7 @@ impl Logger for StdoutLogger {
   }
 }
 
-pub fn now() -> String {
+fn now() -> String {
   let t = Local::now();
     
   format!("{month:0>2}/{day:0>2}/{year} {hour:0>2}:{min:0>2}:{secs:0>2}:{nsecs:0>9}",
