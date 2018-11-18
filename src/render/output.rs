@@ -54,134 +54,6 @@ multi_output_type_impl!(A, B, C, D, E, F, G, H, I, J);
 multi_output_type_impl!(A, B, C, D, E, F, G, H, I, J, K);
 multi_output_type_impl!(A, B, C, D, E, F, G, H, I, J, K, L);
 
-/// One-dimensional integral output a.k.a. red channel.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct RI;
-
-impl OutputType for RI {
-  const OUTPUT: Type = Type::Int(TypeChan::One);
-}
-
-/// Two dimensional integral output a.k.a. red-green channels.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct RGI;
-
-impl OutputType for RGI {
-  const OUTPUT: Type = Type::Int(TypeChan::Two);
-}
-
-/// Three dimensional integral output a.k.a. red-green-blue channels.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct RGBI;
-
-impl OutputType for RGBI {
-  const OUTPUT: Type = Type::Int(TypeChan::Three);
-}
-
-/// Four dimensional integral output a.k.a. red-green-blue-alpha channels.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct RGBAI;
-
-impl OutputType for RGBAI {
-  const OUTPUT: Type = Type::Int(TypeChan::Four);
-}
-
-/// One-dimensional unigned integral output a.k.a. red channel.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct RU;
-
-impl OutputType for RU {
-  const OUTPUT: Type = Type::UInt(TypeChan::One);
-}
-
-/// Two dimensional unsigned integral output a.k.a. red-green channels.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct RGU;
-
-impl OutputType for RGU {
-  const OUTPUT: Type = Type::UInt(TypeChan::Two);
-}
-
-/// Three dimensional unsigned integral output a.k.a. red-green-blue channels.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct RGBU;
-
-impl OutputType for RGBU {
-  const OUTPUT: Type = Type::UInt(TypeChan::Three);
-}
-
-/// Four dimensional unsigned integral output a.k.a. red-green-blue-alpha channels.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct RGBAU;
-
-impl OutputType for RGBAU {
-  const OUTPUT: Type = Type::UInt(TypeChan::Four);
-}
-
-/// One-dimensional floating output a.k.a. red channel.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct RF;
-
-impl OutputType for RF {
-  const OUTPUT: Type = Type::Float(TypeChan::One);
-}
-
-/// Two dimensional floating output a.k.a. red-green channels.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct RGF;
-
-impl OutputType for RGF {
-  const OUTPUT: Type = Type::Float(TypeChan::Two);
-}
-
-/// Three dimensional floating output a.k.a. red-green-blue channels.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct RGBF;
-
-impl OutputType for RGBF {
-  const OUTPUT: Type = Type::Float(TypeChan::Three);
-}
-
-/// Four dimensional floating output a.k.a. red-green-blue-alpha channels.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct RGBAF;
-
-impl OutputType for RGBAF {
-  const OUTPUT: Type = Type::Float(TypeChan::Four);
-}
-
-/// One-dimensional boolean output a.k.a. red channel.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct RZ;
-
-impl OutputType for RZ {
-  const OUTPUT: Type = Type::Bool(TypeChan::One);
-}
-
-/// Two dimensional boolean output a.k.a. red-green channels.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct RGZ;
-
-impl OutputType for RGZ {
-  const OUTPUT: Type = Type::Bool(TypeChan::Two);
-}
-
-/// Three dimensional boolean output a.k.a. red-green-blue channels.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct RGBZ;
-
-impl OutputType for RGBZ {
-  const OUTPUT: Type = Type::Bool(TypeChan::Three);
-}
-
-/// Four dimensional boolean output a.k.a. red-green-blue-alpha channels.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
-pub struct RGBAZ;
-
-impl OutputType for RGBAZ {
-  const OUTPUT: Type = Type::Bool(TypeChan::Four);
-}
-
 /// An output.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -208,8 +80,10 @@ impl Output {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
   use serde_json::{from_str, to_string};
+
+  use crate::render::types::*;
+  use super::*;
 
   #[test]
   fn serialize_type() {
