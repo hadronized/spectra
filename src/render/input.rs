@@ -264,6 +264,7 @@ fn glsl_type_from_input_type(ty: &Type) -> TypeSpecifier {
 
 #[cfg(test)]
 mod tests {
+  use glsl_quasiquote::glsl;
   use super::*;
   use serde_json::{from_str, to_string};
 
@@ -359,5 +360,23 @@ mod tests {
 
     assert_eq!(from_str::<Input>(r#"{"name":"t","type":{"float":1}}"#).unwrap(), time);
     assert_eq!(from_str::<Input>(r#"{"name":"jitter","type":{"float":3}}"#).unwrap(), jitter);
+  }
+
+  #[test]
+  fn inputs_to_glsl_struct() {
+    let time = Input::new::<RF, _>("t");
+    let jitter = Input::new::<RGBF, _>("jitter");
+    let inputs = &[time, jitter];
+
+    let ed = vec![inputs_to_struct_decl("Input", inputs)];
+    let expected = glsl!{
+      struct Input {
+        float t;
+        vec3 jitter;
+      };
+    };
+
+
+    assert_eq!(ed, expected);
   }
 }
