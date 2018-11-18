@@ -4,32 +4,76 @@
 //! vertex attributes, user-specified values, built-ins or previous blocks’ outputs.
 
 use glsl::syntax::ExternalDeclaration;
-use std::path::PathBuf;
-use warmy::{Load, Loaded, Res, Storage};
+use std::iter::once;
 
-use crate::render::input::{Input, Role};
-use crate::render::output::Output;
-use crate::resource::key::Key;
-use crate::resource::error::Error;
+use crate::render::input::{Input, inputs_to_struct_decl};
+use crate::render::output::{Output, outputs_to_struct_decl};
 
 /// A render block, allowing for combining blocks in order to create more complex rendering
 /// computations.
 #[derive(Clone, Debug)]
 struct Block {
+  /// Unique identifier of the block. Used to get mangled names for structures and functions.
+  id: String,
   inputs: Vec<Input>,
   outputs: Vec<Output>,
-  code_path: PathBuf
+  code: Vec<ExternalDeclaration>
 }
 
 impl Block {
-  /// Create a new block out of inputs, outputs and a GLSL module.
-  pub fn new<I, O>(inputs: I, outputs: O, code_path: PathBuf) -> Self
-  where I: Iterator<Item = Input>,
-        O: Iterator<Item = Output> {
+  /// Create a new block out of inputs, outputs and GLSL code.
+  pub fn new<S, I, O, C>(id: S, inputs: I, outputs: O, code: C) -> Self
+  where S: Into<String>,
+        I: IntoIterator<Item = Input>,
+        O: IntoIterator<Item = Output>,
+        C: IntoIterator<Item = ExternalDeclaration> {
     Block {
-      inputs: inputs.collect(),
-      outputs: outputs.collect(),
-      code_path
+      id: id.into(),
+      inputs: inputs.into_iter().collect(),
+      outputs: outputs.into_iter().collect(),
+      code: code.into_iter().collect()
     }
+  }
+
+  /// Turn a block into its GLSL header representation.
+  ///
+  /// The GLSL header contains the inputs and the outputs struct definitions.
+  pub fn to_glsl_header(&self) -> Vec<ExternalDeclaration> {
+    // get the input and output GLSL representations
+    let input_struct = inputs_to_struct_decl("In", &self.inputs);
+    let output_struct = outputs_to_struct_decl("Out", &self.outputs);
+
+    once(input_struct).chain(once(output_struct)).flatten().collect()
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use glsl_quasiquote::glsl;
+
+  use crate::render::types::*;
+  use super::*;
+
+  #[test]
+  fn block_to_glsl_header() {
+    use crate::render::input::Input;
+    use crate::render::output::Output;
+
+    let inputs = vec![Input::new::<Float, _>("time"), Input::new::<RGBAU, _>("bias")];
+    let outputs = vec![Output::new::<RGBF, _>("color")];
+    let code = vec![];
+    let block = Block::new("simple", inputs, outputs, code);
+    let expected = glsl!{
+      struct In {
+        float time;
+        uvec4 bias;
+      };
+
+      struct Out {
+        vec3 color;
+      };
+    };
+
+    assert_eq!(block.to_glsl_header(), expected);
   }
 }

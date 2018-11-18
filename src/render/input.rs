@@ -101,7 +101,12 @@ impl Input {
 }
 
 /// Generate a GLSL structure given a list of inputs.
-pub(crate) fn inputs_to_struct_decl<'a, I>(name: &str, inputs: I) -> ExternalDeclaration where I: IntoIterator<Item = &'a Input> {
+pub(crate) fn inputs_to_struct_decl<'a, N, I>(
+  name: N,
+  inputs: I
+) -> Option<ExternalDeclaration>
+where N: Into<String>,
+      I: IntoIterator<Item = &'a Input> {
   ExternalDeclaration::new_struct(name, inputs.into_iter().map(input_to_struct_field))
 }
 
@@ -242,7 +247,7 @@ mod tests {
     let jitter = Input::new::<RGBF, _>("jitter");
     let inputs = &[time, jitter];
 
-    let ed = vec![inputs_to_struct_decl("Input", inputs)];
+    let ed = vec![inputs_to_struct_decl("Input", inputs).unwrap()];
     let expected = glsl!{
       struct Input {
         float t;

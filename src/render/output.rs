@@ -79,11 +79,12 @@ impl Output {
 }
 
 /// Generate a GLSL structure given a list of outputs.
-pub(crate) fn outputs_to_struct_decl<'a, O>(
-  name : &str,
+pub(crate) fn outputs_to_struct_decl<'a, N, O>(
+  name : N,
   outputs: O
-) -> ExternalDeclaration
-where O: IntoIterator<Item = &'a Output> {
+) -> Option<ExternalDeclaration>
+where N: Into<String>,
+      O: IntoIterator<Item = &'a Output> {
   ExternalDeclaration::new_struct(name, outputs.into_iter().map(output_to_struct_field))
 }
 
@@ -170,7 +171,7 @@ mod tests {
     let depth = Output::new::<Float, _>("depth");
     let outputs = &[color, depth];
 
-    let ed = vec![outputs_to_struct_decl("Output", outputs)];
+    let ed = vec![outputs_to_struct_decl("Output", outputs).unwrap()];
     let expected = glsl!{
       struct Output {
         vec4 color;
