@@ -38,12 +38,30 @@ impl Block {
   /// Turn a block into its GLSL header representation.
   ///
   /// The GLSL header contains the inputs and the outputs struct definitions.
-  pub fn to_glsl_header(&self) -> Vec<ExternalDeclaration> {
+  fn to_glsl_header(&self) -> Vec<ExternalDeclaration> {
     // get the input and output GLSL representations
     let input_struct = inputs_to_struct_decl("In", &self.inputs);
     let output_struct = outputs_to_struct_decl("Out", &self.outputs);
 
     once(input_struct).chain(once(output_struct)).flatten().collect()
+  }
+
+  /// Turn a block into its GLSL full representation.
+  ///
+  /// The full GLSL representation includes:
+  ///
+  ///   - All intermediates structures, constants and functions.
+  ///   - The *input* and *output* structures, renamed to:
+  ///     - `In` becomes `In_<blockid>`. For instance, the block with ID `"Blur"` has its input type
+  ///        going from `In` to `In_Blur`.
+  ///     - `Out` becomes `Out_<blockid>`. For instance, the block with ID `"Blur"` has its output
+  ///        type going from `Out` to `Out_Blur`.
+  ///     - The function named `call` is searched for in the *code* part of the block and renamed
+  ///       `call_<blockid>`. For instance, the block with ID `"Blur"` has its `call` function
+  ///       renamed `call_Blur`.
+  ///   - All references to `In`, `Out` and `call` are replaced with the appropriate new name.
+  fn to_glsl(&self) -> Vec<ExternalDeclaration> {
+    unimplemented!()
   }
 }
 
