@@ -9,11 +9,11 @@ use crate::render::type_channel::TypeChan;
 pub struct Float;
 
 impl InputType for Float {
-  const INPUT: input::Type = input::Type::Int(TypeChan::One);
+  const INPUT: input::Type = input::Type::Float(TypeChan::One);
 }
 
 impl OutputType for Float {
-  const OUTPUT: output::Type = output::Type::Int(TypeChan::One);
+  const OUTPUT: output::Type = output::Type::Float(TypeChan::One);
 }
 
 /// One-dimensional integral output a.k.a. red channel.

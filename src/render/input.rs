@@ -250,7 +250,6 @@ mod tests {
       };
     };
 
-
     assert_eq!(ed, expected);
   }
 }
