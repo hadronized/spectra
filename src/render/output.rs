@@ -1,6 +1,8 @@
 //! Render output types and related functions.
 
-use glsl::syntax::{ExternalDeclaration, StructFieldSpecifier, TypeSpecifier, TypeSpecifierNonArray};
+use glsl::syntax::{
+  ExternalDeclaration, StructFieldSpecifier, TypeName, TypeSpecifier, TypeSpecifierNonArray
+};
 use serde_derive::{Deserialize, Serialize};
 
 use crate::render::type_channel::TypeChan;
@@ -83,7 +85,7 @@ pub(crate) fn outputs_to_struct_decl<'a, N, O>(
   name : N,
   outputs: O
 ) -> Option<ExternalDeclaration>
-where N: Into<String>,
+where N: Into<TypeName>,
       O: IntoIterator<Item = &'a Output> {
   ExternalDeclaration::new_struct(name, outputs.into_iter().map(output_to_struct_field))
 }
@@ -119,8 +121,10 @@ fn glsl_type_from_output_type(ty: &Type) -> TypeSpecifier {
 
 #[cfg(test)]
 mod tests {
+  use glsl::syntax::TranslationUnit;
   use glsl_quasiquote::glsl;
   use serde_json::{from_str, to_string};
+  use std::iter;
 
   use crate::render::types::*;
   use super::*;
@@ -171,7 +175,7 @@ mod tests {
     let depth = Output::new::<Float, _>("depth");
     let outputs = &[color, depth];
 
-    let ed = vec![outputs_to_struct_decl("Output", outputs).unwrap()];
+    let ed = TranslationUnit::from_iter(iter::once(outputs_to_struct_decl("Output", outputs).unwrap())).unwrap();
     let expected = glsl!{
       struct Output {
         vec4 color;

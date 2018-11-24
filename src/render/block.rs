@@ -3,7 +3,7 @@
 //! Render blocks are logical rendering units that have inputs and outputs. Inputs can represent
 //! vertex attributes, user-specified values, built-ins or previous blocks’ outputs.
 
-use glsl::syntax::ExternalDeclaration;
+use glsl::syntax::{ExternalDeclaration, TranslationUnit};
 use std::iter::once;
 
 use crate::render::input::{Input, inputs_to_struct_decl};
@@ -38,12 +38,12 @@ impl Block {
   /// Turn a block into its GLSL header representation.
   ///
   /// The GLSL header contains the inputs and the outputs struct definitions.
-  fn to_glsl_header(&self) -> Vec<ExternalDeclaration> {
+  fn to_glsl_header(&self) -> Option<TranslationUnit> {
     // get the input and output GLSL representations
     let input_struct = inputs_to_struct_decl("In", &self.inputs);
     let output_struct = outputs_to_struct_decl("Out", &self.outputs);
 
-    once(input_struct).chain(once(output_struct)).flatten().collect()
+    TranslationUnit::from_iter(once(input_struct).chain(once(output_struct)).flatten())
   }
 
   /// Turn a block into its GLSL full representation.
@@ -92,6 +92,6 @@ mod tests {
       };
     };
 
-    assert_eq!(block.to_glsl_header(), expected);
+    assert_eq!(block.to_glsl_header(), Some(expected));
   }
 }
