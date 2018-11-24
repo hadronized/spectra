@@ -1,6 +1,8 @@
 //! Render input types and related functions.
 
-use glsl::syntax::{ExternalDeclaration, StructFieldSpecifier, TypeSpecifier, TypeSpecifierNonArray};
+use glsl::syntax::{
+  ExternalDeclaration, StructFieldSpecifier, TypeName, TypeSpecifier, TypeSpecifierNonArray
+};
 use serde_derive::{Deserialize, Serialize};
 
 use crate::render::type_channel::TypeChan;
@@ -105,7 +107,7 @@ pub(crate) fn inputs_to_struct_decl<'a, N, I>(
   name: N,
   inputs: I
 ) -> Option<ExternalDeclaration>
-where N: Into<String>,
+where N: Into<TypeName>,
       I: IntoIterator<Item = &'a Input> {
   ExternalDeclaration::new_struct(name, inputs.into_iter().map(input_to_struct_field))
 }
@@ -141,8 +143,10 @@ fn glsl_type_from_input_type(ty: &Type) -> TypeSpecifier {
 
 #[cfg(test)]
 mod tests {
+  use glsl::syntax::TranslationUnit;
   use glsl_quasiquote::glsl;
   use serde_json::{from_str, to_string};
+  use std::iter;
 
   use crate::render::types::*;
   use super::*;
@@ -247,7 +251,7 @@ mod tests {
     let jitter = Input::new::<RGBF, _>("jitter");
     let inputs = &[time, jitter];
 
-    let ed = vec![inputs_to_struct_decl("Input", inputs).unwrap()];
+    let ed = TranslationUnit::from_iter(iter::once(inputs_to_struct_decl("Input", inputs).unwrap()));
     let expected = glsl!{
       struct Input {
         float t;
@@ -255,6 +259,6 @@ mod tests {
       };
     };
 
-    assert_eq!(ed, expected);
+    assert_eq!(ed, Some(expected));
   }
 }
