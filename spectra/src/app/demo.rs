@@ -13,7 +13,7 @@ pub use crate::time::Time;
 /// Class of demo applications.
 ///
 /// A demo is basically just a single function that takes the current time and display something.
-pub trait Demo: Sized {
+pub trait Demo<Runner>: Sized {
   /// Context carried around with the demo.
   type Context: Logger;
 
@@ -21,13 +21,30 @@ pub trait Demo: Sized {
   type Error: Sized + Debug;
 
   /// Initialize the demo with a given store.
-  fn init(store: &mut Store<Self::Context, Key>, context: &mut Self::Context) -> Result<Self, Self::Error>;
+  ///
+  /// The runner is passed so that specific initialization is possible.
+  fn init(
+    runner: &mut Runner,
+    store: &mut Store<Self::Context, Key>,
+    context: &mut Self::Context
+  ) -> Result<Self, Self::Error>;
 
   /// Resize the demo when the framebuffer gets resized.
-  fn resize(&mut self, context: &mut Self::Context, width: u32, height: u32);
+  ///
+  /// The runner is passed so that specific resizing is possible.
+  fn resize(&mut self, runner: &mut Runner, context: &mut Self::Context, width: u32, height: u32);
 
   /// Render the demo at a given time. 
-  fn render(&mut self, context: &mut Self::Context, t: Time, back_buffer: &Backbuffer, builder: Builder);
+  ///
+  /// The runner is passed so that specific rendering is possible.
+  fn render(
+    &mut self,
+    runner: &mut Runner,
+    context: &mut Self::Context,
+    t: Time,
+    back_buffer: &Backbuffer,
+    builder: Builder
+  );
 }
 
 pub type Backbuffer = Framebuffer<Flat, Dim2, (), ()>;

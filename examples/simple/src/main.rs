@@ -6,20 +6,20 @@ use spectra::logger::StdoutLogger;
 
 struct App;
 
-impl Demo for App {
+impl<Runner> Demo<Runner> for App {
   type Context = StdoutLogger;
 
   type Error = ();
 
-  fn init(_store: &mut Store<Self::Context, Key>, _context: &mut Self::Context) -> Result<Self, Self::Error> {
+  fn init(_runner: &mut Runner, _store: &mut Store<Self::Context, Key>, _context: &mut Self::Context) -> Result<Self, Self::Error> {
     Ok(App)
   }
 
-  fn resize(&mut self, _context: &mut Self::Context, _width: u32, _height: u32) {
+  fn resize(&mut self, _runner: &mut Runner, _context: &mut Self::Context, _width: u32, _height: u32) {
     // do nothing
   }
 
-  fn render(&mut self, context: &mut Self::Context, t: Time, _back_buffer: &Backbuffer, _builder: Builder) {
+  fn render(&mut self, _runner: &mut Runner, context: &mut Self::Context, t: Time, _back_buffer: &Backbuffer, _builder: Builder) {
     debug!(context, "time is {}", t);
   }
 }

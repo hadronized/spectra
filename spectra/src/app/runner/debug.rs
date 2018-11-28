@@ -53,7 +53,7 @@ impl Runner {
     def_height: u32,
     context: &mut D::Context
   ) -> Result<(), runner::Error>
-  where D: Demo {
+  where D: Demo<Self> {
     info!(context, "starting « {} »", title);
 
     // get CLI options
@@ -89,9 +89,12 @@ impl Runner {
       Store::new(store_opt)
         .map_err(|e| runner::Error::cannot_create_store(format!("{}", e)))?;
 
+    // create an instance of our runner to pass to the demo
+    let mut runner = Runner;
+
     // initialize the demo
     let mut demo =
-      D::init(&mut store, context)
+      D::init(&mut runner, &mut store, context)
         .map_err(|e| runner::Error::demo_initialization_failure(format!("{:?}", e)))?;
 
     // create a bunch of objects needed for rendering
@@ -118,7 +121,7 @@ impl Runner {
             let size = [w as u32, h as u32];
 
             back_buffer = Framebuffer::back_buffer(size);
-            demo.resize(context, size[0], size[1]);
+            demo.resize(&mut runner, context, size[0], size[1]);
           }
 
           _ => ()
@@ -131,7 +134,7 @@ impl Runner {
       let t = t.offset(start_at.into());
       let builder = surface.pipeline_builder();
 
-      demo.render(context, t, &back_buffer, builder);
+      demo.render(&mut runner, context, t, &back_buffer, builder);
       surface.swap_buffers();
     }
 
