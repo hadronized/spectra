@@ -9,6 +9,7 @@ use structopt::StructOpt;
 use warmy::{Store, StoreOpt};
 
 use crate::app::demo::Demo;
+use crate::app::runner;
 use crate::resource::context::Context;
 use crate::resource::key::Key;
 use crate::time::{DurationSpec, Monotonic};
@@ -52,7 +53,8 @@ impl Runner {
     def_width: u32,
     def_height: u32,
     mut context: D::Context
-  ) where D: Demo {
+  ) -> Result<(), runner::Error>
+  where D: Demo {
     info!(context.logger(), "starting « {} »", title);
 
     // get CLI options
@@ -78,14 +80,20 @@ impl Runner {
     let win_opt = WindowOpt::default();
 
     // create the rendering surface
-    let mut surface = GlfwSurface::new(win_dim, title, win_opt).expect("GLFW surface");
+    let mut surface =
+      GlfwSurface::new(win_dim, title, win_opt)
+        .map_err(|e| runner::Error::cannot_create_window(format!("{}", e)))?;
 
     // create the store
     let store_opt = StoreOpt::default().set_root("data");
-    let mut store: Store<D::Context, Key> = Store::new(store_opt).expect("store creation");
+    let mut store: Store<D::Context, Key> =
+      Store::new(store_opt)
+        .map_err(|e| runner::Error::cannot_create_store(format!("{}", e)))?;
 
     // initialize the demo
-    let mut demo = D::init(&mut store, &mut context).expect("demo initialization");
+    let mut demo =
+      D::init(&mut store, &mut context)
+        .map_err(|e| runner::Error::demo_initialization_failure(format!("{:?}", e)))?;
 
     // create a bunch of objects needed for rendering
     let mut back_buffer = Framebuffer::back_buffer(surface.size());
@@ -127,5 +135,7 @@ impl Runner {
       demo.render(&mut context, t, &back_buffer, builder);
       surface.swap_buffers();
     }
+
+    Ok(())
   }
 }

@@ -7,8 +7,8 @@ pub use warmy::Store;
 use std::fmt::Debug;
 
 use crate::resource::context::Context;
-use crate::resource::key::Key;
-use crate::time::Time;
+pub use crate::resource::key::Key;
+pub use crate::time::Time;
 
 /// Class of demo applications.
 ///
@@ -28,7 +28,6 @@ pub trait Demo: Sized {
 
   /// Render the demo at a given time. 
   fn render(&mut self, context: &mut Self::Context, t: Time, back_buffer: &Backbuffer, builder: Builder);
-
 }
 
 pub type Backbuffer = Framebuffer<Flat, Dim2, (), ()>;
