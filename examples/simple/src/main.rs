@@ -31,4 +31,6 @@ fn main() {
   if let Err(e) = result {
     error!(&mut context, "{}", e);
   }
+
+  info!(&mut context, "Bye!");
 }
