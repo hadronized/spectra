@@ -16,7 +16,7 @@ use crate::time::{DurationSpec, Monotonic};
 /// Debug runner.
 ///
 /// This runner shall be used whenever wanted to debug a demo.
-pub struct DebugRunner;
+pub struct Runner;
 
 #[derive(StructOpt, Debug)]
 struct Opt {
@@ -46,7 +46,7 @@ struct Opt {
   start_at: DurationSpec
 }
 
-impl DebugRunner {
+impl Runner {
   pub fn run<D>(
     title: &str,
     def_width: u32,

@@ -1,0 +1,8 @@
+[package]
+name = "simple"
+version = "0.1.0"
+authors = ["Dimitri Sabadie <dimitri.sabadie@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+spectra = { version = "0.14", path = "../../spectra" }
