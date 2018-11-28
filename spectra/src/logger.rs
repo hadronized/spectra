@@ -18,6 +18,12 @@ pub trait Logger {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct StdoutLogger;
 
+impl Default for StdoutLogger {
+  fn default() -> Self {
+    StdoutLogger
+  }
+}
+
 impl Logger for StdoutLogger {
   fn info(&mut self, args: Arguments) {
     println!("\x1b[90m{} \x1b[34m> {}\x1b[0m", now(), args);
