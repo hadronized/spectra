@@ -17,6 +17,7 @@ edition = "2018"
 #cgmath = "0.16"
 chrono = "0.4"
 glsl = "0.13"
+glsl-quasiquote = "0.3"
 luminance = "0.30"
 luminance-glfw = "0.5"
 #luminance-windowing = "0.2"
@@ -36,7 +37,6 @@ features = ["serialization"]
 
 [dev-dependencies]
 rand = "0.5"
-glsl-quasiquote = "0.3"
 
 [patch.crates-io]
 glsl = { path = "/home/phaazon/dev/glsl" }

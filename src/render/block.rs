@@ -64,7 +64,7 @@ impl Block {
   ///       `call_<blockid>`. For instance, the block with ID `"Blur"` has its `call` function
   ///       renamed `call_Blur`.
   ///   - All references to `In`, `Out` and `call` are replaced with the appropriate new name.
-  fn to_glsl(&self) -> Option<TranslationUnit> {
+  pub(crate) fn to_glsl(&self) -> Option<TranslationUnit> {
     // generate the header
     let mut ast = self.to_glsl_header()?;
 
