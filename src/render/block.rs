@@ -3,7 +3,7 @@
 //! Render blocks are logical rendering units that have inputs and outputs. Inputs can represent
 //! vertex attributes, user-specified values, built-ins or previous blocks’ outputs.
 
-use glsl::syntax::{ExternalDeclaration, Identifier, TranslationUnit, TypeName};
+use glsl::syntax::{Identifier, TranslationUnit, TypeName};
 use glsl::visitor::{Host, Visit, Visitor};
 use std::iter::once;
 
@@ -13,7 +13,7 @@ use crate::render::output::{Output, outputs_to_struct_decl};
 /// A render block, allowing for combining blocks in order to create more complex rendering
 /// computations.
 #[derive(Clone, Debug)]
-struct Block {
+pub struct Block {
   /// Unique identifier of the block. Used to get mangled names for structures and functions.
   id: String,
   /// List of inputs that compose the public interface of the block.
