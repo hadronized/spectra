@@ -18,20 +18,6 @@ pub enum Type {
   Bool(TypeChan),
 }
 
-/// Role of an input. It can either be a functional input, like a vertex’s attribute, or a constant
-/// parameter.
-///
-/// This is not really important when writing a shader code but becomes important when writing the
-/// render pipeline.
-#[derive(Clone, Copy, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Role {
-  Pipeline,
-  Parameter,
-  #[serde(rename = "built-in")]
-  BuiltIn(BuiltIn)
-}
-
 /// Associate an input type to a given type.
 pub trait InputType {
   const INPUT: Type;
@@ -70,14 +56,6 @@ multi_input_type_impl!(A, B, C, D, E, F, G, H, I);
 multi_input_type_impl!(A, B, C, D, E, F, G, H, I, J);
 multi_input_type_impl!(A, B, C, D, E, F, G, H, I, J, K);
 multi_input_type_impl!(A, B, C, D, E, F, G, H, I, J, K, L);
-
-/// Built-ins.
-#[derive(Clone, Copy, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum BuiltIn {
-  Time,
-  FramebufferResolution
-}
 
 /// An input.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -141,6 +119,27 @@ fn glsl_type_from_input_type(ty: &Type) -> TypeSpecifier {
   TypeSpecifier::new(ty_nonarray)
 }
 
+/// Role of an input. It can either be a functional input, like a vertex’s attribute, or a constant
+/// parameter.
+///
+/// This is not really important when writing a shader code but becomes important when writing the
+/// render pipeline.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Role {
+  Pipeline(Input),
+  Parameter(Input),
+  #[serde(rename = "built-in")] BuiltIn(BuiltIn)
+}
+
+/// Built-ins.
+#[derive(Clone, Copy, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BuiltIn {
+  Time,
+  FramebufferResolution
+}
+
 #[cfg(test)]
 mod tests {
   use glsl::syntax::TranslationUnit;
@@ -194,14 +193,22 @@ mod tests {
 
   #[test]
   fn serialize_role() {
-    assert_eq!(&to_string(&Role::Pipeline).unwrap(), r#""pipeline""#);
-    assert_eq!(&to_string(&Role::Parameter).unwrap(), r#""parameter""#);
+    let pipeline = Input::new::<RGBF, _>("vertex_color");
+    let param = Input::new::<RZ, _>("enabled");
+
+    assert_eq!(&to_string(&Role::Pipeline(pipeline)).unwrap(), r#"{"pipeline":{"name":"vertex_color","type":{"float":3}}}"#);
+    assert_eq!(&to_string(&Role::Parameter(param)).unwrap(), r#"{"parameter":{"name":"enabled","type":{"bool":1}}}"#);
+    assert_eq!(&to_string(&Role::BuiltIn(BuiltIn::Time)).unwrap(), r#"{"built-in":"time"}"#);
   }
 
   #[test]
   fn deserialize_role() {
-    assert_eq!(from_str::<Role>(r#""pipeline""#).unwrap(), Role::Pipeline);
-    assert_eq!(from_str::<Role>(r#""parameter""#).unwrap(), Role::Parameter);
+    let pipeline = Input::new::<RGBF, _>("vertex_color");
+    let param = Input::new::<RZ, _>("enabled");
+
+    assert_eq!(from_str::<Role>(r#"{"pipeline":{"name":"vertex_color","type":{"float":3}}}"#).unwrap(), Role::Pipeline(pipeline));
+    assert_eq!(from_str::<Role>(r#"{"parameter":{"name":"enabled","type":{"bool":1}}}"#).unwrap(), Role::Parameter(param));
+    assert_eq!(from_str::<Role>(r#"{"built-in":"time"}"#).unwrap(), Role::BuiltIn(BuiltIn::Time));
   }
 
   #[test]
