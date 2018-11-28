@@ -8,7 +8,6 @@ use luminance_glfw::surface::{
 use structopt::StructOpt;
 use warmy::{Store, StoreOpt};
 
-use crate::app::context::Context;
 use crate::app::demo::Demo;
 use crate::app::runner;
 use crate::resource::key::Key;
@@ -52,10 +51,10 @@ impl Runner {
     title: &str,
     def_width: u32,
     def_height: u32,
-    mut context: D::Context
+    context: &mut D::Context
   ) -> Result<(), runner::Error>
   where D: Demo {
-    info!(context.logger(), "starting « {} »", title);
+    info!(context, "starting « {} »", title);
 
     // get CLI options
     let opt = Opt::from_args();
@@ -66,14 +65,14 @@ impl Runner {
     // build the WindowDim
     let win_dim = if fullscreen {
       if opt.width.is_some() && opt.height.is_some() {
-        info!(context.logger(), "window mode: fullscreen restricted ({}×{})", width, height);
+        info!(context, "window mode: fullscreen restricted ({}×{})", width, height);
         WindowDim::FullscreenRestricted(width, height)
       } else {
-        info!(context.logger(), "window mode: fullscreen");
+        info!(context, "window mode: fullscreen");
         WindowDim::Fullscreen
       }
     } else {
-      info!(context.logger(), "window mode: windowed ({}×{})", width, height);
+      info!(context, "window mode: windowed ({}×{})", width, height);
       WindowDim::Windowed(width, height)
     };
 
@@ -92,7 +91,7 @@ impl Runner {
 
     // initialize the demo
     let mut demo =
-      D::init(&mut store, &mut context)
+      D::init(&mut store, context)
         .map_err(|e| runner::Error::demo_initialization_failure(format!("{:?}", e)))?;
 
     // create a bunch of objects needed for rendering
@@ -103,7 +102,7 @@ impl Runner {
     let start_at = opt.start_at;
     let wrap_at = opt.wrap_at;
 
-    info!(context.logger(), "initialized; running…");
+    info!(context, "initialized; running…");
 
     'run: loop {
       // treat events first
@@ -119,7 +118,7 @@ impl Runner {
             let size = [w as u32, h as u32];
 
             back_buffer = Framebuffer::back_buffer(size);
-            demo.resize(&mut context, size[0], size[1]);
+            demo.resize(context, size[0], size[1]);
           }
 
           _ => ()
@@ -132,7 +131,7 @@ impl Runner {
       let t = t.offset(start_at.into());
       let builder = surface.pipeline_builder();
 
-      demo.render(&mut context, t, &back_buffer, builder);
+      demo.render(context, t, &back_buffer, builder);
       surface.swap_buffers();
     }
 

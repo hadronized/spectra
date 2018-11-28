@@ -2,12 +2,12 @@
 
 use spectra::app::demo::{Backbuffer, Builder, Demo, Key, Store, Time};
 use spectra::app::runner::debug::Runner;
-use spectra::resource::context::{Context, DefaultContext};
+use spectra::logger::StdoutLogger;
 
 struct App;
 
 impl Demo for App {
-  type Context = DefaultContext;
+  type Context = StdoutLogger;
 
   type Error = ();
 
@@ -20,14 +20,15 @@ impl Demo for App {
   }
 
   fn render(&mut self, context: &mut Self::Context, t: Time, _back_buffer: &Backbuffer, _builder: Builder) {
-    debug!(context.logger(), "time is {}", t);
+    debug!(context, "time is {}", t);
   }
 }
 
 fn main() {
-  let result = Runner::run::<App>("simple example", 960, 540, DefaultContext::default());
+  let mut context = StdoutLogger::default();
+  let result = Runner::run::<App>("simple example", 960, 540, &mut context);
 
   if let Err(e) = result {
-    eprintln!("{}", e);
+    error!(&mut context, "{}", e);
   }
 }

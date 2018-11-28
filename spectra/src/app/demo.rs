@@ -6,7 +6,7 @@ use luminance::texture::{Dim2, Flat};
 pub use warmy::Store;
 use std::fmt::Debug;
 
-use crate::app::context::Context;
+use crate::logger::Logger;
 pub use crate::resource::key::Key;
 pub use crate::time::Time;
 
@@ -15,7 +15,7 @@ pub use crate::time::Time;
 /// A demo is basically just a single function that takes the current time and display something.
 pub trait Demo: Sized {
   /// Context carried around with the demo.
-  type Context: Context;
+  type Context: Logger;
 
   /// Initialization error that might occur.
   type Error: Sized + Debug;
