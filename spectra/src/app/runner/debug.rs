@@ -8,9 +8,9 @@ use luminance_glfw::surface::{
 use structopt::StructOpt;
 use warmy::{Store, StoreOpt};
 
+use crate::app::context::Context;
 use crate::app::demo::Demo;
 use crate::app::runner;
-use crate::resource::context::Context;
 use crate::resource::key::Key;
 use crate::time::{DurationSpec, Monotonic};
 

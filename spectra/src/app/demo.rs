@@ -6,7 +6,7 @@ use luminance::texture::{Dim2, Flat};
 pub use warmy::Store;
 use std::fmt::Debug;
 
-use crate::resource::context::Context;
+use crate::app::context::Context;
 pub use crate::resource::key::Key;
 pub use crate::time::Time;
 
