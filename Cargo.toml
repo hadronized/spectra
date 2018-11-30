@@ -9,5 +9,5 @@ members = [
 luminance = { path = "/home/phaazon/dev/luminance/luminance" }
 luminance-glfw = { path = "/home/phaazon/dev/luminance/luminance-glfw" }
 luminance-windowing = { path = "/home/phaazon/dev/luminance/luminance-windowing" }
-glsl = { path = "/home/phaazon/dev/glsl" }
-glsl-quasiquote = { path = "/home/phaazon/dev/glsl-quasiquote" }
+glsl = { path = "/home/phaazon/dev/glsl/glsl" }
+glsl-quasiquote = { path = "/home/phaazon/dev/glsl/glsl-quasiquote" }
