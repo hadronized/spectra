@@ -1,0 +1,6 @@
+[workspace]
+members = [
+  "spectra",
+  "spectra-demoscene",
+  "spectra-demoscene-desktop",
+]
